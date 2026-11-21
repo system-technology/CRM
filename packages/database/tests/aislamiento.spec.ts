@@ -25,6 +25,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 // @ts-expect-error — módulo JS sin tipos, compartido con `scripts/limpiar-fixtures.mjs`.
 import { borrarTenants } from '../scripts/borrar-tenants.mjs';
+import {
+  CONSULTA_DEL_INDICE_DE_APODOS,
+  elIndiceDeApodosEsGlobal,
+} from '../prisma/guardia-de-semilla-agencia.js';
 
 // SIN `??` hacia DATABASE_URL, y eso es media compuerta.
 //
@@ -9316,6 +9320,66 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     }
   }
 
+  // ---- ADR-0031 §4: la fase 2 simulada ----------------------------------------------------------
+  //
+  // Con el índice de apodos GLOBAL y agencias existentes (los fixtures), `crear_agencia` falla
+  // cerrada con VPR05 (migración 20261120180000). Lo que aquí necesita un alta que salga (R-3, R-4,
+  // R-6, R-9, R-10) corre en UNA transacción del propietario que se deshace siempre, con el índice
+  // por agencia simulado: el índice confirmado nunca cambia. Dentro, la API es `viajapro_app` por
+  // SET LOCAL ROLE, como ya hacía R-9.
+
+  async function conFaseDosSimulada(fn: () => Promise<void>): Promise<void> {
+    await admin.query('BEGIN');
+    try {
+      await admin.query('DROP INDEX public.accesos_identidad_apodo_key');
+      await admin.query(
+        'CREATE UNIQUE INDEX accesos_identidad_apodo_key ON public.accesos_identidad (tenant_acceso_id, apodo)',
+      );
+      await fn();
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+  }
+
+  /**
+   * Dentro de `conFaseDosSimulada`: `fn` como viajapro_app con `app.current_tenant = contexto`
+   * ('' = vacío), en un SAVEPOINT. Si falla, ROLLBACK TO (que deshace también el rol) y el error
+   * sube; si sale bien, el rol vuelve al propietario y lo hecho queda hasta el ROLLBACK final. El
+   * contexto que deje `fn` (S1) sigue fijado: quien venga después fija el suyo.
+   */
+  async function comoLaApiEnLaTransaccion<T>(contexto: string, fn: () => Promise<T>): Promise<T> {
+    await admin.query('SAVEPOINT como_la_api');
+    try {
+      await admin.query('SET LOCAL ROLE "viajapro_app"');
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [contexto]);
+      const resultado = await fn();
+      await admin.query('RESET ROLE');
+      await admin.query('RELEASE SAVEPOINT como_la_api');
+      return resultado;
+    } catch (error) {
+      await admin.query('ROLLBACK TO SAVEPOINT como_la_api');
+      await admin.query('RELEASE SAVEPOINT como_la_api');
+      throw error;
+    }
+  }
+
+  /** Un alta como la API, dentro de `conFaseDosSimulada`, con el contexto vacío al llamar. */
+  const altaEnLaTransaccion = (a: Alta): Promise<{ id: string; contexto: string }> =>
+    comoLaApiEnLaTransaccion('', async () => {
+      const { rows } = await admin.query(SQL_CREAR_AGENCIA, argumentos(a));
+      const { rows: ctx } = await admin.query(
+        "SELECT current_setting('app.current_tenant', true) AS contexto",
+      );
+      return { id: rows[0]?.id as string, contexto: ctx[0]?.contexto as string };
+    });
+
+  /** `codigo_de_acceso_vigente` como la API, viendo lo que la transacción ya consumió. */
+  const vigenteEnLaTransaccion = (hash: Buffer, correoHmac: Buffer): Promise<boolean> =>
+    comoLaApiEnLaTransaccion('', async () => {
+      const { rows } = await admin.query(SQL_CODIGO_VIGENTE, [hash, correoHmac]);
+      return rows[0]?.vigente as boolean;
+    });
+
   beforeAll(async () => {
     app2 = new Client({ connectionString: URL_APP });
     await app2.connect();
@@ -9512,211 +9576,217 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
 
   it('R-3 — un slug igual al de una agencia existente crea OTRA agencia, la existente queda intacta, y el contexto fijado por la función sigue vigente al volver (S1)', async () => {
     const slugA = `fixture-aislamiento-${MARCA}-a`;
-    const fotoDeA = async () =>
-      (await admin.query('SELECT to_jsonb(t) AS fila FROM tenants t WHERE id = $1', [TENANT_A]))
-        .rows[0]?.fila as Record<string, unknown> | undefined;
-    const usuariosDeA = async (): Promise<unknown[]> =>
-      (
-        await comoTenant(TENANT_A, (c) =>
-          c.query('SELECT id, actualizado_en FROM usuarios ORDER BY id'),
-        )
-      ).rows as unknown[];
-
-    const antes = await fotoDeA();
-    expect(antes?.['slug'], 'el fixture A existe con su slug').toBe(slugA);
-    const usuariosAntes = await usuariosDeA();
-
     const identidad = await nuevaIdentidad('slug');
     const hmac = randomBytes(32);
     const hash = await nuevoCodigo(hmac);
 
-    let nueva = '';
-    await app.query('BEGIN');
-    try {
-      const { rows } = await app.query(
-        SQL_CREAR_AGENCIA,
-        argumentos({ slugBase: slugA, identidad, hash, correoHmac: hmac }),
-      );
-      nueva = rows[0]?.id as string;
-      expect(nueva).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-      expect(nueva, 'el alta reutilizó la agencia existente').not.toBe(TENANT_A);
+    // Fase 2 simulada (ADR-0031 §4): todo dentro de una transacción del propietario que se deshace.
+    await conFaseDosSimulada(async () => {
+      const fotoDeA = async () =>
+        (await admin.query('SELECT to_jsonb(t) AS fila FROM tenants t WHERE id = $1', [TENANT_A]))
+          .rows[0]?.fila as Record<string, unknown> | undefined;
+      const usuariosDeA = (): Promise<unknown[]> =>
+        comoLaApiEnLaTransaccion(
+          TENANT_A,
+          async () =>
+            (await admin.query('SELECT id, actualizado_en FROM usuarios ORDER BY id'))
+              .rows as unknown[],
+        );
 
-      // S1, por el camino del slug que choca: el GUC sigue fijado al volver de la función…
-      const { rows: ctx } = await app.query(
-        "SELECT current_setting('app.current_tenant', true) AS contexto",
-      );
-      expect(ctx[0]?.contexto, 'S1: el contexto no sobrevivió al volver de crear_agencia').toBe(
-        nueva,
-      );
-      // …y RLS lo usa: la API escribe bajo él sin fijar nada (WITH CHECK pasa solo si es la nueva).
-      const { rows: perfil } = await app.query(
-        `INSERT INTO perfiles_de_agencia
-           (tenant_id, rnt, nit, digito_verificacion, razon_social, verificado_en, actualizado_en)
-         VALUES ($1, '48213', '900123456', 7, 'Razón social de prueba', now(), now())
-         RETURNING verificado_en`,
+      const antes = await fotoDeA();
+      expect(antes?.['slug'], 'el fixture A existe con su slug').toBe(slugA);
+      const usuariosAntes = await usuariosDeA();
+
+      let nueva = '';
+      await comoLaApiEnLaTransaccion('', async () => {
+        const { rows } = await admin.query(
+          SQL_CREAR_AGENCIA,
+          argumentos({ slugBase: slugA, identidad, hash, correoHmac: hmac }),
+        );
+        nueva = rows[0]?.id as string;
+        expect(nueva).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+        expect(nueva, 'el alta reutilizó la agencia existente').not.toBe(TENANT_A);
+
+        // S1, por el camino del slug que choca: el GUC sigue fijado al volver de la función…
+        const { rows: ctx } = await admin.query(
+          "SELECT current_setting('app.current_tenant', true) AS contexto",
+        );
+        expect(ctx[0]?.contexto, 'S1: el contexto no sobrevivió al volver de crear_agencia').toBe(
+          nueva,
+        );
+        // …y RLS lo usa: la API escribe bajo él sin fijar nada (WITH CHECK pasa solo si es la nueva).
+        const { rows: perfil } = await admin.query(
+          `INSERT INTO perfiles_de_agencia
+             (tenant_id, rnt, nit, digito_verificacion, razon_social, verificado_en, actualizado_en)
+           VALUES ($1, '48213', '900123456', 7, 'Razón social de prueba', now(), now())
+           RETURNING verificado_en`,
+          [nueva],
+        );
+        expect(perfil[0]?.verificado_en, 'viajapro_app pudo fijar verificado_en').toBeNull();
+        // Con ese contexto, nada de A: ni un perfil con su tenant_id, ni su fila de `tenants`.
+        await esperarPermisoDenegado(
+          admin,
+          () =>
+            admin.query(
+              'INSERT INTO perfiles_de_agencia (tenant_id, actualizado_en) VALUES ($1, now())',
+              [TENANT_A],
+            ),
+          'perfil de A con el contexto de la agencia nueva',
+        );
+        await esperarPermisoDenegado(
+          admin,
+          () => admin.query("UPDATE tenants SET nombre = 'secuestrada' WHERE id = $1", [TENANT_A]),
+          'UPDATE de la agencia existente',
+        );
+      });
+
+      // La existente, intacta: misma fila (incluido actualizado_en) y mismos usuarios.
+      expect(await fotoDeA()).toEqual(antes);
+      expect(await usuariosDeA()).toEqual(usuariosAntes);
+
+      // La nueva: otro slug (base + 4 hex), EN_PRUEBA, AUTOSERVICIO, con su encargo y 14 días.
+      const { rows: fila } = await admin.query(
+        `SELECT slug, estado::text AS estado, origen_del_alta::text AS origen,
+                creado_por_identidad_id, encargo_version,
+                encargo_aceptado_en IS NOT NULL AS con_encargo,
+                round(extract(epoch FROM prueba_termina_en - creado_en) / 86400) AS dias
+           FROM tenants WHERE id = $1`,
         [nueva],
       );
-      expect(perfil[0]?.verificado_en, 'viajapro_app pudo fijar verificado_en').toBeNull();
-      // Con ese contexto, nada de A: ni un perfil con su tenant_id, ni su fila de `tenants`.
-      await esperarPermisoDenegado(
-        app,
-        () =>
-          app.query(
-            'INSERT INTO perfiles_de_agencia (tenant_id, actualizado_en) VALUES ($1, now())',
-            [TENANT_A],
-          ),
-        'perfil de A con el contexto de la agencia nueva',
-      );
-      await esperarPermisoDenegado(
-        app,
-        () => app.query("UPDATE tenants SET nombre = 'secuestrada' WHERE id = $1", [TENANT_A]),
-        'UPDATE de la agencia existente',
-      );
-      await app.query('COMMIT');
-    } catch (error) {
-      await app.query('ROLLBACK');
-      throw error;
-    }
+      expect(fila).toHaveLength(1);
+      expect(fila[0]?.slug).toMatch(new RegExp(`^${slugA}-[0-9a-f]{4}$`));
+      expect(fila[0]).toMatchObject({
+        estado: 'EN_PRUEBA',
+        origen: 'AUTOSERVICIO',
+        creado_por_identidad_id: identidad,
+        encargo_version: 'encargo-de-prueba-1',
+        con_encargo: true,
+      });
+      expect(Number(fila[0]?.dias)).toBe(14);
+      expect((await usoDe(hash))?.usado_por_identidad_id).toBe(identidad);
 
-    // La existente, intacta: misma fila (incluido actualizado_en) y mismos usuarios.
-    expect(await fotoDeA()).toEqual(antes);
-    expect(await usuariosDeA()).toEqual(usuariosAntes);
-
-    // La nueva: otro slug (base + 4 hex), EN_PRUEBA, AUTOSERVICIO, con su encargo y 14 días.
-    const { rows: fila } = await admin.query(
-      `SELECT slug, estado::text AS estado, origen_del_alta::text AS origen,
-              creado_por_identidad_id, encargo_version,
-              encargo_aceptado_en IS NOT NULL AS con_encargo,
-              round(extract(epoch FROM prueba_termina_en - creado_en) / 86400) AS dias
-         FROM tenants WHERE id = $1`,
-      [nueva],
-    );
-    expect(fila).toHaveLength(1);
-    expect(fila[0]?.slug).toMatch(new RegExp(`^${slugA}-[0-9a-f]{4}$`));
-    expect(fila[0]).toMatchObject({
-      estado: 'EN_PRUEBA',
-      origen: 'AUTOSERVICIO',
-      creado_por_identidad_id: identidad,
-      encargo_version: 'encargo-de-prueba-1',
-      con_encargo: true,
-    });
-    expect(Number(fila[0]?.dias)).toBe(14);
-    expect((await usoDe(hash))?.usado_por_identidad_id).toBe(identidad);
-
-    // verificado_en (el disparador de T-261, ampliado por T-268 al NIT y su DV): solo la plataforma
-    // (el dueño de la tabla) lo fija; la API no lo fija ni lo borra; cambiar el NIT, el DV o el RNT
-    // lo anula, salvo que la plataforma lo vuelva a fijar en el mismo UPDATE. P-6 cubre el RNT.
-    const comoPlataforma = async (sql: string) => {
-      await admin.query('BEGIN');
-      try {
+      // verificado_en (el disparador de T-261, ampliado por T-268 al NIT y su DV): solo la
+      // plataforma (el dueño de la tabla) lo fija; la API no lo fija ni lo borra; cambiar el NIT, el
+      // DV o el RNT lo anula, salvo que la plataforma lo vuelva a fijar en el mismo UPDATE. P-6
+      // cubre el RNT. La plataforma es el propietario sin rol puesto: RLS forzada, así que fija el
+      // contexto de la nueva antes de cada sentencia.
+      const comoPlataforma = async (sql: string) => {
         await admin.query("SELECT set_config('app.current_tenant', $1, true)", [nueva]);
         const r = await admin.query(sql, [nueva]);
-        await admin.query('COMMIT');
         return r.rows[0]?.verificado_en as Date | null;
-      } catch (error) {
-        await admin.query('ROLLBACK');
-        throw error;
+      };
+      const comoLaApi = (sql: string) =>
+        comoLaApiEnLaTransaccion(
+          nueva,
+          async () => (await admin.query(sql, [nueva])).rows[0]?.verificado_en as Date | null,
+        );
+      const verificar =
+        'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en';
+
+      expect(await comoPlataforma(verificar), 'la plataforma no pudo verificar').not.toBeNull();
+      // La razón social no es un dato verificado: cambiarla no anula, ni a la API ni a la plataforma…
+      expect(
+        await comoLaApi(
+          "UPDATE perfiles_de_agencia SET razon_social = 'Cambio de la agencia' WHERE tenant_id = $1 RETURNING verificado_en",
+        ),
+        'cambiar la razón social anuló la verificación',
+      ).not.toBeNull();
+      // …y la API no puede borrar la verificación por su cuenta.
+      expect(
+        await comoLaApi(
+          'UPDATE perfiles_de_agencia SET verificado_en = NULL WHERE tenant_id = $1 RETURNING verificado_en',
+        ),
+        'viajapro_app borró la verificación',
+      ).not.toBeNull();
+      // La API cambia el NIT, aunque mande verificado_en en el mismo UPDATE: vuelve a NULL.
+      expect(
+        await comoLaApi(
+          "UPDATE perfiles_de_agencia SET nit = '800111222', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
+        ),
+        'viajapro_app cambió el NIT y conservó la verificación',
+      ).toBeNull();
+      // Y si no la tenía, tampoco la consigue la API sin tocar nada.
+      expect(
+        await comoLaApi(
+          'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en',
+        ),
+        'viajapro_app fijó verificado_en',
+      ).toBeNull();
+      // El DV también es un dato verificado.
+      expect(await comoPlataforma(verificar)).not.toBeNull();
+      expect(
+        await comoLaApi(
+          'UPDATE perfiles_de_agencia SET digito_verificacion = 3 WHERE tenant_id = $1 RETURNING verificado_en',
+        ),
+        'cambiar el DV conservó la verificación',
+      ).toBeNull();
+      // La plataforma cambia el NIT sin tocar verificado_en: el dato nuevo no hereda la verificación…
+      expect(await comoPlataforma(verificar)).not.toBeNull();
+      expect(
+        await comoPlataforma(
+          "UPDATE perfiles_de_agencia SET nit = '900999999' WHERE tenant_id = $1 RETURNING verificado_en",
+        ),
+        'la plataforma cambió el NIT y conservó la verificación',
+      ).toBeNull();
+      // …y si lo cambia y lo verifica en el mismo UPDATE, se conserva. (now() es fijo dentro de la
+      // transacción, pero el anterior es NULL: el valor nuevo es distinto.)
+      expect(
+        await comoPlataforma(
+          "UPDATE perfiles_de_agencia SET nit = '900888777', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
+        ),
+      ).not.toBeNull();
+
+      // Los CHECK de las columnas nuevas los aplica el motor.
+      for (const [sql, restriccion] of [
+        [
+          "UPDATE perfiles_de_agencia SET nit = '90012-3' WHERE tenant_id = $1",
+          'perfiles_de_agencia_nit_formato',
+        ],
+        [
+          'UPDATE perfiles_de_agencia SET digito_verificacion = 10 WHERE tenant_id = $1',
+          'perfiles_de_agencia_digito_verificacion',
+        ],
+        [
+          'UPDATE perfiles_de_agencia SET nit = NULL WHERE tenant_id = $1',
+          'perfiles_de_agencia_digito_verificacion',
+        ],
+        [
+          "UPDATE perfiles_de_agencia SET razon_social = '   ' WHERE tenant_id = $1",
+          'perfiles_de_agencia_razon_social_longitud',
+        ],
+      ] as const) {
+        await expect(
+          comoLaApiEnLaTransaccion(nueva, () => admin.query(sql, [nueva])),
+          sql,
+        ).rejects.toMatchObject({ code: '23514', constraint: restriccion });
       }
-    };
-    const comoLaApi = async (sql: string) =>
-      (await comoTenant(nueva, (c) => c.query(sql, [nueva]))).rows[0]?.verificado_en as Date | null;
-    const verificar =
-      'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en';
+    });
 
-    expect(await comoPlataforma(verificar), 'la plataforma no pudo verificar').not.toBeNull();
-    // La razón social no es un dato verificado: cambiarla no anula, ni a la API ni a la plataforma…
-    expect(
-      await comoLaApi(
-        "UPDATE perfiles_de_agencia SET razon_social = 'Cambio de la agencia' WHERE tenant_id = $1 RETURNING verificado_en",
-      ),
-      'cambiar la razón social anuló la verificación',
-    ).not.toBeNull();
-    // …y la API no puede borrar la verificación por su cuenta.
-    expect(
-      await comoLaApi(
-        'UPDATE perfiles_de_agencia SET verificado_en = NULL WHERE tenant_id = $1 RETURNING verificado_en',
-      ),
-      'viajapro_app borró la verificación',
-    ).not.toBeNull();
-    // La API cambia el NIT, aunque mande verificado_en en el mismo UPDATE: vuelve a NULL.
-    expect(
-      await comoLaApi(
-        "UPDATE perfiles_de_agencia SET nit = '800111222', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
-      ),
-      'viajapro_app cambió el NIT y conservó la verificación',
-    ).toBeNull();
-    // Y si no la tenía, tampoco la consigue la API sin tocar nada.
-    expect(
-      await comoLaApi(
-        'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en',
-      ),
-      'viajapro_app fijó verificado_en',
-    ).toBeNull();
-    // El DV también es un dato verificado.
-    expect(await comoPlataforma(verificar)).not.toBeNull();
-    expect(
-      await comoLaApi(
-        'UPDATE perfiles_de_agencia SET digito_verificacion = 3 WHERE tenant_id = $1 RETURNING verificado_en',
-      ),
-      'cambiar el DV conservó la verificación',
-    ).toBeNull();
-    // La plataforma cambia el NIT sin tocar verificado_en: el dato nuevo no hereda la verificación…
-    expect(await comoPlataforma(verificar)).not.toBeNull();
-    expect(
-      await comoPlataforma(
-        "UPDATE perfiles_de_agencia SET nit = '900999999' WHERE tenant_id = $1 RETURNING verificado_en",
-      ),
-      'la plataforma cambió el NIT y conservó la verificación',
-    ).toBeNull();
-    // …y si lo cambia y lo verifica en el mismo UPDATE, se conserva.
-    expect(
-      await comoPlataforma(
-        "UPDATE perfiles_de_agencia SET nit = '900888777', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
-      ),
-    ).not.toBeNull();
-
-    // Los CHECK de las columnas nuevas los aplica el motor.
-    for (const [sql, restriccion] of [
-      [
-        "UPDATE perfiles_de_agencia SET nit = '90012-3' WHERE tenant_id = $1",
-        'perfiles_de_agencia_nit_formato',
-      ],
-      [
-        'UPDATE perfiles_de_agencia SET digito_verificacion = 10 WHERE tenant_id = $1',
-        'perfiles_de_agencia_digito_verificacion',
-      ],
-      [
-        'UPDATE perfiles_de_agencia SET nit = NULL WHERE tenant_id = $1',
-        'perfiles_de_agencia_digito_verificacion',
-      ],
-      [
-        "UPDATE perfiles_de_agencia SET razon_social = '   ' WHERE tenant_id = $1",
-        'perfiles_de_agencia_razon_social_longitud',
-      ],
-    ] as const) {
-      await expect(
-        comoTenant(nueva, (c) => c.query(sql, [nueva])),
-        sql,
-      ).rejects.toMatchObject({ code: '23514', constraint: restriccion });
-    }
+    // La transacción se deshizo: ni la agencia ni el uso del código quedan.
+    expect(await agenciasDe(identidad)).toEqual([]);
+    expect(await usoDe(hash)).toEqual({ usado_en: null, usado_por_identidad_id: null });
   });
 
   it('R-4 — un slug reservado nunca se asigna tal cual', async () => {
     const identidad = await nuevaIdentidad('reservado');
     const hmac = randomBytes(32);
     const hash = await nuevoCodigo(hmac);
-    const { id, contexto } = await alta(app, {
-      slugBase: 'ingresar',
-      identidad,
-      hash,
-      correoHmac: hmac,
+    // Fase 2 simulada (ADR-0031 §4), en una transacción que se deshace.
+    await conFaseDosSimulada(async () => {
+      const { id, contexto } = await altaEnLaTransaccion({
+        slugBase: 'ingresar',
+        identidad,
+        hash,
+        correoHmac: hmac,
+      });
+      expect(contexto).toBe(id);
+      const { rows } = await admin.query('SELECT slug FROM tenants WHERE id = $1', [id]);
+      expect(rows[0]?.slug).toMatch(/^ingresar-[0-9a-f]{4}$/);
+      // No es que chocara con una existente: el slug tal cual sigue libre.
+      const { rows: tal } = await admin.query("SELECT id FROM tenants WHERE slug = 'ingresar'");
+      expect(tal).toEqual([]);
     });
-    expect(contexto).toBe(id);
-    const { rows } = await admin.query('SELECT slug FROM tenants WHERE id = $1', [id]);
-    expect(rows[0]?.slug).toMatch(/^ingresar-[0-9a-f]{4}$/);
-    // No es que chocara con una existente: el slug tal cual sigue libre.
-    const { rows: tal } = await admin.query("SELECT id FROM tenants WHERE slug = 'ingresar'");
-    expect(tal).toEqual([]);
+    expect(await agenciasDe(identidad)).toEqual([]);
   });
 
   it('R-5 — viajapro_app no escribe tenants directamente, y las tablas globales del registro dan 42501 a quien no le toca', async () => {
@@ -9823,107 +9893,159 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     expect(await agenciasDe(identidad)).toEqual([]);
     expect(await usoDe(deOtroCorreo)).toEqual({ usado_en: null, usado_por_identidad_id: null });
 
-    // Un alta que falla DESPUÉS de consumir el código (aquí, un ROLLBACK explícito) lo devuelve.
+    // Lo que sigue necesita altas que salgan: fase 2 simulada (ADR-0031 §4) en una transacción del
+    // propietario que se deshace. Identidades y códigos, confirmados antes (los ve la transacción).
     const valido = await nuevoCodigo(hmac);
+    const otra = await nuevaIdentidad('acceso-2');
+    const segundo = await nuevoCodigo(hmac);
     expect(await vigente(valido, hmac)).toBe(true);
     expect(await vigente(valido, otroHmac), 'el código está atado a su correo').toBe(false);
     expect(await vigente(valido, hmac), 'comprobar no lo consume').toBe(true);
-    await app.query('BEGIN');
-    try {
-      const { rows } = await app.query(
-        SQL_CREAR_AGENCIA,
-        argumentos({ slugBase, identidad, hash: valido, correoHmac: hmac }),
-      );
-      expect(rows[0]?.id).toBeTruthy();
-      expect(await vigente(valido, hmac), 'dentro de la transacción ya está consumido').toBe(false);
-    } finally {
-      await app.query('ROLLBACK');
-    }
-    expect(await usoDe(valido)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+
+    await conFaseDosSimulada(async () => {
+      // Un alta que falla DESPUÉS de consumir el código (aquí, un ROLLBACK explícito) lo devuelve.
+      await admin.query('SAVEPOINT alta_deshecha');
+      const deshecha = await altaEnLaTransaccion({
+        slugBase,
+        identidad,
+        hash: valido,
+        correoHmac: hmac,
+      });
+      expect(deshecha.id).toBeTruthy();
+      expect(
+        await vigenteEnLaTransaccion(valido, hmac),
+        'dentro de la transacción ya está consumido',
+      ).toBe(false);
+      await admin.query('ROLLBACK TO SAVEPOINT alta_deshecha');
+      await admin.query('RELEASE SAVEPOINT alta_deshecha');
+      expect(await usoDe(valido)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+      expect(await agenciasDe(identidad)).toEqual([]);
+      expect(await vigenteEnLaTransaccion(valido, hmac)).toBe(true);
+
+      // Sigue sirviendo, una vez.
+      const { id } = await altaEnLaTransaccion({
+        slugBase,
+        identidad,
+        hash: valido,
+        correoHmac: hmac,
+      });
+      expect(await agenciasDe(identidad)).toEqual([id]);
+      expect((await usoDe(valido))?.usado_por_identidad_id).toBe(identidad);
+      await expect(
+        altaEnLaTransaccion({ slugBase, identidad: otra, hash: valido, correoHmac: hmac }),
+      ).rejects.toMatchObject({ code: 'VPR04' });
+      expect(await agenciasDe(otra)).toEqual([]);
+
+      // VPR01: la misma identidad no abre una segunda agencia en prueba, y el código no se gasta.
+      await expect(
+        altaEnLaTransaccion({ slugBase, identidad, hash: segundo, correoHmac: hmac }),
+      ).rejects.toMatchObject({ code: 'VPR01' });
+      expect(await usoDe(segundo)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+      expect(await agenciasDe(identidad)).toEqual([id]);
+    });
+
+    // La transacción se deshizo: el código vuelve a estar sin usar y no queda agencia.
     expect(await agenciasDe(identidad)).toEqual([]);
-    expect(await vigente(valido, hmac)).toBe(true);
-
-    // Sigue sirviendo, una vez.
-    const { id } = await alta(app, { slugBase, identidad, hash: valido, correoHmac: hmac });
-    expect(await agenciasDe(identidad)).toEqual([id]);
-    expect((await usoDe(valido))?.usado_por_identidad_id).toBe(identidad);
-    const otra = await nuevaIdentidad('acceso-2');
-    await expect(
-      alta(app, { slugBase, identidad: otra, hash: valido, correoHmac: hmac }),
-    ).rejects.toMatchObject({ code: 'VPR04' });
-    expect(await agenciasDe(otra)).toEqual([]);
-
-    // VPR01: la misma identidad no abre una segunda agencia en prueba, y el código no se gasta.
-    const segundo = await nuevoCodigo(hmac);
-    await expect(
-      alta(app, { slugBase, identidad, hash: segundo, correoHmac: hmac }),
-    ).rejects.toMatchObject({ code: 'VPR01' });
-    expect(await usoDe(segundo)).toEqual({ usado_en: null, usado_por_identidad_id: null });
-    expect(await agenciasDe(identidad)).toEqual([id]);
+    expect(await usoDe(valido)).toEqual({ usado_en: null, usado_por_identidad_id: null });
   });
 
-  it('R-7 — dos altas simultáneas con el mismo código crean UNA sola agencia', async () => {
+  // R-7, REFORMULADA en el PR 1b de ADR-0031. La original («dos altas simultáneas con el mismo código
+  // crean UNA sola agencia») exige que la primera alta CONFIRME, y con el índice de apodos global y
+  // los fixtures la guarda la cierra (VPR05). Simular la fase 2 no sirve: la segunda conexión ve el
+  // catálogo confirmado, no el de otra transacción, y cambiar el índice confirmado está descartado.
+  // Lo que se conserva, con dos conexiones reales de viajapro_app y el catálogo tal cual: la segunda
+  // alta ESPERA en la fila del código a la primera (el candado que hace que un código sirva una vez),
+  // y la primera, ya con el código consumido, espera en el candado único de la guarda (7410103, 0).
+  // Lo que se pierde y vuelve con la fase 2 (tarea de cola en el resumen del PR): comprobar que, al
+  // confirmar la primera, la segunda reevalúa y da VPR04. El uso único secuencial lo cubre R-6.
+  it('R-7 — dos altas simultáneas con el mismo código se serializan en la fila del código, y la guarda de ADR-0031 las serializa a las dos', async () => {
     const hmac = randomBytes(32);
     const hash = await nuevoCodigo(hmac);
     const primera = await nuevaIdentidad('carrera-1');
     const segunda = await nuevaIdentidad('carrera-2');
-    const { rows: pid } = await app2.query('SELECT pg_backend_pid() AS pid');
-
-    // La primera consume el código y deja la fila bloqueada; la segunda, en otra conexión, llega
-    // mientras la primera sigue abierta. Al confirmar la primera, la segunda reevalúa y no lo
-    // encuentra sin usar.
-    let resultadoDeLaSegunda: Promise<unknown> | undefined;
-    await app.query('BEGIN');
-    try {
-      await app.query(
-        SQL_CREAR_AGENCIA,
-        argumentos({
-          slugBase: `fixture-aislamiento-${MARCA}-carrera-1`,
-          identidad: primera,
-          hash,
-          correoHmac: hmac,
-        }),
-      );
-      await app2.query('BEGIN');
-      resultadoDeLaSegunda = app2
-        .query(
-          SQL_CREAR_AGENCIA,
-          argumentos({
-            slugBase: `fixture-aislamiento-${MARCA}-carrera-2`,
-            identidad: segunda,
-            hash,
-            correoHmac: hmac,
-          }),
-        )
-        .then(
-          () => 'creada',
-          (error: unknown) => error,
-        );
-      // Espera (acotada) a verla bloqueada. Si no se llega a observar, el resultado sigue
-      // siendo el mismo: la segunda corre después y encuentra el código usado.
-      for (let i = 0; i < 50; i += 1) {
+    const pidDe = async (c: Client): Promise<number> =>
+      (await c.query('SELECT pg_backend_pid() AS pid')).rows[0]?.pid as number;
+    const pidAdmin = await pidDe(admin);
+    const pidApp = await pidDe(app);
+    const pidApp2 = await pidDe(app2);
+    /** ¿`pid` está bloqueado por `por`? Espera acotada (5 s). */
+    const esperarBloqueo = async (pid: number, por: number): Promise<boolean> => {
+      for (let i = 0; i < 100; i += 1) {
         const { rows } = await admin.query(
-          'SELECT cardinality(pg_blocking_pids($1)) > 0 AS bloqueada',
-          [pid[0]?.pid],
+          'SELECT $2::int = ANY (pg_blocking_pids($1::int)) AS bloqueada',
+          [pid, por],
         );
-        if (rows[0]?.bloqueada) break;
+        if (rows[0]?.bloqueada) return true;
         await new Promise((resolver) => setTimeout(resolver, 50));
       }
-      await app.query('COMMIT');
-    } catch (error) {
+      return false;
+    };
+    const capturar = (p: Promise<unknown>): Promise<unknown> =>
+      p.then(
+        () => 'creada',
+        (error: unknown) => error,
+      );
+
+    const bloqueos = { primera: false, segunda: false };
+    const pendientes: Array<Promise<unknown>> = [];
+    const resultados: unknown[] = [];
+    // El propietario toma el candado de la guarda: la primera alta se detendrá en él DESPUÉS de
+    // consumir el código, con la fila bloqueada.
+    await admin.query('SELECT pg_advisory_lock(7410103, 0)');
+    await app.query('BEGIN');
+    await app2.query('BEGIN');
+    try {
+      pendientes.push(
+        capturar(
+          app.query(
+            SQL_CREAR_AGENCIA,
+            argumentos({
+              slugBase: `fixture-aislamiento-${MARCA}-carrera-1`,
+              identidad: primera,
+              hash,
+              correoHmac: hmac,
+            }),
+          ),
+        ),
+      );
+      bloqueos.primera = await esperarBloqueo(pidApp, pidAdmin);
+      if (bloqueos.primera) {
+        pendientes.push(
+          capturar(
+            app2.query(
+              SQL_CREAR_AGENCIA,
+              argumentos({
+                slugBase: `fixture-aislamiento-${MARCA}-carrera-2`,
+                identidad: segunda,
+                hash,
+                correoHmac: hmac,
+              }),
+            ),
+          ),
+        );
+        bloqueos.segunda = await esperarBloqueo(pidApp2, pidApp);
+      }
+    } finally {
+      await admin.query('SELECT pg_advisory_unlock(7410103, 0)');
+      resultados.push(...(await Promise.all(pendientes)));
       await app.query('ROLLBACK');
-      throw error;
+      await app2.query('ROLLBACK');
     }
-    const resultado = await resultadoDeLaSegunda;
-    await app2.query('ROLLBACK');
-    expect(resultado, 'la segunda alta con el mismo código').toMatchObject({ code: 'VPR04' });
+
+    expect(bloqueos.primera, 'la primera alta no esperó en el candado de la guarda').toBe(true);
+    expect(bloqueos.segunda, 'la segunda alta no esperó a la primera en la fila del código').toBe(
+      true,
+    );
+    // Al soltar el candado: la primera ve agencias y cierra (VPR05), su aborto suelta la fila, y la
+    // segunda, que la encuentra sin usar, llega a la guarda y cierra igual.
+    expect(resultados).toMatchObject([{ code: 'VPR05' }, { code: 'VPR05' }]);
 
     const { rows } = await admin.query(
       'SELECT creado_por_identidad_id FROM tenants WHERE creado_por_identidad_id = ANY($1::uuid[])',
       [[primera, segunda]],
     );
-    expect(rows).toEqual([{ creado_por_identidad_id: primera }]);
-    expect((await usoDe(hash))?.usado_por_identidad_id).toBe(primera);
+    expect(rows).toEqual([]);
+    expect(await usoDe(hash)).toEqual({ usado_en: null, usado_por_identidad_id: null });
   }, 60_000);
 
   it('R-8 — datos inválidos dan 22023 (un NULL nunca es un éxito silencioso) y no consumen el código', async () => {
@@ -9984,6 +10106,12 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     expect(topeAntes, 'parametros_del_registro tiene su fila').toHaveLength(1);
     await admin.query('BEGIN');
     try {
+      // Fase 2 simulada (ADR-0031 §4): sin ella la guarda cerraría la primera alta con VPR05. La
+      // deshace el mismo ROLLBACK.
+      await admin.query('DROP INDEX public.accesos_identidad_apodo_key');
+      await admin.query(
+        'CREATE UNIQUE INDEX accesos_identidad_apodo_key ON public.accesos_identidad (tenant_acceso_id, apodo)',
+      );
       // El tope justo por encima de las altas de autoservicio de la última hora (las de esta y de
       // otras corridas): la primera alta cabe y la segunda no.
       await admin.query(
@@ -10029,23 +10157,33 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     // código ni tope, lectura de los códigos. La trampa marca una bandera con quién la ejecutó, qué
     // pudo leer de los códigos y si pudo insertar en `tenants`.
     //
-    // Conexión NUEVA de viajapro_app: plpgsql y los planes se compilan por sesión, y en una sesión que
-    // ya hubiera llamado a crear_agencia los tipos estarían resueltos de antes y la prueba sería vacua.
+    // Conexión NUEVA: plpgsql y los planes se compilan por sesión, y en una sesión que ya hubiera
+    // llamado a crear_agencia los tipos estarían resueltos de antes y la prueba sería vacua. Es del
+    // PROPIETARIO solo para simular la fase 2 de ADR-0031 §4 (sin ella la guarda cerraría el alta con
+    // VPR05) en la misma transacción que se deshace; antes de tocar nada más se pone viajapro_app
+    // con SET LOCAL ROLE, y todo lo que sigue (trampa incluida) corre con ese rol.
     const identidad = await nuevaIdentidad('pg-temp');
     const hmac = randomBytes(32);
     const hash = await nuevoCodigo(hmac);
     const marca = `fixture-aislamiento-${MARCA}-trampa`;
-    const atacante = new Client({ connectionString: URL_APP });
+    const atacante = new Client({ connectionString: URL_ADMIN });
     await atacante.connect();
     try {
-      const { rows: quien } = await atacante.query('SELECT current_user AS usuario');
-      expect(quien[0]?.usuario).toBe('viajapro_app');
       const bandera = async (): Promise<string> =>
         (await atacante.query("SELECT current_setting('viajapro.trampa', true) AS b")).rows[0]
           ?.b as string;
 
       await atacante.query('BEGIN');
       try {
+        // 0. Fase 2 simulada (sin nombres de tipo: nada se resuelve contra pg_temp) y, después, la API.
+        await atacante.query('DROP INDEX public.accesos_identidad_apodo_key');
+        await atacante.query(
+          'CREATE UNIQUE INDEX accesos_identidad_apodo_key ON public.accesos_identidad (tenant_acceso_id, apodo)',
+        );
+        await atacante.query('SET LOCAL ROLE "viajapro_app"');
+        const { rows: quien } = await atacante.query('SELECT current_user AS usuario');
+        expect(quien[0]?.usuario).toBe('viajapro_app');
+
         // 1. Sembrar la trampa. Todo calificado DENTRO de ella, o se llamaría a sí misma.
         await atacante.query('SAVEPOINT sembrar');
         let sembrada = true;
@@ -10581,6 +10719,54 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
     );
     expect(fijadas.rows).toEqual([{ creado_fijado: true, actualizado_fijado: true }]);
   });
+
+  it('P-8 — las fechas son la hora de la sentencia, no la de la transacción: esperar antes de escribir no las antedata (T-375)', async () => {
+    await comoPlataforma(TENANT_C, (c) =>
+      c.query('DELETE FROM perfiles_de_agencia WHERE tenant_id = $1', [TENANT_C]),
+    );
+    // `now()` es la hora de inicio de la transacción. Con él, una transacción que espera 1,2 s y
+    // luego escribe dejaría las fechas 1,2 s antes de la escritura. Con statement_timestamp() la
+    // fecha cae después de ese segundo de espera.
+    const despues = (columna: string) => `${columna} > now() + interval '1 second'`;
+
+    const insertada = await comoTenant(TENANT_C, async (c) => {
+      await c.query('SELECT pg_sleep(1.2)');
+      return c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '48213')
+         RETURNING (${despues('creado_en')}) AS creado_despues,
+                   (${despues('actualizado_en')}) AS actualizado_despues`,
+        [TENANT_C],
+      );
+    });
+    expect(insertada.rows).toEqual([{ creado_despues: true, actualizado_despues: true }]);
+
+    const actualizada = await comoTenant(TENANT_C, async (c) => {
+      await c.query('SELECT pg_sleep(1.2)');
+      return c.query(
+        `UPDATE perfiles_de_agencia SET rnt = '48213' WHERE tenant_id = $1
+         RETURNING (${despues('actualizado_en')}) AS actualizado_despues`,
+        [TENANT_C],
+      );
+    });
+    expect(actualizada.rows).toEqual([{ actualizado_despues: true }]);
+  });
+
+  it('P-9 — la función del disparador tiene exactamente la superficie que se decidió: proconfig solo search_path vacío y ninguna hora de transacción (T-376)', async () => {
+    const { rows } = await admin.query<{
+      proconfig: string[] | null;
+      usa_hora_de_transaccion: boolean;
+    }>(
+      `SELECT p.proconfig,
+              p.prosrc ~* '(^|[^a-z_])(now|clock_timestamp|transaction_timestamp|current_timestamp)([^a-z_]|$)'
+                AS usa_hora_de_transaccion
+         FROM pg_proc p
+        WHERE p.oid = 'public.proteger_verificacion_del_perfil()'::regprocedure`,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.proconfig, 'ni un ajuste de más en la función').toHaveLength(1);
+    expect(rows[0]?.proconfig?.[0]).toMatch(/^search_path=(""|)$/);
+    expect(rows[0]?.usa_hora_de_transaccion).toBe(false);
+  });
 });
 
 // =========================================================================================
@@ -11067,5 +11253,421 @@ describe('ADR-0031 (T-372) — apodo de ingreso: usuarios.apodo y su reflejo en 
     const enB = await nuevaIdentidad('ap12-b');
     await crearUsuario(TENANT_B, enB, 'ap12-b', ap('ap12'));
     expect(await resuelve(ap('ap12'))).toEqual([{ identidad: enB, tenant: TENANT_B }]);
+  });
+});
+
+// =========================================================================================
+// ADR-0031 §4, PR 1b — la guarda de UNA sola agencia mientras el índice de apodos sea global
+//
+// Precondición dura (auditoría de seguridad, B3; compuerta del PR 2, C1): con `UNIQUE (apodo)`
+// global, una segunda agencia podría enumerar y acaparar los apodos de la primera. `crear_agencia`
+// (migración 20261120180000) falla cerrada con VPR05 si el índice es global y `tenants` ya tiene
+// una fila. El índice se lee del CATÁLOGO y se compara por columnas; la guarda se apaga sola con el
+// índice por agencia de la fase 2.
+//
+// La base de pruebas tiene siempre agencias (los fixtures) y el índice global, así que todo lo que
+// necesita otro estado —cero agencias o un índice simulado— corre en UNA transacción del
+// propietario que se deshace: el índice real nunca cambia fuera de ella. Dentro, el alta se hace
+// como `viajapro_app` (SET LOCAL ROLE, como R-9).
+// =========================================================================================
+
+describe('ADR-0031 §4 (PR 1b) — crear_agencia no da de alta una segunda agencia con el índice de apodos global', () => {
+  const MENSAJE_VPR05 = 'registro_cerrado: el alta de agencias no está disponible';
+
+  /**
+   * ¿Corre esta suite en la corrida COMPARTIDA (`pnpm test` del paquete, lanzado por turbo junto a
+   * los e2e de la API contra la MISMA base)? AP14 vacía `tenants` dentro de una transacción; si otro
+   * proceso inserta a la vez, `borrarTenants` choca con filas nuevas y falla («Ciclo de
+   * dependencias»). Pasó de forma intermitente en el job `test`.
+   *
+   * La señal es `npm_lifecycle_event`, que pnpm fija con el nombre del script que lanzó vitest: vale
+   * `test` solo en la corrida compartida; `test:aislamiento` (el job `aislamiento-tenants`, que corre
+   * este archivo solo) vale otra cosa. Se SALTA solo ante la señal positiva: con cualquier otro valor
+   * —también sin variable, o si el script cambia de nombre— AP14 corre. No depende de ci.yml.
+   * Descartado: mirar `pg_stat_activity`, porque no distingue las sesiones de esta suite de las de
+   * la API (mismos roles) y un e2e puede empezar después de mirar; y el filtro de archivos de vitest,
+   * que el proceso de pruebas no ve.
+   */
+  const EN_LA_CORRIDA_COMPARTIDA = process.env['npm_lifecycle_event'] === 'test';
+  const identidades: string[] = [];
+  const codigos: Buffer[] = [];
+
+  interface Intento {
+    readonly id?: string | undefined;
+    readonly contexto?: string | undefined;
+    readonly code?: string | undefined;
+    readonly message?: string | undefined;
+  }
+
+  /** Identidad y código de acceso NUEVOS (como la plataforma, rol propietario) y los argumentos. */
+  async function prepararAlta(c: Client, sufijo: string): Promise<unknown[]> {
+    const identidad = randomUUID();
+    const hmac = randomBytes(32);
+    const hash = randomBytes(32);
+    await c.query(
+      `INSERT INTO identidades (id, correo, nombre, correo_verificado, actualizado_en)
+       VALUES ($1, $2, 'Fixture guarda', true, now())`,
+      [identidad, `fixture-aislamiento-${MARCA}-guarda-${sufijo}@prueba.test`],
+    );
+    await c.query(
+      `INSERT INTO codigos_de_acceso_al_registro (hash, correo_hmac, expira_en, nota)
+       VALUES ($1, $2, now() + interval '1 day', 'fixture-aislamiento')`,
+      [hash, hmac],
+    );
+    identidades.push(identidad);
+    codigos.push(hash);
+    return [
+      `Agencia guarda ${sufijo}`,
+      `fixture-aislamiento-${MARCA}-g-${sufijo}`,
+      'CO',
+      'COP',
+      'America/Bogota',
+      identidad,
+      14,
+      'encargo-de-prueba-1',
+      hash,
+      hmac,
+    ];
+  }
+
+  /** Lo que toda transacción de estas pruebas necesita: la moneda y un tope que no estorbe. */
+  async function prepararTransaccion(c: Client): Promise<void> {
+    await c.query(
+      `INSERT INTO monedas (codigo_iso, nombre, decimales) VALUES ('COP', 'Peso colombiano', 0)
+       ON CONFLICT (codigo_iso) DO NOTHING`,
+    );
+    await c.query('UPDATE parametros_del_registro SET tope_por_hora = 1000');
+  }
+
+  /**
+   * Un alta como `viajapro_app`, dentro de la transacción del propietario y en su propio
+   * SAVEPOINT: si falla, el ROLLBACK TO deshace también el SET LOCAL ROLE y la transacción sigue
+   * viva. Si sale bien, el alta queda (hasta el ROLLBACK final) y el rol vuelve al propietario.
+   */
+  async function intentarAlta(c: Client, argumentos: unknown[]): Promise<Intento> {
+    await c.query('SAVEPOINT intento_de_alta');
+    try {
+      await c.query('SET LOCAL ROLE "viajapro_app"');
+      await c.query("SELECT set_config('app.current_tenant', '', true)");
+      const { rows } = await c.query(SQL_CREAR_AGENCIA, argumentos);
+      const { rows: ctx } = await c.query(
+        "SELECT current_setting('app.current_tenant', true) AS contexto",
+      );
+      await c.query('RESET ROLE');
+      await c.query('RELEASE SAVEPOINT intento_de_alta');
+      return { id: rows[0]?.id as string, contexto: ctx[0]?.contexto as string };
+    } catch (error) {
+      await c.query('ROLLBACK TO SAVEPOINT intento_de_alta');
+      await c.query('RELEASE SAVEPOINT intento_de_alta');
+      const e = error as { code?: string; message?: string };
+      return { code: e.code, message: e.message };
+    }
+  }
+
+  /** La detección en TypeScript (la de la semilla) sobre el catálogo que ve esta conexión. */
+  async function deteccionDeLaSemilla(c: Client): Promise<boolean> {
+    const { rows } = await c.query(CONSULTA_DEL_INDICE_DE_APODOS);
+    return elIndiceDeApodosEsGlobal(rows[0]);
+  }
+
+  async function enTransaccionRevertida(fn: () => Promise<void>, inicio = 'BEGIN'): Promise<void> {
+    await admin.query(inicio);
+    try {
+      await fn();
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+  }
+
+  afterAll(async () => {
+    // Solo AP13 confirma filas (una identidad y un código); el resto murió con su transacción.
+    await admin.query('DELETE FROM codigos_de_acceso_al_registro WHERE hash = ANY($1::bytea[])', [
+      codigos,
+    ]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1::uuid[])', [identidades]);
+  }, 60_000);
+
+  it('AP13 — con el índice global y agencias ya existentes, crear_agencia rechaza la nueva con VPR05 genérico, sin consumir el código ni crear nada', async () => {
+    const { rows: hay } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+    expect(hay[0]?.n, 'los fixtures son agencias existentes').toBeGreaterThan(0);
+    expect(await deteccionDeLaSemilla(admin), 'el índice de 20261120150000 es global').toBe(true);
+
+    // Identidad y código CONFIRMADOS, y el alta por la conexión real de viajapro_app.
+    const confirmarAlta = async (): Promise<unknown[]> => {
+      await admin.query('BEGIN');
+      try {
+        await prepararTransaccion(admin);
+        const preparada = await prepararAlta(admin, 'ap13');
+        await admin.query('COMMIT');
+        return preparada;
+      } catch (error) {
+        await admin.query('ROLLBACK');
+        throw error;
+      }
+    };
+    const argumentos = await confirmarAlta();
+    const identidad = argumentos[5] as string;
+    const hash = argumentos[8] as Buffer;
+
+    let rechazo: { code?: string; message?: string; detail?: string; hint?: string } = {};
+    await app.query('BEGIN');
+    try {
+      await app.query(SQL_CREAR_AGENCIA, argumentos);
+    } catch (error) {
+      rechazo = error as typeof rechazo;
+    } finally {
+      await app.query('ROLLBACK');
+    }
+    expect(rechazo.code, 'la segunda agencia con el índice global').toBe('VPR05');
+    // Genérico: ni slugs, ni ids, ni conteos de las agencias que ya existen.
+    expect(rechazo.message).toBe(MENSAJE_VPR05);
+    expect(rechazo.detail).toBeUndefined();
+    expect(rechazo.hint).toBeUndefined();
+
+    const { rows: uso } = await admin.query(
+      'SELECT usado_en, usado_por_identidad_id FROM codigos_de_acceso_al_registro WHERE hash = $1',
+      [hash],
+    );
+    expect(uso, 'el código sigue sin usar').toEqual([
+      { usado_en: null, usado_por_identidad_id: null },
+    ]);
+    const { rows: creadas } = await admin.query(
+      'SELECT id FROM tenants WHERE creado_por_identidad_id = $1',
+      [identidad],
+    );
+    expect(creadas).toEqual([]);
+  });
+
+  it('AP14 — sin agencias, crear_agencia crea la primera como hasta hoy (S1 incluido) y la segunda da VPR05; bajo REPEATABLE READ, cerrada', async (ctx) => {
+    ctx.skip(
+      EN_LA_CORRIDA_COMPARTIDA,
+      'AP14 vacía tenants y solo es fiable con la base para ella sola: se salta en `pnpm test` ' +
+        '(corrida compartida con los e2e de la API) y corre en `test:aislamiento` (job aislamiento-tenants).',
+    );
+    const borrarTodas = async (): Promise<void> => {
+      const { rows } = await admin.query('SELECT id FROM tenants');
+      await borrarTenants(
+        admin,
+        rows.map((r) => r.id as string),
+      );
+      const { rows: quedan } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+      expect(quedan[0]?.n, 'tenants vacía dentro de la transacción').toBe(0);
+    };
+
+    await enTransaccionRevertida(async () => {
+      await prepararTransaccion(admin);
+      await borrarTodas();
+      expect(await deteccionDeLaSemilla(admin), 'el índice sigue global').toBe(true);
+
+      const primera = await intentarAlta(admin, await prepararAlta(admin, 'ap14-1'));
+      expect(primera.code, `la primera agencia: ${primera.message ?? ''}`).toBeUndefined();
+      expect(primera.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      expect(primera.contexto, 'S1: el contexto queda en la agencia nueva').toBe(primera.id);
+      const { rows: una } = await admin.query(
+        `SELECT count(*)::int AS n,
+                bool_and(estado::text = 'EN_PRUEBA' AND origen_del_alta::text = 'AUTOSERVICIO') AS como_siempre
+           FROM tenants`,
+      );
+      expect(una).toEqual([{ n: 1, como_siempre: true }]);
+
+      const argumentos = await prepararAlta(admin, 'ap14-2');
+      const segunda = await intentarAlta(admin, argumentos);
+      expect(segunda).toEqual({ code: 'VPR05', message: MENSAJE_VPR05 });
+      const { rows: sigue } = await admin.query(
+        'SELECT usado_en FROM codigos_de_acceso_al_registro WHERE hash = $1',
+        [argumentos[8]],
+      );
+      expect(sigue, 'el VPR05 revierte el consumo del código').toEqual([{ usado_en: null }]);
+      const { rows: unaSola } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+      expect(unaSola[0]?.n).toBe(1);
+    });
+
+    // REPEATABLE READ: la instantánea sería la del principio de la transacción y dos altas
+    // simultáneas podrían ver «cero agencias» las dos. Con la guarda activa, cerrada.
+    //
+    // Vaciar `tenants` aquí NO puede ir por `borrarTenants`: bajo REPEATABLE READ sus borrados en
+    // cascada dieron 40001 en CI (ExecDelete), mientras el mismo barrido en READ COMMITTED pasa.
+    // Causa probable, no confirmada en local: bajo este nivel las acciones RI en cascada se
+    // comprueban contra una instantánea cruzada, que no admite filas que el barrido ya modificó en
+    // sentencias anteriores (READ COMMITTED las reevalúa). Como superusuario (el contenedor de CI) se
+    // vacía `tenants` sin disparadores ni acciones RI (session_replication_role = replica): las
+    // filas hijas quedan huérfanas solo dentro de esta transacción, que se deshace. Sin superusuario
+    // se intenta el camino de siempre.
+    const vaciarTenantsBajoRepeatableRead = async (): Promise<void> => {
+      const { rows } = await admin.query(
+        'SELECT rolsuper FROM pg_roles WHERE rolname = current_user',
+      );
+      if (rows[0]?.rolsuper !== true) {
+        await borrarTodas();
+        return;
+      }
+      await admin.query("SET LOCAL session_replication_role = 'replica'");
+      await admin.query('DELETE FROM tenants');
+      await admin.query("SET LOCAL session_replication_role = 'origin'");
+      const { rows: quedan } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+      expect(quedan[0]?.n, 'tenants vacía dentro de la transacción').toBe(0);
+    };
+    await enTransaccionRevertida(async () => {
+      await prepararTransaccion(admin);
+      await vaciarTenantsBajoRepeatableRead();
+      // Las otras dos causas de VPR05 están descartadas: cero agencias, índice global y `tenants`
+      // sin RLS. Lo único que cierra es el nivel de aislamiento.
+      const { rows: estado } = await admin.query(
+        `SELECT current_setting('transaction_isolation') AS aislamiento,
+                (SELECT count(*)::int FROM tenants) AS agencias,
+                (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.tenants'::regclass) AS rls`,
+      );
+      expect(estado).toEqual([{ aislamiento: 'repeatable read', agencias: 0, rls: false }]);
+      expect(await deteccionDeLaSemilla(admin), 'el índice sigue global').toBe(true);
+      const intento = await intentarAlta(admin, await prepararAlta(admin, 'ap14-rr'));
+      expect(intento).toEqual({ code: 'VPR05', message: MENSAJE_VPR05 });
+    }, 'BEGIN ISOLATION LEVEL REPEATABLE READ');
+  }, 120_000);
+
+  it('AP15 — la detección es por catálogo y por columnas: verdadera con UNIQUE (apodo), falsa con el índice por agencia simulado, y verdadera ante expresión, parcial, INCLUDE, exclusión o columna ausente', async () => {
+    await enTransaccionRevertida(async () => {
+      await prepararTransaccion(admin);
+
+      // El índice real: global. La guarda y la semilla coinciden.
+      expect(await deteccionDeLaSemilla(admin)).toBe(true);
+      expect(await intentarAlta(admin, await prepararAlta(admin, 'ap15-real'))).toEqual({
+        code: 'VPR05',
+        message: MENSAJE_VPR05,
+      });
+
+      // La fase 2, simulada: el índice por agencia, y con el NOMBRE del global (se compara por
+      // columnas). Con agencias existentes, la guarda se apaga sola y el alta sale.
+      await admin.query('DROP INDEX public.accesos_identidad_apodo_key');
+      await admin.query(
+        'CREATE UNIQUE INDEX accesos_identidad_apodo_key ON public.accesos_identidad (tenant_acceso_id, apodo)',
+      );
+      expect(await deteccionDeLaSemilla(admin), 'fase 2 simulada').toBe(false);
+      const conFaseDos = await intentarAlta(admin, await prepararAlta(admin, 'ap15-f2'));
+      expect(conFaseDos.code, `alta con la fase 2: ${conFaseDos.message ?? ''}`).toBeUndefined();
+      expect(conFaseDos.contexto).toBe(conFaseDos.id);
+
+      // Encima de la fase 2, cada variante en su SAVEPOINT. `global` = la guarda vuelve a cerrar.
+      const variantes: ReadonlyArray<readonly [string, string, boolean]> = [
+        [
+          'UNIQUE (apodo) con nombre de índice por agencia',
+          'CREATE UNIQUE INDEX accesos_identidad_tenant_acceso_id_apodo_key ON public.accesos_identidad (apodo)',
+          true,
+        ],
+        [
+          'UNIQUE (apodo) INCLUDE (tenant_acceso_id)',
+          'CREATE UNIQUE INDEX fixture_guarda_include ON public.accesos_identidad (apodo) INCLUDE (tenant_acceso_id)',
+          true,
+        ],
+        [
+          'UNIQUE de expresión sobre apodo',
+          'CREATE UNIQUE INDEX fixture_guarda_expresion ON public.accesos_identidad ((lower(apodo)))',
+          true,
+        ],
+        [
+          'parcial por agencia sobre apodo',
+          'CREATE UNIQUE INDEX fixture_guarda_parcial ON public.accesos_identidad (tenant_acceso_id, apodo) WHERE apodo IS NOT NULL',
+          true,
+        ],
+        [
+          'parcial cuyo predicado nombra apodo',
+          'CREATE INDEX fixture_guarda_predicado ON public.accesos_identidad (tenant_acceso_id) WHERE apodo IS NOT NULL',
+          true,
+        ],
+        [
+          'exclusión (apodo WITH =)',
+          'ALTER TABLE public.accesos_identidad ADD CONSTRAINT fixture_guarda_exclusion EXCLUDE USING btree (apodo WITH =)',
+          true,
+        ],
+        ['columna apodo ausente', 'ALTER TABLE public.accesos_identidad DROP COLUMN apodo', true],
+        [
+          'índice NO único y no parcial sobre apodo',
+          'CREATE INDEX fixture_guarda_busqueda ON public.accesos_identidad (apodo)',
+          false,
+        ],
+      ];
+      for (const [i, [caso, ddl, global]] of variantes.entries()) {
+        await admin.query('SAVEPOINT variante');
+        try {
+          await admin.query(ddl);
+          expect(await deteccionDeLaSemilla(admin), `semilla: ${caso}`).toBe(global);
+          const intento = await intentarAlta(admin, await prepararAlta(admin, `ap15-v${i}`));
+          if (global) {
+            expect(intento, `crear_agencia: ${caso}`).toEqual({
+              code: 'VPR05',
+              message: MENSAJE_VPR05,
+            });
+          } else {
+            expect(
+              intento.code,
+              `crear_agencia: ${caso}: ${intento.message ?? ''}`,
+            ).toBeUndefined();
+            expect(intento.contexto).toBe(intento.id);
+          }
+        } finally {
+          await admin.query('ROLLBACK TO SAVEPOINT variante');
+          await admin.query('RELEASE SAVEPOINT variante');
+        }
+      }
+    });
+
+    // Y fuera de la transacción, el índice real no se movió: sigue siendo UNIQUE (apodo).
+    expect(await deteccionDeLaSemilla(admin)).toBe(true);
+    const { rows } = await admin.query(
+      `SELECT array_agg(a.attname::text ORDER BY k.n) AS columnas
+         FROM pg_index i
+         CROSS JOIN LATERAL unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, n)
+         JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum
+        WHERE i.indexrelid = 'public.accesos_identidad_apodo_key'::regclass`,
+    );
+    expect(rows).toEqual([{ columnas: ['apodo'] }]);
+  }, 120_000);
+
+  it('AP16 — crear_agencia conserva firma, dueño, SECURITY DEFINER, search_path vacío y ACL, y la guarda va entre el tope (VPR02) y el INSERT', async () => {
+    const { rows } = await admin.query(
+      `SELECT p.proowner::regrole::text AS dueno, p.prosecdef, p.proconfig, p.provolatile,
+              p.proisstrict, pg_get_function_identity_arguments(p.oid) AS argumentos,
+              pg_get_function_result(p.oid) AS resultado,
+              has_function_privilege('public', p.oid, 'EXECUTE') AS publico,
+              (SELECT array_agg(x.grantee::regrole::text || ':' || x.privilege_type
+                                ORDER BY x.grantee::regrole::text)
+                 FROM aclexplode(p.proacl) x WHERE x.grantee <> p.proowner) AS concedidos,
+              p.prosrc AS fuente
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'crear_agencia'`,
+    );
+    expect(rows).toHaveLength(1);
+    const { fuente, ...atributos } = rows[0] as Record<string, unknown> & { fuente: string };
+    expect(atributos).toEqual({
+      dueno: 'viajapro_registro',
+      prosecdef: true,
+      proconfig: ['search_path=""'],
+      provolatile: 'v',
+      proisstrict: false,
+      argumentos:
+        'p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso text, p_zona_horaria text, p_identidad_id uuid, p_dias_de_prueba integer, p_version_encargo text, p_hash_codigo_de_acceso bytea, p_correo_hmac bytea',
+      resultado: 'uuid',
+      publico: false,
+      concedidos: ['viajapro_app:EXECUTE'],
+    });
+    for (const rol of await rolesAVigilar(admin)) {
+      if (rol === 'viajapro_app') continue;
+      const { rows: puede } = await admin.query(
+        `SELECT has_function_privilege($1, 'public.crear_agencia(text, text, text, text, text, uuid, integer, text, bytea, bytea)', 'EXECUTE') AS si`,
+        [rol],
+      );
+      expect(puede[0]?.si, `${rol} puede ejecutar crear_agencia`).toBe(false);
+    }
+
+    const pos = (aguja: string): number => fuente.indexOf(aguja);
+    expect(pos("ERRCODE = 'VPR02'")).toBeGreaterThan(-1);
+    expect(pos("ERRCODE = 'VPR02'")).toBeLessThan(pos('[guarda-apodos]'));
+    expect(pos('[guarda-apodos]')).toBeLessThan(pos("ERRCODE = 'VPR05'"));
+    expect(pos("ERRCODE = 'VPR05'")).toBeLessThan(pos('[/guarda-apodos]'));
+    expect(pos('[/guarda-apodos]')).toBeLessThan(pos('INSERT INTO public.tenants'));
+    // Por catálogo y calificado, nunca por nombre de índice ni con to_regclass (que abriría).
+    expect(fuente).toContain('pg_catalog.pg_index');
+    expect(fuente).toContain("'public.accesos_identidad'::pg_catalog.regclass");
+    expect(fuente).not.toMatch(/to_regclass|indexrelid|relname/);
+    expect(fuente).toMatch(/pg_advisory_xact_lock\(c_espacio_de_la_guarda, 0\)/);
   });
 });
