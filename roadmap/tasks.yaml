@@ -7348,7 +7348,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T20:00:00.000Z
     depends_on: [T-340]
     acceptance:
       - "Permisos nuevos en el CHECK del catálogo y sembrados por rol (administrador: todos; asesor: solo lo propio)"
@@ -7357,7 +7358,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: datos
-    notes: "Implementada en la rama feat/datos-T-341-permiso-reportes-ver-agencia: migración 20261121160000 (CHECK de catorce a quince, relleno solo al rol DUENO de cada agencia con cinturón que aborta si lo lleva ASESOR u OPERACIONES), PERMISOS en contratos, ROLES_SEMBRADOS, etiqueta legible de la web y packages/database/tests/permisos-de-reportes.spec.ts. Pasa a done cuando se integre en main, tras la auditoría de seguridad (ADR-0035 §9, R13)."
+    notes: "Implementada en la rama feat/datos-T-341-permiso-reportes-ver-agencia: migración 20261121160000 (CHECK de catorce a quince, relleno solo al rol DUENO de cada agencia con cinturón que aborta si lo lleva ASESOR u OPERACIONES), PERMISOS en contratos, ROLES_SEMBRADOS, etiqueta legible de la web y packages/database/tests/permisos-de-reportes.spec.ts. Integrada en #407, tras la auditoría de seguridad (ADR-0035 §9, R13). Auditoría de #407 sacó T-505, T-506, T-507, T-508 y T-509."
   - id: T-342
     title: "F3: alcance propio o de toda la agencia en los endpoints de reportes, impuesto por el servidor"
     type: feature
@@ -8688,7 +8689,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T20:00:00.000Z
     depends_on: [T-322]
     acceptance:
       - "lib/reportes-api.ts traduce el 403 PERMISO_DENEGADO de /reportes/resumen a «Esta vista es de administración» (reportes/page.tsx:121 y 123, reportes-reales.tsx:66 y 69, reportes-permisos.spec.tsx); el menú Reportes sigue visible a todos (D3)"
@@ -8696,6 +8698,7 @@ tasks:
     source: "cierre provisional H1/H2 (PR #395, 2026-11-21)"
     created_at: 2026-11-21T04:10:00.000Z
     owner: frontend
+    notes: "Integrada en #406. La llave vive aislada en apps/web/src/lib/alcance-de-vista.ts: T-342 solo cambia esa función."
   - id: T-425
     title: "Decidir y construir «Archivar» y la vista «Archivadas» de la bandeja"
     type: feature
@@ -9455,7 +9458,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: review
+    status: done
+    done_at: 2026-11-21T20:00:00.000Z
     acceptance:
       - "packages/database/tests/etiquetas-por-agencia.spec.ts falla a veces con etiquetas_tenant_id_fkey (Key (tenant_id)=… is not present in table «tenants») dentro de la siembra de la migración 20261121110000"
       - "packages/database/tests/historial-de-etapas.spec.ts falla a veces con deadlock 40P01 (migración 20261104150000)"
@@ -9471,6 +9475,7 @@ tasks:
     source: "Estabilidad de pruebas, 2026-11-21 (lote nocturno)"
     created_at: 2026-11-21T17:00:00.000Z
     owner: qa
+    notes: "Integrada en #408 (apps/api/turbo.json: la prueba de la api espera a la de la base). Lo que no se cerró pasó a T-510."
   - id: T-504
     title: "Web: setState de la bandeja después del teardown de jsdom tumba el job test con todas las pruebas en verde"
     type: test
@@ -9486,3 +9491,107 @@ tasks:
     source: "Estabilidad de pruebas, 2026-11-21 (lote nocturno)"
     created_at: 2026-11-21T17:00:00.000Z
     owner: qa
+  - id: T-505
+    title: "Prueba que compara el CHECK de permisos de la base con PERMISOS de contratos"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "El catalogo de permisos vive en tres literales a mano (packages/contracts/src/identidad.ts, el CHECK roles_permisos_del_catalogo y packages/database/tests/permisos-de-reportes.spec.ts) y ninguna prueba compara los conjuntos"
+      - "Una prueba lee pg_get_constraintdef del CHECK y lo contrasta con PERMISOS: falla si difieren en cualquier sentido"
+    source: "auditoria de #407, 2026-11-21"
+    created_at: 2026-11-21T20:00:00.000Z
+    owner: datos
+  - id: T-506
+    title: "Web: ResultadoPermisos de usePermisos es un contrato de facto con cada prueba que lo simula"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Ampliar ResultadoPermisos rompe en silencio las pruebas que simulan el hook y le cae a quien anade un permiso"
+      - "Un simulador unico compartido (o un tipo exigido en las pruebas) hace que ampliarlo falle en compilacion, no en silencio"
+    source: "auditoria de #407, 2026-11-21"
+    created_at: 2026-11-21T20:00:00.000Z
+    owner: frontend
+  - id: T-507
+    title: "Migracion 20261121160000: el relleno recorre tenants dos veces en una transaccion; pasar a lotes"
+    type: perf
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Con cientos de agencias el relleno de reportes.ver_agencia hace dos recorridos completos de tenants en una transaccion; hacerlo por lotes en una migracion nueva si el volumen lo pide (no se edita la aplicada)"
+    source: "auditoria de #407, 2026-11-21"
+    created_at: 2026-11-21T20:00:00.000Z
+    owner: datos
+  - id: T-508
+    title: "Web: puedeVerReportesDeLaAgencia exportada en permisos.ts sin consumidor ni prueba"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/src/lib/permisos.ts:334 exporta puedeVerReportesDeLaAgencia sin consumidor ni prueba: entra con su caso en T-343/T-344 o se borra"
+    source: "auditoria de #407, 2026-11-21"
+    created_at: 2026-11-21T20:00:00.000Z
+    owner: frontend
+  - id: T-509
+    title: "El CHECK roles_permisos_del_catalogo no prohibe permisos repetidos en el arreglo"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Migracion nueva que impide elementos repetidos en roles.permisos (NOT VALID + VALIDATE), con prueba"
+    source: "auditoria de #407, 2026-11-21"
+    created_at: 2026-11-21T20:00:00.000Z
+    owner: datos
+  - id: T-510
+    title: "Resto de T-503: e2e de apps/api comparten base, deadlocks sin reproducir y la prueba del indice de historial-de-etapas"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Dentro de apps/api las e2e siguen compartiendo base: una base o esquema por archivo, o ejecucion serial donde toque"
+      - "Los deadlocks 40P01 de historial-de-etapas e invitaciones.e2e-spec no se reprodujeron: reproducirlos o cerrar con evidencia"
+      - "La prueba «la linea de vida usa el indice» de historial-de-etapas depende de las estadisticas del planificador: falla en base ensuciada y pasa en limpia; ANALYZE dentro de la prueba no lo arreglo. Hacerla independiente del estado de la base"
+      - "Cinco ejecuciones seguidas del CI sin rojo por esto"
+    source: "resto de T-503, #408, 2026-11-21"
+    created_at: 2026-11-21T20:00:00.000Z
+    owner: qa
+  - id: T-511
+    title: "Probar el ingreso por apodo a 390 px contra la API real"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Ingreso con correo o usuario y edicion del usuario de un miembro (#405) verificados a 390 px contra la API real, no simulada; quedo sin verificar al integrar"
+    source: "cierre del segundo lote, 2026-11-21"
+    created_at: 2026-11-21T20:00:00.000Z
+    owner: frontend
+  - id: T-512
+    title: "Ingreso con correo o usuario (apodo) de punta a punta"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: done
+    done_at: 2026-11-21T20:30:00.000Z
+    acceptance:
+      - "Evidencia: #358 (API: ingreso por identificador, tope por identificador, apodo de miembros), #404 (el listado de miembros expone el apodo; contrato con el campo opcional de forma transitoria) y #405 (web: ingreso con correo o usuario y edicion del usuario de un miembro). Los PR #402 y #362 se cerraron por sustitucion"
+      - "NO verificado: la pantalla a 390 px contra la API real (T-511)"
+      - "NO verificado: el apodo sigue siendo global en esta fase, contenido por guardia-de-apodos.ts y por el aborto al arrancar, hasta que T-361 mueva el indice a (tenant_acceso_id, apodo)"
+    source: "registro tardio (R14): las ramas y PR del apodo usaron «T-362», que es otra tarea (subdominio por agencia) y sigue abierta; la rama original era a/T-000-apodo-ingreso-web"
+    created_at: 2026-11-21T20:30:00.000Z
+    owner: backend

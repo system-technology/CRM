@@ -9,14 +9,14 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: 2026-11-21, cierre del lote de la madrugada (este PR). `main` en `c74b44d` (PR #395) al abrirlo.
+Última actualización: 2026-11-21, cierre del segundo lote (este PR). `main` en `44d8673` (PR #408) al abrirlo. **Cero PR abiertos.**
 
 ## 1. Quién es quién
 
 - **Propietario:** Alfavear (español). Autorización literal: «tú tienes autorización mía para aprobar y destrabar los temas pendientes como si fuera yo»; «tú como sesión principal tienes toda mi autorización para aprobar los PRs y destrabar todo lo que nos bloquea». El 2026-11-21 añadió: **modo desatendido, avanzar en todos los frentes**.
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
 - **Sesión madre** (orquestadora): `session_01R81Xh45hbFQHivoDJ8cbJQ` (Opus, esfuerzo alto). La despierta cada 2 h la tarea programada **`trig_016u2cLZTGLRrJvkZWgJpqpG`** (`15 */2 * * *`). La anterior (`…2jA45EF6ZnEoepRHu`) y su tarea quedaron retiradas el 2026-11-21 a las 05:05 UTC.
-- **Sesiones vivas:** diseño `session_01R81Xh45hbduaWzUdQuheSu` (Sonnet, alto; T-440, marco responsivo). Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
+- **Sesiones vivas:** **una sola**, `session_01R81Xh45ka1iCdkTRwDfH1k` (T-331, pago y saldo en el archivo de viaje; Opus, alto; con la ventana web). La de diseño (T-440) ya entregó. Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
 ## 2. Reglas operativas que no se olvidan
@@ -32,12 +32,9 @@
 
 ## 3. Cola de integración (orden)
 
-| # | PR | Qué | Estado verificado 05:55 UTC | Falta |
-|---|---|---|---|---|
-| 1 | #402 | Ingreso por apodo, web (sustituye a #362) | Falta el check «Carril y tarea» y la etiqueta `override-lane`, que solo pone el propietario. **Sin probar a 390 px contra la API real** | Propietario: `override-lane`. Al integrarlo, **cerrar #362** |
-| 2 | este PR | Cierre del lote (R14): cola de las auditorías, estado, diario, bitácora, trampas | Docs y dos comentarios de código; sin auto-merge | Integrar |
+**Cola de integración vacía.** `main` en `44d8673`, cero PR abiertos. Lo último que entró: #404 a #408 (detalle en la [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)). #402 y #362 se cerraron por sustitución. Este PR de cierre es el único en vuelo, sin auto-merge.
 
-**Ids de tarea ya usados:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 y T-494..T-504 (cola de las auditorías de #393, #358 y #395 y estabilidad de pruebas, este PR). **El siguiente libre es T-505**; `git fetch` antes de numerar.
+**Ids de tarea ya usados:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-513**; `git fetch` antes de numerar.
 
 ### Integrado en este turno (2026-11-21)
 
@@ -46,7 +43,10 @@
 
 ## 4. Pendientes del orquestador (prometido y no hecho)
 
-- La cola de las auditorías de #393, #358 y #395 y la estabilidad de las pruebas quedaron en `roadmap/tasks.yaml` (T-494..T-504, T-361 y T-490). **T-503 (P1, `qa`) tapona la cola de integración:** cada PR puede salir rojo por azar. Auditar la migración de T-341 cuando llegue (toca el catálogo de autorización).
+- **Siguiente trabajo sin dependencias:** **T-342** (alcance de reportes en el servidor; retira el gate provisional de #395 y usa `reportes.ver_agencia`; en la web solo cambia `alcanceDeVista` en `apps/web/src/lib/alcance-de-vista.ts`), después T-343 y T-344, y el resto de T-503 (T-510, `qa`, P2). Con la sesión de T-331 viva, la web va de una en una.
+- Cola nueva de datos y web: T-505 (comparar el `CHECK` de permisos con `PERMISOS`, P2), T-511 (ingreso por apodo a 390 px contra la API real, P2), T-506 a T-509 (P3).
+
+- La cola de las auditorías de #393, #358 y #395 y la estabilidad de las pruebas quedaron en `roadmap/tasks.yaml` (T-494..T-504, T-361 y T-490). T-503 se cerró con #408; su resto es T-510 (`qa`, P2). La migración de T-341 ya se integró (#407).
 - Criterio de salida 9 y principio 7 del roadmap 08 en celular, tablet y escritorio.
 - Verificar el `navegador` de `main` tras los merges; reabrir el PR del `navegador` obligatorio (commit `27412e7`) **solo** cuando el propietario lo aplique en el servidor.
 - Redesplegar con el `main` actual **solo con la confirmación del propietario**.
@@ -56,6 +56,7 @@
 Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO.md). Lo que más bloquea hoy: secretos de Render y `DIRECT_URL` en Actions, espacio de trabajo de Render, `navegador` como check obligatorio, coexistencia (ADR-0033), pasarela, nombre comercial y marca.
 
 **Nuevo (2026-11-21):**
+- **Las sesiones no pueden levantar Postgres en local** (el clasificador lo deniega): «probado en navegador» casi siempre es contra API simulada. Limita toda verificación de pantalla.
 - El **clasificador del modo automático deniega `git push --force-with-lease`**. Sin eso no se puede corregir el asunto de un commit ajeno: hay que recrear la rama y abrir otro PR (así nació #399). Si el propietario quiere evitarlo, tendría que permitirlo explícitamente.
 - La sesión de despliegue fue archivada, así que **la clave de la demo (`acceso-demo-VIAJAPRO.txt`) se da por perdida**; se regenera resembrando.
 
@@ -79,6 +80,8 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 - `gh pr checks` usa GraphQL y está bloqueado aquí: usar `gh api repos/system-technology/CRM/commits/<sha>/check-runs`.
 - Una sesión hija creada sin `source_url` nace sin el repositorio clonado y `add_repo` cae bajo el clasificador: crearla siempre con `source_url` y, si procede, `source_revision`.
 - El clasificador deniega `git push --force-with-lease` (así nació #399): para corregir el asunto de un commit ya empujado, recrear la rama y abrir otro PR. No hay atajo.
+- Pide siempre el mensaje de error completo de `tsc` antes de dar por buena una causa.
+- Una sesión hija sin `source_url` nace sin repositorio.
 - Un 23505 de un disparador puede llegar como P2002 sin restricción. `issue_write` con `labels` reemplaza etiquetas.
 
 ## 8. Sin verificar (heredado)

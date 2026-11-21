@@ -10,7 +10,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-21, cierre del lote de la madrugada (`main` en `c74b44d`, PR #395; [bitácora](docs/_bitacora/2026-11-21-lote-de-integracion-nocturno.md)) |
+| Última actualización | 2026-11-21, cierre del segundo lote (`main` en `44d8673`, PR #408; [bitácora](docs/_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)) |
 | Actualizado por | Claude, sesión madre (hilo al día con los PR #289 a #401) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
 | Avance | 178 tareas `done` en `roadmap/tasks.yaml` (405 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
@@ -33,8 +33,11 @@ entrado. Seguimos en local.
 
 Integrados en `main`, por orden: #388 (regla R14, tablero, skills), #358 (ingreso por apodo, tope por identificador, apodo de miembros), #397 (ADR-0035, niveles de acceso a reportes), #393 (T-330, dominio y API de cobros), #398 (T-440, marco responsivo), #401 (consolidación de la documentación; sustituyó a #384, #386, #389, #390, #392, #399 y #396), #400 (tablero al día, arreglo del hook) y #395 (el resumen y los seguimientos ajenos solo con `conversaciones.ver_todas`). Detalle y cola: [bitácora](docs/_bitacora/2026-11-21-lote-de-integracion-nocturno.md).
 
-**Abierto:** #402 (web del ingreso por apodo, sustituye a #362).
-**No verificado:** #402 no se probó a 390 px contra la API real; nada de esto está desplegado; la clave de la demo se perdió al archivarse la sesión de despliegue (se regenera resembrando). **Ojo:** T-503 (P1) es la inestabilidad de las pruebas de base; hasta que se arregle, un PR puede salir rojo por azar.
+### Cierre del segundo lote (2026-11-21)
+
+Integrados: #404 y #405 (ingreso con correo o usuario, apodo del miembro; sustituyen a #402 y #362), #406 (**T-485 `done`**: «Esta vista es de administración» y avisos de alcance en seguimientos y ficha; la llave vive en `apps/web/src/lib/alcance-de-vista.ts` y T-342 solo cambia esa función), #407 (**T-341 `done`**: permiso `reportes.ver_agencia`, catálogo de 14 a 15, migración `20261121160000`, solo al rol `DUENO`) y #408 (**T-503 `done`**: las pruebas de la api esperan a las de la base). Cero PR abiertos. Detalle y cola (T-505 a T-511): [bitácora](docs/_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md).
+
+**No verificado:** el ingreso por apodo (#405) no se probó a 390 px contra la API real (T-511); nada de esto está desplegado; la clave de la demo se perdió al archivarse la sesión de despliegue (se regenera resembrando). **Ojo:** T-503 se cerró con la carrera entre la base y la api, pero queda T-510 (las e2e de la api aún comparten base; un PR puede salir rojo por azar).
 
 ### Es real (en `main`)
 
@@ -125,7 +128,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 |---|---|---|
 | Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Suite de navegador, vista previa del envío, UI de motivos de pérdida |
 | Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cola menor: T-235 (prueba de arquitectura del arranque), T-226 (c) |
-| Datos | Agente `datos` | 40 migraciones en `main`; T-341 (permiso `reportes.ver_agencia`) en revisión |
+| Datos | Agente `datos` | 40 migraciones en `main`; T-341 (permiso `reportes.ver_agencia`) integrada; cola T-505, T-507, T-509 |
 | Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora, `docs/06-operacion/` |
 | Diseño y experiencia de usuario | Sesión de diseño (Claude) | Auditoría visual y responsiva (celular, tablet y escritorio) y plan de rediseño; Fase 2 con OK del orquestador |
 | Cobros del viajero | Sesión de cobros (Claude) | T-330, API de pagos, con auditoría de seguridad antes de integrar |

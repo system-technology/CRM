@@ -58,8 +58,8 @@ muestran toda la agencia a cualquier miembro (§6, H6).
 ### 1.2 Quién cae en cada nivel (roles sembrados, sin inventar)
 
 Fuente [V]: `ROLES_SEMBRADOS` en `packages/database/prisma/siembra-de-tenant.ts` y el `CHECK`
-`roles_permisos_del_catalogo` (14 permisos) en
-`packages/database/prisma/migrations/20261121140000_pagos_del_viajero_libro_de_cobro/migration.sql`.
+`roles_permisos_del_catalogo` (15 permisos desde la migración `20261121160000`, T-341; eran 14 en
+`packages/database/prisma/migrations/20261121140000_pagos_del_viajero_libro_de_cobro/migration.sql`).
 Los roles son tabla por agencia (R12). La agencia puede renombrarlos, cambiar sus permisos o componer
 otros, así que **el nivel lo da el permiso y no la clave del rol**.
 

@@ -12,6 +12,10 @@
 
 ---
 
+## 2026-11-21 (segundo lote) — Alcance de vistas, permiso de reportes y pruebas sin carrera
+
+Integrados #404 y #405 (ingreso con correo o usuario; sustituyen a #402 y #362), #406 (T-485), #407 (T-341, permiso `reportes.ver_agencia`, catálogo de 14 a 15) y #408 (T-503, las pruebas de la api esperan a las de la base). `main` en `44d8673`, cero PR abiertos. La llave del alcance de las vistas está aislada en `apps/web/src/lib/alcance-de-vista.ts`: T-342 solo cambia esa función. Cola nueva T-505 a T-511; resto de T-503 en T-510. Limitación que pesa: las sesiones no levantan Postgres en local, así que lo «probado en navegador» es contra API simulada. Detalle: [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md).
+
 ## 2026-11-21 (madrugada) — Lote de integración nocturno
 
 **Verificado** (con `gh`/`git`): integrados #388, #358, #397, #393, #398, #401, #400 y #395; `main` en `c74b44d`. #401 sustituyó a #384, #386, #389, #390, #392, #399 y #396. Auditoría independiente de #358 y de #393 sin bloqueantes; la de #395 dejó un hallazgo en `completar` seguimiento.
