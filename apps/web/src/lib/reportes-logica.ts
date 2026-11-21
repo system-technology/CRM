@@ -11,7 +11,12 @@
  * - Margen y neto solo si vienen en la respuesta (bajo permiso cotizacion.ver_neto_y_margen).
  */
 
-import type { Dinero, ResumenDeReportes } from '@viajapro/contracts';
+import type {
+  CotizacionesAbiertas,
+  Dinero,
+  PorCobrar,
+  ResumenDeReportes,
+} from '@viajapro/contracts';
 import { rangoDePeriodo, type PeriodoDeReporte, type RangoDeInstantes } from './reportes-periodo';
 import { ZONA_HORARIA_COLOMBIA } from './formato';
 
@@ -259,6 +264,13 @@ export interface VistaReporteResumen {
     tasaRespuestaTexto: string;
     cohorteTexto: string;
   };
+  /**
+   * T-546. Las dos son de HOY, no del periodo (T-528). Se pasan tal como las dio el servidor, sin
+   * recalcular nada: `null` = el servidor no las envió (`porCobrar` solo viene con `cobro.ver`) y la
+   * pantalla omite el bloque en vez de pintar ceros.
+   */
+  cotizacionesAbiertas: CotizacionesAbiertas | null;
+  porCobrar: PorCobrar | null;
 }
 
 export function transformarResumenReporte(
@@ -378,5 +390,7 @@ export function transformarResumenReporte(
         tasaRespuesta,
       ),
     },
+    cotizacionesAbiertas: resumen.cotizacionesAbiertas ?? null,
+    porCobrar: resumen.porCobrar ?? null,
   };
 }
