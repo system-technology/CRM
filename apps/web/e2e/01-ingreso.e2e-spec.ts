@@ -9,9 +9,10 @@ import { expect, test } from './fixtures';
 test.describe('sin sesion', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test('la pantalla de ingreso es la de la API real, no la maqueta', async ({ page }) => {
+  test('la pantalla de ingreso es la real, no la demostración', async ({ page }) => {
     await page.goto('/ingresar');
-    await expect(page.getByText('Modo de Producción (API Real)')).toBeVisible();
+    // T-565: el cartel de demostración solo sale en la maqueta; el ingreso real no afirma nada.
+    await expect(page.getByTestId('cartel-de-modo')).toHaveCount(0);
     await expect(page.locator('#campo-identificador')).toBeVisible();
   });
 
