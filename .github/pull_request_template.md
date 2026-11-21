@@ -28,6 +28,7 @@
 
 - [ ] **Tabla nueva** → lleva `tenant_id`, RLS con `USING` **y** `WITH CHECK`, y su prueba de aislamiento
 - [ ] **Sin secretos** en el historial de esta rama (tokens, claves, `.env`)
+- [ ] **Documentado (R14)** → lo hecho en `ESTADO.md`, `DIARIO.md` o la bitácora (en este PR o en el de cierre del lote), lo que viene en `roadmap/tasks.yaml` y en la hoja de ruta, y la decisión estructural en un ADR
 - [ ] **Sin importaciones directas entre módulos** (regla R4)
 - [ ] **Contrato cambiado** → sus consumidores están actualizados
 - [ ] **Migración nueva** → es segura en caliente y compatible con la versión anterior en ejecución

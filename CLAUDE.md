@@ -47,6 +47,7 @@ contra la API, pagos y automatizaciones. El repositorio es **público** (`system
 | R11 | **En `main` solo entra lo que supera un PR con los 8 checks del CI en verde y la rama al día**, por auto-merge o por el agente `integrador`. Nadie empuja directo, administradores incluidos: lo impide la protección del servidor. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. La compuerta ya no es la disciplina de un solo escritor sino la protección de servidor. Ver ADR-0005 y ADR-0016 §6. |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum`. | Sin configurabilidad perdemos clientes; con configurabilidad infinita nos volvemos un CRM genérico y perdemos la ventaja. Ver ADR-0006. |
 | R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola (`roadmap/tasks.yaml`, ADR-0016) con dueño, no bloquea. | Un revisor siempre encuentra algo: ese es su encargo. Revisar revisiones tiene rendimientos decrecientes y consume el tiempo que el producto necesita. Ver §3.1. |
+| R14 | **Todo cambio se documenta, lo hecho y lo que se va a hacer.** Cada PR deja su rastro en la documentación versionada, en el mismo PR (o, como tarde, en el PR de cierre del lote): lo que se hizo, en `ESTADO.md`, `docs/_contexto/DIARIO.md` y `docs/_bitacora/`; lo que se va a hacer, en `roadmap/tasks.yaml` y en la hoja de ruta o el paso a paso que corresponda (`docs/08-roadmap/`); cada decisión estructural, en un ADR (R7); y cada cambio de comportamiento, en la doc de su tema (lenguaje ubicuo, runbook, seguridad). Un plan, una hoja de ruta o un paso a paso que solo existe en una conversación o en el `CHECKPOINT.local.md` **no existe**. Un cambio sin su rastro no está terminado. | Hay muchas sesiones y la memoria de una conversación muere al compactar. Lo que no está escrito se pierde, se contradice o se repite. Ver §9. |
 
 ### 3.1 La regla de parada
 
@@ -195,7 +196,7 @@ alcance, pero **sí defiende que se recorte el alcance antes que la verificació
 Los tres primeros están separados a propósito. Dueño y facilitador reunidos en uno solo eliminan
 la fricción que impide prometer de más — y esa fricción es justo lo que protege al equipo.
 
-Un «terminado» solo lo es cuando está integrado en `main`.
+Un «terminado» solo lo es cuando está integrado en `main` **y documentado** (R14).
 
 ## 9. Cómo no perder el hilo
 

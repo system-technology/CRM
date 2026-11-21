@@ -97,13 +97,13 @@ transversal. «Listo» es una tarea `ready` cuyas dependencias están `done`.
 3. **Auditar** lo que lo exige y todavía no tiene veredicto.
 4. **Repartir:** a cada sesión sin tarea, la siguiente tarea `ready` de la ola actual (orden: ola, prioridad P0 a P3, carril libre). Mandar el encargo por mensaje, con el criterio de aceptación.
 5. **Reconciliar** `roadmap/tasks.yaml` con los PR integrados (cerrar tareas con su evidencia, desbloquear las que dependían).
-6. **Registrar:** `CHECKPOINT.local.md` tras cada hito, y `DIARIO.md` y `ESTADO.md` al cerrar un lote.
+6. **Registrar (R14):** `CHECKPOINT.local.md` tras cada hito, y `DIARIO.md`, `ESTADO.md` y la bitácora al cerrar cada lote, **sin acumular más de un lote sin documentar**. Antes de dar por cerrada una ola, todo plan, hoja de ruta y paso a paso nuevo está en `docs/08-roadmap/` y en `roadmap/tasks.yaml`.
 7. **Actualizar la bandeja del propietario** (`PENDIENTES-DEL-PROPIETARIO.md`) con lo nuevo que solo él puede resolver.
 8. Si nada avanzó en dos despertares seguidos, anotar la causa en la bandeja y no repetir lo mismo.
 
 ### 3.3 El ciclo de una sesión de trabajo
 
-Tomar una tarea → `git fetch` y leer `main` antes de numerar migraciones, tareas o ADR → rama propia → ADR antes del código si cambia la estructura (R7) → implementar con pruebas → PR **sin auto-merge** si es web o ruta protegida → pedir auditoría cuando toque → reportar al orquestador → siguiente tarea. Si una tarea falla dos veces, se anota con la causa y se pasa a la siguiente.
+Tomar una tarea → `git fetch` y leer `main` antes de numerar migraciones, tareas o ADR → rama propia → ADR antes del código si cambia la estructura (R7) → implementar con pruebas → PR **sin auto-merge** si es web o ruta protegida → pedir auditoría cuando toque → **documentar lo hecho y lo que sigue (R14)** → reportar al orquestador → siguiente tarea. Si una tarea falla dos veces, se anota con la causa y se pasa a la siguiente.
 
 ### 3.4 Las compuertas (nada entra sin ellas)
 
@@ -113,6 +113,7 @@ Tomar una tarea → `git fetch` y leer `main` antes de numerar migraciones, tare
 | Web | `navegador` verde **antes** de integrar; sin auto-merge en `apps/web` |
 | Seguridad | `auditor-seguridad` en todo lo que toque **aislamiento entre agencias, dinero, autenticación o datos personales**. En aislamiento no se recorta ninguna vuelta (R13); en lo demás, una pasada |
 | Rutas protegidas | Migraciones, RLS, cifrado, ADR, `CLAUDE.md`, `AGENTS.md`, `scripts/`, `.github/` y dependencias: las **integra el orquestador**, con la delegación del propietario, **solo** con auditoría hecha y CI verde |
+| Documentación (R14) | El PR deja su rastro: lo hecho en `ESTADO.md`, `DIARIO.md` y la bitácora; lo que viene en `roadmap/tasks.yaml` y en la hoja de ruta; las decisiones en un ADR. Sin rastro, no está terminado. Un plan que solo vive en una conversación o en el checkpoint local no existe |
 | Veracidad | «En verde», «integrado» o «listo» solo con evidencia de `gh`, `git` o navegador **del mismo turno**. Separar lo visto de lo supuesto |
 
 ### 3.5 Lo que NUNCA hacen solas (se anota en la bandeja y se sigue con otra cosa)
