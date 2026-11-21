@@ -348,3 +348,6 @@ Verificado (gh/git):
 - La mezcla de carriles en un PR la rechaza el check «Carril y tarea».
 - Alcance `bitacora` no existe en commitlint; usar `hilo`.
 - Registrar el middleware de Nest con un nombre `jsonParser` hace que Nest omita su parser global.
+
+## 2026-11-21 · T-343: la web lee `alcance`
+Se retira el conmutador Vista Dueño/Asesor; la vista la decide la respuesta de la API. «Mis números» (390 px, tarjetas) para quien solo ve lo suyo. Decisión: **no se filtran listas de agencia en el cliente** para fingir «lo tuyo»; cotizaciones abiertas y cobros por cobrar del asesor quedan para la API (T-528). Detalle: [bitácora](../_bitacora/2026-11-21-mis-numeros-y-retirada-del-conmutador.md).

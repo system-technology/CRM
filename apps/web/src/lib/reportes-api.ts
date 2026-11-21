@@ -29,11 +29,22 @@ export class ErrorReportesApi extends Error {
   }
 }
 
+export interface OpcionesDeResumen {
+  /** `yo` (Míos) o el id de un asesor. Sin `reportes.ver_agencia` el servidor responde 403 si es ajeno. */
+  asesorId?: string;
+  /** Solo en demostración (sin API real): qué alcance simular. Con la API real lo decide el servidor. */
+  alcanceDemo?: 'PROPIO' | 'AGENCIA';
+}
+
 export async function obtenerResumenDeReportesApi(
   rango: RangoDeInstantes,
   senal?: AbortSignal,
+  opciones: OpcionesDeResumen = {},
 ): Promise<ResumenDeReportesTipo> {
-  const consulta = ConsultarResumenDeReportes.safeParse(rango);
+  const consulta = ConsultarResumenDeReportes.safeParse({
+    ...rango,
+    ...(opciones.asesorId ? { asesorId: opciones.asesorId } : {}),
+  });
   if (!consulta.success) {
     throw new ErrorReportesApi(
       'RANGO_INVALIDO',
@@ -42,9 +53,12 @@ export async function obtenerResumenDeReportesApi(
   }
 
   // Demostración: datos de maqueta con la forma del contrato; con la API real nunca se simula.
-  if (!estaUsandoApiReal()) return crearResumenDeReportesDemo(consulta.data);
+  if (!estaUsandoApiReal()) {
+    return crearResumenDeReportesDemo(consulta.data, opciones.alcanceDemo ?? 'AGENCIA');
+  }
 
   const params = new URLSearchParams({ desde: consulta.data.desde, hasta: consulta.data.hasta });
+  if (consulta.data.asesorId) params.set('asesorId', consulta.data.asesorId);
   let res: Response;
   try {
     res = await fetch(`${obtenerBaseApi()}/api/v1/reportes/resumen?${params.toString()}`, {

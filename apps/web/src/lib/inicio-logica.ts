@@ -23,7 +23,12 @@ export interface ResumenTrabajoDelDia {
     enNegociacion: number;
     ganadas: number;
   };
-  cotizacionesPorVencer: number;
+  /** Cotizaciones en borrador o enviadas entre las últimas leídas (no son «por vencer»: eso no se mide aquí). */
+  cotizacionesAbiertas: number;
+  /** `true` si hay más abiertas de las leídas: la cifra es un mínimo y se muestra «N o más». */
+  cotizacionesAbiertasTruncado: boolean;
+  /** De las ENVIADAS con fecha de envío: cuánto llevan esperando respuesta. */
+  enviadasPorAntiguedad: { hastaTresDias: number; deCuatroASiete: number; masDeSiete: number };
   totalVentasEstimadasCop: string;
   estaVacio: boolean;
 }
@@ -63,6 +68,7 @@ export function calcularResumenTrabajo(
   contadoresInbox: ContadoresBandeja | null,
   tablero: TableroPipeline | null,
   cotizaciones: PaginaDeCotizaciones | null,
+  ahora: Date = new Date(),
 ): ResumenTrabajoDelDia {
   // 1. Inbox / WhatsApp
   const conversacionesSinAsignar = contadoresInbox?.sinAsignar ?? 0;
@@ -105,18 +111,27 @@ export function calcularResumenTrabajo(
     }
   }
 
-  // 3. Cotizaciones por vencer
-  let cotizacionesPorVencer = 0;
+  // 3. Cotizaciones abiertas (borrador o enviadas) y cuánto llevan las enviadas sin respuesta.
+  let cotizacionesAbiertas = 0;
+  const enviadasPorAntiguedad = { hastaTresDias: 0, deCuatroASiete: 0, masDeSiete: 0 };
   if (cotizaciones && cotizaciones.datos) {
-    cotizacionesPorVencer = cotizaciones.datos.filter(
-      (c) => c.estado === 'ENVIADA' || c.estado === 'BORRADOR',
-    ).length;
+    for (const c of cotizaciones.datos) {
+      if (c.estado !== 'ENVIADA' && c.estado !== 'BORRADOR') continue;
+      cotizacionesAbiertas += 1;
+      if (c.estado === 'ENVIADA' && c.enviadaEn) {
+        const dias = Math.floor((ahora.getTime() - Date.parse(c.enviadaEn)) / 86_400_000);
+        if (dias <= 3) enviadasPorAntiguedad.hastaTresDias += 1;
+        else if (dias <= 7) enviadasPorAntiguedad.deCuatroASiete += 1;
+        else enviadasPorAntiguedad.masDeSiete += 1;
+      }
+    }
   }
+  const cotizacionesAbiertasTruncado = cotizaciones?.pageInfo.hasMore === true;
 
   const estaVacio =
     conversacionesPendientes === 0 &&
     oportunidadesActivas === 0 &&
-    cotizacionesPorVencer === 0 &&
+    cotizacionesAbiertas === 0 &&
     oportunidadesPorEtapa.ganadas === 0;
 
   return {
@@ -124,7 +139,9 @@ export function calcularResumenTrabajo(
     conversacionesSinAsignar,
     oportunidadesActivas,
     oportunidadesPorEtapa,
-    cotizacionesPorVencer,
+    cotizacionesAbiertas,
+    cotizacionesAbiertasTruncado,
+    enviadasPorAntiguedad,
     totalVentasEstimadasCop: totalEstimado.toString(),
     estaVacio,
   };

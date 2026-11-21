@@ -47,7 +47,7 @@ describe('HojaMas (T-320)', () => {
       'Seguimientos',
       'Contactos',
       'Catálogo',
-      'Reportes',
+      'Reportes de la agencia',
       'Configuración',
     ]);
     expect(modulos.map((e) => e.getAttribute('href'))).toEqual([
@@ -64,7 +64,7 @@ describe('HojaMas (T-320)', () => {
   it('refleja el filtrado por permiso: solo pinta los módulos que recibe', () => {
     pintar({ modulos: entradasDeHojaMas().filter((m) => m.id !== 'configuracion') });
     expect(screen.queryByText('Configuración')).toBeNull();
-    expect(screen.getByText('Reportes')).toBeDefined();
+    expect(screen.getByText('Reportes de la agencia')).toBeDefined();
   });
 
   it('todos los objetivos táctiles miden al menos 44 px de alto', () => {

@@ -79,9 +79,11 @@ export const TEXTO_SIN_DATOS = 'Aún sin datos';
 export const N_MINIMO_TASA = 20;
 
 /** Texto de una tasa junto a su denominador: porcentaje solo si n alcanza el mínimo. */
-export function formatearTasaConN(valor: number | null, n: number): string {
+export function formatearTasaConN(valor: number | null, n: number, numerador?: number): string {
   if (valor === null || n <= 0) return TEXTO_SIN_DATOS;
-  if (n < N_MINIMO_TASA) return `n insuficiente (n = ${n})`;
+  // Bajo el mínimo no hay porcentaje, pero sí la fracción: «7 de 15» dice la verdad (ADR-0035 §5).
+  if (n < N_MINIMO_TASA)
+    return numerador === undefined ? `n insuficiente (n = ${n})` : `${numerador} de ${n}`;
   return `${formatearPorcentajeReporte(valor)} (n = ${n})`;
 }
 
@@ -320,6 +322,7 @@ export function transformarResumenReporte(
       tasaAceptacionTexto: formatearTasaConN(
         resumen.cotizaciones.tasaAceptacion,
         resumen.cotizaciones.enviadas,
+        resumen.cotizaciones.aceptadas,
       ),
       tasaAceptacionValor: resumen.cotizaciones.tasaAceptacion,
       tasaAceptacionN: resumen.cotizaciones.enviadas,
@@ -333,6 +336,7 @@ export function transformarResumenReporte(
       tasaConversionTexto: formatearTasaConN(
         resumen.oportunidades.tasaConversion,
         resumen.oportunidades.ganadas + resumen.oportunidades.perdidas,
+        resumen.oportunidades.ganadas,
       ),
       tasaConversionValor: resumen.oportunidades.tasaConversion,
       tasaConversionN: resumen.oportunidades.ganadas + resumen.oportunidades.perdidas,

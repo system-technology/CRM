@@ -8,7 +8,7 @@
  * Cuando llegue T-342 se cambia esta función; las pantallas y los textos no se tocan.
  */
 import type { SesionActual } from '@viajapro/contracts';
-import { puedeVerTodasConversaciones } from './permisos';
+import { puedeVerReportesDeLaAgencia, puedeVerTodasConversaciones } from './permisos';
 
 export type AlcanceDeVista = 'AGENCIA' | 'PROPIO' | 'DESCONOCIDO';
 
@@ -19,6 +19,23 @@ export type AlcanceDeVista = 'AGENCIA' | 'PROPIO' | 'DESCONOCIDO';
 export function alcanceDeVista(sesion: SesionActual | null | undefined): AlcanceDeVista {
   if (!sesion?.acceso) return 'DESCONOCIDO';
   return puedeVerTodasConversaciones(sesion) ? 'AGENCIA' : 'PROPIO';
+}
+
+/**
+ * Reportes (T-343, ADR-0035 §5): **la vista la decide la respuesta**, no el permiso. Esta función
+ * solo traduce `alcance` a lo que la pantalla necesita para titular.
+ */
+export function tituloDeReportes(alcance: 'PROPIO' | 'AGENCIA'): string {
+  return alcance === 'PROPIO' ? 'Mis números' : 'Reportes de la agencia';
+}
+
+/**
+ * Título **antes** de que llegue la respuesta (y si falla): el permiso solo sirve para titular y para
+ * no ofrecer un enlace que dará 403; no decide qué se pinta. Sin sesión, el título general.
+ */
+export function tituloDeReportesSinRespuesta(sesion: SesionActual | null | undefined): string {
+  if (!sesion?.acceso) return tituloDeReportes('AGENCIA');
+  return tituloDeReportes(puedeVerReportesDeLaAgencia(sesion) ? 'AGENCIA' : 'PROPIO');
 }
 
 /** Reportes: el servidor responde 403 `PERMISO_DENEGADO` a quien solo ve lo suyo. */
