@@ -7720,3 +7720,33 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
+  - id: T-378
+    title: "Permitir en .claude/settings.json los comandos habituales de solo lectura para que las sesiones desatendidas no se detengan"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Se ejecuta la skill fewer-permission-prompts sobre las transcripciones y se propone una lista de permisos de solo lectura (git, gh api GET, grep, ls, node de los scripts del repositorio)"
+      - "La lista no incluye escrituras, red hacia hosts nuevos ni comandos destructivos; la aprueba el propietario (ruta protegida .claude/)"
+    source: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md (2026-11-21)
+    created_at: 2026-11-21T00:30:00.000Z
+    owner: devops
+    notes: "Hoy una sesión que pide un permiso y nadie contesta se queda detenida (la de despliegue lleva horas). Las sesiones de trabajo además deben ir en modo Auto, que elige el propietario."
+  - id: T-379
+    title: "Auditoría integral al cerrar cada ola del roadmap maestro"
+    type: audit
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Al cerrar una ola se ejecuta la skill auditoria-integral (seguridad, aislamiento, calidad, deuda, cumplimiento, veracidad de la documentación) y se registra el informe en docs/_auditorias/"
+      - "Lo bloqueante se corrige antes de empezar la ola siguiente; lo demás va a la cola con dueño (R13)"
+    source: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md (2026-11-21)
+    created_at: 2026-11-21T00:30:00.000Z
+    owner: auditor-seguridad
+    notes: "Recurrente: una vez por ola (Ola 0 a Ola 4 del roadmap maestro)."
