@@ -11273,6 +11273,22 @@ describe('ADR-0031 (T-372) — apodo de ingreso: usuarios.apodo y su reflejo en 
 
 describe('ADR-0031 §4 (PR 1b) — crear_agencia no da de alta una segunda agencia con el índice de apodos global', () => {
   const MENSAJE_VPR05 = 'registro_cerrado: el alta de agencias no está disponible';
+
+  /**
+   * ¿Corre esta suite en la corrida COMPARTIDA (`pnpm test` del paquete, lanzado por turbo junto a
+   * los e2e de la API contra la MISMA base)? AP14 vacía `tenants` dentro de una transacción; si otro
+   * proceso inserta a la vez, `borrarTenants` choca con filas nuevas y falla («Ciclo de
+   * dependencias»). Pasó de forma intermitente en el job `test`.
+   *
+   * La señal es `npm_lifecycle_event`, que pnpm fija con el nombre del script que lanzó vitest: vale
+   * `test` solo en la corrida compartida; `test:aislamiento` (el job `aislamiento-tenants`, que corre
+   * este archivo solo) vale otra cosa. Se SALTA solo ante la señal positiva: con cualquier otro valor
+   * —también sin variable, o si el script cambia de nombre— AP14 corre. No depende de ci.yml.
+   * Descartado: mirar `pg_stat_activity`, porque no distingue las sesiones de esta suite de las de
+   * la API (mismos roles) y un e2e puede empezar después de mirar; y el filtro de archivos de vitest,
+   * que el proceso de pruebas no ve.
+   */
+  const EN_LA_CORRIDA_COMPARTIDA = process.env['npm_lifecycle_event'] === 'test';
   const identidades: string[] = [];
   const codigos: Buffer[] = [];
 
@@ -11422,7 +11438,12 @@ describe('ADR-0031 §4 (PR 1b) — crear_agencia no da de alta una segunda agenc
     expect(creadas).toEqual([]);
   });
 
-  it('AP14 — sin agencias, crear_agencia crea la primera como hasta hoy (S1 incluido) y la segunda da VPR05; bajo REPEATABLE READ, cerrada', async () => {
+  it('AP14 — sin agencias, crear_agencia crea la primera como hasta hoy (S1 incluido) y la segunda da VPR05; bajo REPEATABLE READ, cerrada', async (ctx) => {
+    ctx.skip(
+      EN_LA_CORRIDA_COMPARTIDA,
+      'AP14 vacía tenants y solo es fiable con la base para ella sola: se salta en `pnpm test` ' +
+        '(corrida compartida con los e2e de la API) y corre en `test:aislamiento` (job aislamiento-tenants).',
+    );
     const borrarTodas = async (): Promise<void> => {
       const { rows } = await admin.query('SELECT id FROM tenants');
       await borrarTenants(
