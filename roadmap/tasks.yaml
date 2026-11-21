@@ -12521,6 +12521,34 @@ tasks:
     source: "sintoma del cliente del piloto y lectura del codigo (2026-11-21)"
     owner: backend
 
+  - id: T-600
+    title: "Demo: preparar staging por el CI para que el cliente pueda entrar (siembra mas credencial)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: review
+    acceptance:
+      - "PROBLEMA REAL: el cliente que prueba la demo no puede entrar y tiene entregas sin validar.
+        Ni el propietario ni la sesion tienen acceso a Neon; el CI si lo tiene"
+      - "CAUSA: deploy-staging.yml corre prisma migrate deploy y NINGUN paso de siembra. Y la siembra
+        crea los usuarios SIN contrasena (seed.ts:85). Existe sembrar-credenciales-dev.ts pero no
+        sirve en CI: exige APP_ENV=local, usa el rol de identidad y solo acepta @agenciademo.test"
+      - "ENTREGA: workflow manual (nunca en push) mas script que diagnostica lo que hay ANTES, siembra,
+        crea la credencial con hashPassword de better-auth (el mismo scrypt que comprueba el ingreso) y
+        verifica que se puede entrar antes de darlo por bueno"
+      - "NO se debilita el inicio de sesion: se mantiene el minimo de 12 caracteres y no hay atajos de
+        demo. Lo que faltaban eran DATOS, no menos seguridad"
+      - "El repositorio es PUBLICO: el input del dispatch y el resumen del run los ve cualquiera. Con
+        datos de demostracion es asumible, pero la contrasena se rota relanzando antes de que haya
+        nada real"
+      - "SIN EJECUTAR: el script no ha corrido nunca contra una base, ni el workflow. La primera
+        ejecucion real sera la de verdad"
+      - "Si tras prepararlo sigue sin entrar, mirar antes que el script: que la web apunte a esta API,
+        la cookie Secure entre dominios, y el tope de intentos (5 por minuto, 10 fallos diarios)"
+    source: "peticion del propietario con el cliente bloqueado (2026-11-21)"
+    owner: backend
+
   - id: T-598
     title: "Seguridad: los secretos del Environment de Render los genero una sesion de IA con plantillas; tratarlos como comprometidos y rotarlos"
     type: security
