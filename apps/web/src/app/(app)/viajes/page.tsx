@@ -39,6 +39,7 @@ import {
   mensajeDeErrorDelArchivo,
   zonaOPorDefecto,
 } from '../../../lib/archivos-logica';
+import { leerIdDeUrl } from '../../../lib/parametros-url';
 import { obtenerAjustesAgenciaApi } from '../../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../../lib/crm-api';
 import { useModoDemo } from '../../../lib/modo-demo';
@@ -66,7 +67,10 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
   const { esDemo } = useModoDemo();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const seleccionadoId = searchParams.get('id');
+  // La URL es la fuente de verdad del archivo abierto (T-318): recargar o compartir el enlace
+  // abre el mismo archivo. Solo un UUID llega a la API; lo demás se explica sin llamarla.
+  const parametroId = leerIdDeUrl(searchParams, 'id');
+  const seleccionadoId = parametroId.estado === 'valido' ? parametroId.id : null;
 
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('ABIERTO');
   const [texto, setTexto] = useState('');
@@ -123,8 +127,9 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
     };
   }, [seleccionadoId, esDemo, version]);
 
+  // `push`, no `replace`: cada archivo elegido es una entrada del historial y Atrás vuelve al anterior.
   const seleccionar = (id: string | null) =>
-    router.replace(id ? `/viajes?id=${id}` : '/viajes', { scroll: false });
+    router.push(id ? `/viajes?id=${id}` : '/viajes', { scroll: false });
 
   const archivosFiltrados = useMemo(
     () => (lista.tipo === 'listo' ? filtrarArchivos(lista.datos, texto) : []),
@@ -147,7 +152,8 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
       aplicar(cancelarArchivo(archivoId, cancelacion)),
   });
 
-  const hayDetalle = seleccionadoId !== null;
+  const enlaceInvalido = parametroId.estado === 'invalido';
+  const hayDetalle = seleccionadoId !== null || enlaceInvalido;
 
   return (
     <>
@@ -280,14 +286,31 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
               Elige un archivo de la lista para ver sus reservas y pasajeros.
             </div>
           )}
-          {hayDetalle && detalle.tipo === 'cargando' && (
+          {enlaceInvalido && (
+            <div
+              role="status"
+              data-testid="reservas-enlace-invalido"
+              className="flex h-full min-h-64 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-neutral-700 dark:text-neutral-300"
+            >
+              <p className="font-semibold">Este enlace no apunta a un archivo de viaje.</p>
+              <p>Puede estar incompleto o mal copiado. Elige el archivo de la lista.</p>
+              <button
+                type="button"
+                onClick={() => seleccionar(null)}
+                className="focus-visible:ring-acento-600 inline-flex min-h-[44px] items-center rounded-xl border border-neutral-300 px-4 font-medium focus-visible:ring-2 focus-visible:outline-none dark:border-neutral-700"
+              >
+                Volver a la lista
+              </button>
+            </div>
+          )}
+          {seleccionadoId !== null && detalle.tipo === 'cargando' && (
             <div className="space-y-4 p-6" aria-busy="true" aria-label="Cargando archivo">
               <div className="esqueleto-brillo h-6 w-64 rounded" />
               <div className="esqueleto-brillo h-20 rounded-xl" />
               <div className="esqueleto-brillo h-40 rounded-xl" />
             </div>
           )}
-          {hayDetalle && detalle.tipo === 'error' && (
+          {seleccionadoId !== null && detalle.tipo === 'error' && (
             <AvisoErrorAccionable
               error={detalle.error}
               onReintentar={() => setVersion((v) => v + 1)}
@@ -295,7 +318,7 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
               etiquetaSecundaria="Volver a la lista"
             />
           )}
-          {hayDetalle && detalle.tipo === 'listo' && (
+          {seleccionadoId !== null && detalle.tipo === 'listo' && (
             <DetalleArchivo
               key={detalle.datos.id}
               archivo={detalle.datos}
