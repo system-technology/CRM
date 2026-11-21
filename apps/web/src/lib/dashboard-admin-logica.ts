@@ -15,7 +15,9 @@ import type {
   Dinero,
   FilaDeCobro,
   ResumenDeReportes,
+  ResumenDeUnAsesor,
   VentasDeUnaMoneda,
+  VentasDeUnDestino,
 } from '@viajapro/contracts';
 import { fechaLocalEnZona } from './reportes-periodo';
 import {
@@ -28,8 +30,6 @@ import {
 type Moneda = Dinero['moneda'];
 
 export const TEXTO_SIN_BASE = 'Sin base para comparar';
-/** Tope de asesores que se comparan: cada uno es una consulta al servidor (cola T-531). */
-export const MAXIMO_ASESORES_COMPARADOS = 12;
 /** Ventana de «salidas próximas», en días contando hoy. */
 export const DIAS_DE_SALIDAS_PROXIMAS = 30;
 /** Una salida con saldo pendiente y a esta distancia o menos se marca en ámbar. */
@@ -180,22 +180,17 @@ export function barrasDelEmbudo(porEtapa: ResumenDeReportes['oportunidades']['po
 // Asesores
 // ---------------------------------------------------------------------------------------------
 
+/** Alguien del equipo, tal como lo lista la agencia: sirve para poner nombre y completar la lista. */
 export interface MiembroParaComparar {
   id: string;
   nombre: string;
-}
-
-/** El resumen de un asesor, o `null` si esa consulta falló (la fila se marca, no rompe la tabla). */
-export interface ResumenDeAsesor {
-  miembro: MiembroParaComparar;
-  resumen: ResumenDeReportes | null;
+  /** Solo los activos se listan aunque no tengan actividad; uno inactivo aparece si la tuvo. */
+  activo: boolean;
 }
 
 export interface FilaDeAsesor {
   id: string;
   nombre: string;
-  /** `true` si la consulta de este asesor falló: se pinta «No disponible», no ceros. */
-  noDisponible: boolean;
   sinActividad: boolean;
   ventasCerradas: number;
   ventas: Dinero[];
@@ -209,32 +204,29 @@ export interface FilaDeAsesor {
   medianaMinutos: number | null;
 }
 
-export function filasDeAsesores(items: readonly ResumenDeAsesor[]): FilaDeAsesor[] {
-  const filas = items.map(({ miembro, resumen }): FilaDeAsesor => {
-    if (!resumen) {
-      return {
-        id: miembro.id,
-        nombre: miembro.nombre,
-        noDisponible: true,
-        sinActividad: false,
-        ventasCerradas: 0,
-        ventas: [],
-        hayMargen: false,
-        margenes: [],
-        enviadas: 0,
-        aceptacion: presentarTasa(0, 0, null),
-        ganadas: 0,
-        conversion: presentarTasa(0, 0, null),
-        respondidas: presentarTasa(0, 0, null),
-        medianaMinutos: null,
-      };
-    }
+const NOMBRE_DE_ASESOR_FUERA_DEL_EQUIPO = 'Asesor que ya no está en el equipo';
+
+/**
+ * Las filas de la comparación entre asesores (T-531, T-555). Las cifras llegan YA contadas en
+ * `porAsesor`, en la misma respuesta de la agencia; aquí solo se nombran, se completan y se ordenan.
+ *
+ * **`porAsesor` no trae a quien no tuvo nada en el periodo** (lo dice el contrato): la lista se
+ * completa con los miembros activos del equipo, que salen como «sin actividad». Quien ya no está
+ * activo solo sale si tuvo actividad, para que sus cifras no desaparezcan de la comparación.
+ */
+export function filasDeAsesores(
+  porAsesor: readonly ResumenDeUnAsesor[],
+  equipo: readonly MiembroParaComparar[],
+): FilaDeAsesor[] {
+  const nombres = new Map(equipo.map((m) => [m.id, m.nombre]));
+  const conCifras = new Set(porAsesor.map((r) => r.asesorId));
+
+  const deCifras = porAsesor.map((resumen): FilaDeAsesor => {
     const { cotizaciones: c, oportunidades: o, respuesta: r } = resumen;
     const cerradas = o.ganadas + o.perdidas;
     return {
-      id: miembro.id,
-      nombre: miembro.nombre,
-      noDisponible: false,
+      id: resumen.asesorId,
+      nombre: nombres.get(resumen.asesorId) ?? NOMBRE_DE_ASESOR_FUERA_DEL_EQUIPO,
       sinActividad:
         c.creadas === 0 && c.enviadas === 0 && o.creadas === 0 && r.conversacionesNuevas === 0,
       ventasCerradas: c.aceptadas,
@@ -255,10 +247,28 @@ export function filasDeAsesores(items: readonly ResumenDeAsesor[]): FilaDeAsesor
       medianaMinutos: r.medianaMinutos,
     };
   });
-  // Ranking por ventas cerradas (un número, no dinero: R8). Quien no respondió, al final.
-  return filas.sort(
+
+  const sinNada = equipo
+    .filter((m) => m.activo && !conCifras.has(m.id))
+    .map((m): FilaDeAsesor => ({
+      id: m.id,
+      nombre: m.nombre,
+      sinActividad: true,
+      ventasCerradas: 0,
+      ventas: [],
+      hayMargen: false,
+      margenes: [],
+      enviadas: 0,
+      aceptacion: presentarTasa(0, 0, null),
+      ganadas: 0,
+      conversion: presentarTasa(0, 0, null),
+      respondidas: presentarTasa(0, 0, null),
+      medianaMinutos: null,
+    }));
+
+  // Ranking por ventas cerradas (un número, no dinero: R8).
+  return [...deCifras, ...sinNada].sort(
     (a, b) =>
-      Number(a.noDisponible) - Number(b.noDisponible) ||
       b.ventasCerradas - a.ventasCerradas ||
       b.enviadas - a.enviadas ||
       a.nombre.localeCompare(b.nombre, 'es'),
@@ -377,52 +387,37 @@ export function textoDeDiasParaSalir(dias: number): string {
   return `Sale en ${dias} días`;
 }
 
-export interface DestinoDeArchivos {
+export interface DestinoVendido {
   destino: string;
-  archivos: number;
-  /** Vendido en esos archivos (venta + ajustes vigentes), por moneda. */
-  vendido: Dinero[];
-  porCobrar: Dinero[];
+  /** Cotizaciones aceptadas del destino, de todas las monedas (un conteo, no dinero). */
+  aceptadas: number;
+  /** Una fila por moneda, tal como la sirve el servidor (R8): nunca sumadas entre sí. */
+  monedas: VentasDeUnDestino[];
 }
 
 /**
- * Destinos de los archivos ABIERTOS. No son «ventas del periodo por destino» (eso necesita un campo
- * que la API de reportes aún no trae, cola T-532): es lo vendido en lo que sigue abierto.
+ * Ventas del periodo por destino (T-532, T-555). El servidor manda una fila por destino Y moneda;
+ * aquí solo se agrupan por destino para pintarlas juntas. **Nada se suma entre monedas**: el
+ * ranking es por cotizaciones aceptadas (un conteo) y, a igualdad, por nombre.
  */
-export function destinosDeArchivosAbiertos(
-  datos: readonly FilaDeCobro[],
-  maximo = 6,
-): DestinoDeArchivos[] {
-  const por = new Map<
-    string,
-    { nombre: string; archivos: number; vendido: Map<Moneda, string>; debe: Map<Moneda, string> }
-  >();
-  for (const f of datos) {
-    const nombre = f.destino.trim() || 'Sin destino';
-    const clave = nombre.toLocaleLowerCase('es');
+export function destinosVendidos(filas: readonly VentasDeUnDestino[]): DestinoVendido[] {
+  const por = new Map<string, DestinoVendido>();
+  for (const f of filas) {
+    // La clave es el destino tal como lo mandó el servidor: no se reagrupa por parecido.
+    const clave = f.destino;
     const acc = por.get(clave) ?? {
-      nombre,
-      archivos: 0,
-      vendido: new Map<Moneda, string>(),
-      debe: new Map<Moneda, string>(),
+      destino: f.destino.trim() || 'Sin destino',
+      aceptadas: 0,
+      monedas: [],
     };
-    acc.archivos += 1;
-    const m = f.total.moneda;
-    acc.vendido.set(m, sumar(acc.vendido.get(m) ?? '0', f.total.unidades));
-    acc.debe.set(m, sumar(acc.debe.get(m) ?? '0', saldoPendiente(f).toString()));
+    acc.aceptadas += f.cotizacionesAceptadas;
+    acc.monedas.push(f);
     por.set(clave, acc);
   }
-  const aDinero = (mapa: Map<Moneda, string>): Dinero[] =>
-    [...mapa.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([moneda, unidades]) => ({ moneda, unidades }));
   return [...por.values()]
-    .sort((a, b) => b.archivos - a.archivos || a.nombre.localeCompare(b.nombre, 'es'))
-    .slice(0, maximo)
     .map((d) => ({
-      destino: d.nombre,
-      archivos: d.archivos,
-      vendido: aDinero(d.vendido),
-      porCobrar: aDinero(d.debe),
-    }));
+      ...d,
+      monedas: [...d.monedas].sort((x, y) => x.moneda.localeCompare(y.moneda)),
+    }))
+    .sort((a, b) => b.aceptadas - a.aceptadas || a.destino.localeCompare(b.destino, 'es'));
 }

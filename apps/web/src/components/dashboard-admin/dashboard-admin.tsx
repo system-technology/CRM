@@ -10,27 +10,29 @@
  *
  * **Orden.** Escritorio: ventas → embudo y respuesta → asesores → cobros y salidas. Móvil, donde
  * el administrador abre esto para decidir qué hacer hoy: cobros → salidas → ventas → embudo →
- * respuesta → asesores → destinos.
+ * respuesta → asesores → destinos. Asesores y destinos salen del MISMO resumen de la agencia
+ * (T-531, T-532): una sola consulta, sin una por asesor.
  */
 import React, { useMemo, useState } from 'react';
 import { formatearFecha, ZONA_HORARIA_COLOMBIA } from '../../lib/formato';
 import { filasDeAsesores, hoyEnZona } from '../../lib/dashboard-admin-logica';
 import {
   obtenerResumenDeAgenciaApi,
-  obtenerResumenesDeAsesoresApi,
+  obtenerEquipoParaCompararApi,
   obtenerVistaDeCobrosApi,
 } from '../../lib/dashboard-admin-api';
 import { TEXTO_REPORTES_SOLO_ADMINISTRACION } from '../../lib/alcance-de-vista';
 import { rangoAnterior, rangoDePeriodo, type PeriodoDeReporte } from '../../lib/reportes-periodo';
-import { Bloque, useCarga } from './bloque';
+import { Bloque, useCarga, type Carga } from './bloque';
 import {
   EmbudoYCotizaciones,
   TiemposDeRespuesta,
+  VentasPorDestino,
   VentasPorMoneda,
   type ParDeResumenes,
 } from './bloques-comerciales';
 import { ComparacionDeAsesores } from './comparacion-de-asesores';
-import { CobrosPorCobrar, DestinosAbiertos, SalidasProximas } from './bloques-de-cobros';
+import { CobrosPorCobrar, SalidasProximas } from './bloques-de-cobros';
 
 export type BloqueDeAdmin =
   'ventas' | 'embudo' | 'respuesta' | 'asesores' | 'cobros' | 'salidas' | 'destinos';
@@ -49,6 +51,17 @@ export interface DashboardAdminProps {
   ahora?: Date;
 }
 
+/**
+ * Junta dos cargas en una: la primera que falle (o pida permiso) manda; si alguna sigue
+ * cargando, el bloque sigue cargando; solo con las dos listas se calcula.
+ */
+function combinarCargas<A, B, R>(a: Carga<A>, b: Carga<B>, juntar: (a: A, b: B) => R): Carga<R> {
+  if (a.estado === 'error' || a.estado === 'sin-permiso') return a;
+  if (b.estado === 'error' || b.estado === 'sin-permiso') return b;
+  if (a.estado === 'cargando' || b.estado === 'cargando') return { estado: 'cargando' };
+  return { estado: 'listo', datos: juntar(a.datos, b.datos) };
+}
+
 function rotuloDeRango(desde: string, hasta: string, zona: string): string {
   // `hasta` es exclusivo: el último día incluido es un instante antes.
   const ultimo = Date.parse(hasta) - 1;
@@ -62,8 +75,11 @@ export function DashboardAdmin({
   bloques,
 }: DashboardAdminProps) {
   const ver = (id: BloqueDeAdmin): boolean => !bloques || bloques.includes(id);
-  const verResumen = ver('ventas') || ver('embudo') || ver('respuesta');
-  const verCobros = ver('cobros') || ver('salidas') || ver('destinos');
+  // El resumen del periodo alimenta ventas, embudo, respuesta, asesores y destinos; el del periodo
+  // ANTERIOR solo hace falta para comparar los tres primeros.
+  const comparaPeriodos = ver('ventas') || ver('embudo') || ver('respuesta');
+  const verResumen = comparaPeriodos || ver('asesores') || ver('destinos');
+  const verCobros = ver('cobros') || ver('salidas');
   const [ahoraInicial] = useState(() => new Date());
   const ahora = ahoraProp ?? ahoraInicial;
   const clave = `${periodo}|${zona}|${ahora.toISOString().slice(0, 10)}`;
@@ -76,7 +92,7 @@ export function DashboardAdmin({
     async (senal) => {
       const [actual, anterior] = await Promise.all([
         obtenerResumenDeAgenciaApi(rango, undefined, senal),
-        previo
+        previo && comparaPeriodos
           ? obtenerResumenDeAgenciaApi(previo, undefined, senal).catch((err: unknown) => {
               if (err instanceof DOMException && err.name === 'AbortError') throw err;
               // El periodo anterior es un adorno de la comparación: sin él se dice «sin base».
@@ -87,21 +103,28 @@ export function DashboardAdmin({
       return {
         actual,
         anterior,
-        etiquetaAnterior: previo ? rotuloDeRango(previo.desde, previo.hasta, zona) : '',
+        etiquetaAnterior:
+          previo && comparaPeriodos ? rotuloDeRango(previo.desde, previo.hasta, zona) : '',
       };
     },
     clave,
     verResumen,
   );
 
-  const [asesores, reintentarAsesores] = useCarga(
-    async (senal) => {
-      const { filas, recortado } = await obtenerResumenesDeAsesoresApi(rango, senal);
-      return { filas: filasDeAsesores(filas), recortado };
-    },
+  // Solo el equipo: sirve para ponerles nombre a los asesores de `porAsesor` y para completar a
+  // quien no tuvo actividad (el servidor no lo manda). Las cifras no se piden por asesor.
+  const [equipo, reintentarEquipo] = useCarga(
+    async () => obtenerEquipoParaCompararApi(),
     clave,
     ver('asesores'),
   );
+  const asesores = combinarCargas(resumen, equipo, (r, e) => ({
+    filas: r.actual.porAsesor === undefined ? null : filasDeAsesores(r.actual.porAsesor, e),
+  }));
+  const reintentarAsesores = () => {
+    reintentarResumen();
+    reintentarEquipo();
+  };
 
   const [cobros, reintentarCobros] = useCarga(
     async (senal) => obtenerVistaDeCobrosApi(ahora, senal),
@@ -133,7 +156,7 @@ export function DashboardAdmin({
 
   return (
     <div data-testid="dashboard-administracion" className="space-y-3">
-      {verResumen && (
+      {comparaPeriodos && (
         <p className="text-xs text-neutral-700 dark:text-neutral-300" data-testid="rotulo-periodo">
           {rotuloDeRango(rango.desde, rango.hasta, zona)}
           {previo ? ` · comparado con ${rotuloDeRango(previo.desde, previo.hasta, zona)}` : ''}
@@ -189,7 +212,7 @@ export function DashboardAdmin({
             reintentar={reintentarAsesores}
             className="order-6 lg:order-4 lg:col-span-12"
           >
-            {(d) => <ComparacionDeAsesores filas={d.filas} recortado={d.recortado} />}
+            {(d) => <ComparacionDeAsesores filas={d.filas} />}
           </Bloque>
         )}
 
@@ -222,13 +245,13 @@ export function DashboardAdmin({
         {ver('destinos') && (
           <Bloque
             id="destinos"
-            titulo="Destinos de los archivos abiertos"
-            nota="Lo vendido en lo que sigue abierto; no son las ventas del periodo."
-            carga={cobros}
-            reintentar={reintentarCobros}
+            titulo="Ventas por destino"
+            nota="Cotizaciones que pasaron a Aceptada en el periodo, por destino. Cada moneda va aparte."
+            carga={resumen}
+            reintentar={reintentarResumen}
             className="order-7 lg:order-7 lg:col-span-12"
           >
-            {(d) => <DestinosAbiertos datos={d} />}
+            {(d) => <VentasPorDestino datos={d} />}
           </Bloque>
         )}
       </div>

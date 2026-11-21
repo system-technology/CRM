@@ -2,15 +2,16 @@
  * Datos del dashboard de administración (T-344): tres lecturas independientes para que el fallo de
  * una no apague las otras.
  *
- *  · `GET /reportes/resumen` del periodo y del anterior (comparación entre periodos) y, por cada
- *    asesor, `?asesorId=` (comparación entre asesores).
+ *  · `GET /reportes/resumen` del periodo y del anterior (comparación entre periodos); el del periodo
+ *    trae también la comparación entre asesores y las ventas por destino.
  *  · `GET /cobros`: archivos abiertos con saldo, destino y fecha de salida (cobros, salidas, destinos).
  *
  * **El alcance lo manda el servidor.** Si la respuesta dice `alcance: 'PROPIO'`, esta pantalla no
  * es para quien la pide y se lanza `ErrorReportesApi('ALCANCE_PROPIO')`; la web no mira permisos.
  *
- * **Costo conocido:** comparar asesores es N consultas (una por asesor, tope
- * `MAXIMO_ASESORES_COMPARADOS`). Un agregado por asesor en el servidor está en cola (T-531).
+ * **Una sola consulta para toda la agencia (T-531, T-532, T-555):** la respuesta de la agencia trae
+ * `porAsesor` y `ventasPorDestino`; ya no se pide el resumen una vez por asesor ni se recorta la
+ * lista. Solo hace falta el equipo, para ponerles nombre y completar a quien no tuvo actividad.
  *
  * Demostración (`estaUsandoApiReal() === false`): datos de maqueta con la forma del contrato,
  * nunca mezclados con los reales.
@@ -19,17 +20,15 @@ import {
   ErrorApi,
   ResumenDeReportesPorAlcance,
   VistaDeCobros,
-  type ResumenDeReportes,
+  type ResumenDeAgencia,
+  type ResumenDeUnAsesor,
+  type VentasDeUnDestino,
   type VistaDeCobros as VistaDeCobrosTipo,
 } from '@viajapro/contracts';
 import { obtenerBaseApi } from './api-base';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { estaUsandoApiReal } from './crm-api';
-import {
-  MAXIMO_ASESORES_COMPARADOS,
-  type MiembroParaComparar,
-  type ResumenDeAsesor,
-} from './dashboard-admin-logica';
+import type { MiembroParaComparar } from './dashboard-admin-logica';
 import { listarMiembrosEquipoApi } from './equipo-api';
 import { crearResumenDeReportesDemo } from './mock-reportes-resumen';
 import { ErrorReportesApi } from './reportes-api';
@@ -82,8 +81,12 @@ export async function obtenerResumenDeAgenciaApi(
   rango: RangoDeInstantes,
   asesorId?: string,
   senal?: AbortSignal,
-): Promise<ResumenDeReportes> {
-  if (!estaUsandoApiReal()) return crearResumenDeAgenciaDemo(rango, asesorId);
+): Promise<ResumenDeAgencia> {
+  if (!estaUsandoApiReal()) {
+    const r = crearResumenDeAgenciaDemo(rango, asesorId);
+    // Como el servidor: el desglose por asesor y por destino solo viene sin filtro de asesor.
+    return asesorId ? r : { ...r, ...(await desgloseDeAgenciaDemo(rango, r)) };
+  }
 
   const params = new URLSearchParams({ desde: rango.desde, hasta: rango.hasta });
   if (asesorId) params.set('asesorId', asesorId);
@@ -104,37 +107,12 @@ export async function obtenerResumenDeAgenciaApi(
 }
 
 /**
- * El resumen de cada asesor activo, de a pocos a la vez (no se gasta el límite de peticiones de
- * la agencia). Si la consulta de uno falla, su fila queda con `resumen: null` y las demás siguen.
- * Un `AbortError` sí se propaga: es el usuario cambiando de periodo.
+ * El equipo de la agencia, para nombrar a los asesores de `porAsesor` y completar a los que no
+ * tuvieron actividad (el servidor no los manda). No pide cifras: esas ya vienen en el resumen.
  */
-export async function obtenerResumenesDeAsesoresApi(
-  rango: RangoDeInstantes,
-  senal?: AbortSignal,
-): Promise<{ filas: ResumenDeAsesor[]; recortado: boolean }> {
+export async function obtenerEquipoParaCompararApi(): Promise<MiembroParaComparar[]> {
   const miembros = await listarMiembrosEquipoApi();
-  const activos: MiembroParaComparar[] = miembros
-    .filter((m) => m.estado === 'ACTIVO')
-    .map((m) => ({ id: m.id, nombre: m.nombre }));
-  const comparados = activos.slice(0, MAXIMO_ASESORES_COMPARADOS);
-
-  const filas: ResumenDeAsesor[] = [];
-  const LOTE = 4;
-  for (let i = 0; i < comparados.length; i += LOTE) {
-    const lote = comparados.slice(i, i + LOTE);
-    const resueltos = await Promise.all(
-      lote.map(async (miembro): Promise<ResumenDeAsesor> => {
-        try {
-          return { miembro, resumen: await obtenerResumenDeAgenciaApi(rango, miembro.id, senal) };
-        } catch (err) {
-          if (err instanceof DOMException && err.name === 'AbortError') throw err;
-          return { miembro, resumen: null };
-        }
-      }),
-    );
-    filas.push(...resueltos);
-  }
-  return { filas, recortado: activos.length > comparados.length };
+  return miembros.map((m) => ({ id: m.id, nombre: m.nombre, activo: m.estado === 'ACTIVO' }));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -179,7 +157,7 @@ function pesoDeAsesorDemo(asesorId: string): number {
 export function crearResumenDeAgenciaDemo(
   rango: RangoDeInstantes,
   asesorId?: string,
-): ResumenDeReportes {
+): ResumenDeAgencia {
   const base = crearResumenDeReportesDemo(rango);
   const esAnterior = Date.parse(rango.hasta) <= Date.now() - 86_400_000;
   const f = (asesorId ? pesoDeAsesorDemo(asesorId) * 0.5 : 1) * (esAnterior ? 0.86 : 1);
@@ -243,6 +221,65 @@ export function crearResumenDeAgenciaDemo(
       tasaRespuesta: pct(respondidas, nuevas),
     },
   };
+}
+
+/** Reparto de las ventas de COP entre destinos de la maqueta (porcentajes que suman 100). */
+const DESTINOS_DEMO_COP: ReadonlyArray<readonly [string, number]> = [
+  ['Cartagena', 50],
+  ['San Andrés', 30],
+  ['Santa Marta', 20],
+];
+
+/**
+ * `porAsesor` y `ventasPorDestino` de la maqueta. Como el servidor real: `porAsesor` solo trae a los
+ * asesores con algo en el periodo, y `ventasPorDestino` es una fila por destino Y moneda (R8).
+ */
+async function desgloseDeAgenciaDemo(
+  rango: RangoDeInstantes,
+  agencia: ResumenDeAgencia,
+): Promise<{ porAsesor: ResumenDeUnAsesor[]; ventasPorDestino: VentasDeUnDestino[] }> {
+  const equipo = await listarMiembrosEquipoApi();
+  const porAsesor = equipo
+    .filter((m) => m.estado === 'ACTIVO')
+    .map((m): ResumenDeUnAsesor => {
+      const r = crearResumenDeAgenciaDemo(rango, m.id);
+      const { porEtapa: _porEtapa, ...oportunidades } = r.oportunidades;
+      return {
+        asesorId: m.id,
+        cotizaciones: r.cotizaciones,
+        ventasPorMoneda: r.ventasPorMoneda.filter((v) => v.cotizacionesAceptadas > 0),
+        oportunidades,
+        respuesta: r.respuesta,
+      };
+    })
+    .filter((a) => a.cotizaciones.creadas > 0 || a.cotizaciones.enviadas > 0);
+
+  const ventasPorDestino: VentasDeUnDestino[] = [];
+  for (const v of agencia.ventasPorMoneda) {
+    if (v.moneda !== 'COP') {
+      ventasPorDestino.push({ ...v, destino: 'Miami' });
+      continue;
+    }
+    let restanteUnidades = BigInt(v.ventas.unidades);
+    let restantes = v.cotizacionesAceptadas;
+    DESTINOS_DEMO_COP.forEach(([destino, pct], i) => {
+      const ultimo = i === DESTINOS_DEMO_COP.length - 1;
+      const n = ultimo
+        ? restantes
+        : Math.min(restantes, Math.round((v.cotizacionesAceptadas * pct) / 100));
+      if (n <= 0) return;
+      const unidades = ultimo ? restanteUnidades : (BigInt(v.ventas.unidades) * BigInt(pct)) / 100n;
+      restanteUnidades -= unidades;
+      restantes -= n;
+      ventasPorDestino.push({
+        moneda: 'COP',
+        destino,
+        cotizacionesAceptadas: n,
+        ventas: { moneda: 'COP', unidades: unidades.toString() },
+      });
+    });
+  }
+  return { porAsesor, ventasPorDestino };
 }
 
 function fechaMas(ahora: Date, dias: number): string {
