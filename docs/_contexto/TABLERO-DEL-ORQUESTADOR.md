@@ -71,23 +71,37 @@ se descubrirá igual de tarde. Pide `.github/`, ruta protegida del propietario.
 
 ### Turno de la madre «…717uK» (2026-11-21, desde 14:20 UTC)
 
-- **#439** (`47fb844e`) integrado: relevo de la madre saliente y cierre de la tarde en el diario. Solo documentación.
-  Sus tres checks «cancelados» **se clasificaron, no se normalizaron**: entró un commit nuevo en la rama a las 14:19:37 y
-  `concurrency: cancel-in-progress: true` mató el run del sha anterior. Ni prueba frágil ni fallo real: superado.
-- **Los tres carriles estaban libres y se repartió primero.** La sesión de T-531/T-532 estaba muerta, no solo parada:
-  worker desconectado, bloqueada desde las 13:49 en un permiso de Bash, y **sin publicar nada** (su rama no existía en el
-  remoto, así que la tarea se relanzó entera).
-  - Carril `a` — sesión `01R81Xh2DhFQmHXUmF7Mqedn`: **T-531 y T-532, solo servidor.**
-  - Carril `b` — sesión `01R81Xh4VsA5hAVxGfnhUVR7`: **T-546 y T-538.**
-- **T-555 abierta en este PR** (carril `b`, `frontend`): la mitad web de T-531 y T-532, que son solo servidor. Era la tarea
-  que el traspaso dejaba «pendiente de abrir».
+**`main`: `47fb844e` → `cfae145c` → `a5e1fc44`.** Integrados en serie, con squash a mano:
 
-**Ids: T-554 está QUEMADA** — la madre saliente la usó como nombre de rama sin crear nunca la tarea. **T-555 se crea en este
-PR. El siguiente libre es T-556**; `git fetch` antes de numerar.
+- **#439** (`47fb844e`) — relevo de la madre saliente. Solo documentación. Sus tres checks «cancelados»
+  **se clasificaron, no se normalizaron**: entró un commit nuevo en la rama a las 14:19:37 y
+  `concurrency: cancel-in-progress: true` mató el run del sha anterior. Ni prueba frágil ni fallo real.
+- **#440** (`cfae145c`) — **T-546 y T-538.** «Hoy» y «Mis números» pintan las cotizaciones abiertas por tramos y
+  el saldo por cobrar por moneda, y una cifra truncada se presenta como mínimo. **Auditoría independiente de la
+  madre (R13, dinero): sin bloqueantes.** Lo que la sostiene: usa el formateador canónico, que entra por la rama
+  de `unidades` y divide por `10 ** decimales` **según la moneda** —en COP no divide—, así que **no repite T-543**;
+  el contrato declara `saldo: Dinero`; una fila por moneda y nunca sumadas (R8); y `null` omite el bloque en vez de
+  pintar ceros, el mismo patrón de T-537. La sesión declaró por su cuenta el límite de su evidencia: la mutación
+  cubre el marcado del mínimo, no el texto de la cifra ni la rama de alcance.
+- **#442** (`a5e1fc44`) — cierra T-542 y T-548 tras verificarlas, abre T-555, T-553 a la bandeja.
 
-**La tarea programada de esta madre es `trig_01W27QjMm5BD8aFm1EJ6wa17`** (cada dos horas, directa a ella), verificado con
-`list_triggers`: hay **una sola**. El id que traía el traspaso (`trig_01F1R2kVjmxMzpMWc9QKYbNd`) **era falso**. Comprobar,
-no heredar.
+**#441 (T-531 y T-532, solo servidor) en curso.** 15/15 verde en `c0aeeba`, rama actualizada, CI corriendo.
+**Auditoría independiente de la madre: limpio.** `GROUP BY v.destino, v.moneda_iso` (R8, monedas nunca sumadas);
+`porAsesor` y `ventasPorDestino` solo con alcance de agencia, con **tres guardas independientes** —el tipo
+`AlcanceDeAgenciaEntera` (un alcance propio no compila), la comprobación en ejecución y el contrato `strict`—;
+y sin permiso de margen **sus columnas ni entran en la consulta**. Pedí además mutar las dos e2e que la sesión
+reconoció **no** haber visto fallar (alcance `PROPIO` y margen): no dudo del código, pero esas dos pruebas aún no
+son evidencia de que detectarían la regresión.
+
+**Reparto:** la sesión de T-531/T-532 estaba **muerta**, no parada (worker desconectado, **sin publicar nada**).
+Se relanzó entera. Carril `a` = sesión `01R81Xh2DhFQmHXUmF7Mqedn`; carril `b` = `01R81Xh4VsA5hAVxGfnhUVR7`, ociosa
+y reservada para **T-555**.
+
+**Ids: T-554 está QUEMADA** (nombre de rama sin tarea detrás). Creadas: T-555 (mitad web de T-531/T-532),
+T-556, T-557, T-558. **Siguiente libre: T-559**; `git fetch` antes de numerar.
+
+**Tarea programada de esta madre: `trig_01W27QjMm5BD8aFm1EJ6wa17`** (cada dos horas, directa a ella), verificado
+con `list_triggers`: hay **una sola**. El id que traía el traspaso era falso. Comprobar, no heredar.
 
 ### Integrado en este turno (2026-11-21)
 
