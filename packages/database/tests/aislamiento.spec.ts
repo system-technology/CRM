@@ -414,7 +414,11 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
  */
 const PRIVILEGIOS_DECLARADOS: ReadonlyArray<readonly [string, string, readonly string[]]> = [
   ['bookings', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  // T-324: las asignaciones de etiquetas a conversaciones. Sin UPDATE: se ponen o se quitan.
+  ['conversacion_etiquetas', 'viajapro_app', ['SELECT', 'INSERT', 'DELETE']],
   ['entregas_de_eventos', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  // T-324: el catálogo de etiquetas de la agencia. Borrado físico (HU-inbox-1 §3).
+  ['etiquetas', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
   // T-254: la bandeja de avisos de cada usuario. Sin DELETE: se marca leída.
   ['notificaciones', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
   ['pasajeros', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
@@ -3659,6 +3663,441 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
   });
 });
 // =============================================================================
+// T-324 — etiquetas de la agencia y su asignación a la conversación (20261121110000)
+//
+// HU-inbox-1 §3: «A no lista, no asigna, no filtra por, no renombra ni borra etiquetas de B, ni
+// adivinando el id». Aquí, la mitad de la base: RLS forzada con la política canónica en las dos
+// tablas, privilegios solo de `viajapro_app`, foráneas COMPUESTAS con el tenant (una asignación no
+// cruza agencias ni con el rol propietario) y la unicidad del nombre POR agencia. La mitad de la
+// API (404 con un id ajeno, filtro con un id ajeno = cero filas) es de T-325.
+//
+// Fixtures propios (cuenta, canal, contacto y conversación por agencia), con identificadores que
+// no chocan con los del bloque del inbox.
+// =============================================================================
+
+const TABLAS_DE_ETIQUETAS = ['etiquetas', 'conversacion_etiquetas'] as const;
+
+describe('T-324 — etiquetas por agencia y su asignación a la conversación', () => {
+  const cuentaDe: Record<string, string> = {};
+  const canalDe: Record<string, string> = {};
+  const contactoDe: Record<string, string> = {};
+  const conversacionDe: Record<string, string> = {};
+  /** «Pagado» en las DOS agencias: la misma etiqueta puede existir en dos agencias. */
+  const etiquetaDe: Record<string, string> = {};
+
+  const crearEtiqueta = async (
+    c: Client,
+    tenant: string,
+    nombre: string,
+    color = 'gris',
+  ): Promise<string> =>
+    (
+      (
+        await c.query(
+          `INSERT INTO etiquetas (id, tenant_id, nombre, color)
+           VALUES (gen_random_uuid(), $1, $2, $3) RETURNING id`,
+          [tenant, nombre, color],
+        )
+      ).rows[0] as { id: string }
+    ).id;
+
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await comoTenant(tenant, async (c) => {
+        const cuenta = await c.query(
+          `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'WABA de etiquetas', now(), now())
+           ON CONFLICT (tenant_id, waba_id) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant, `9324000000000${i}`],
+        );
+        cuentaDe[tenant] = (cuenta.rows[0] as { id: string }).id;
+
+        const canal = await c.query(
+          `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, now(), now())
+           ON CONFLICT (tenant_id, phone_number_id) DO UPDATE SET numero_e164 = EXCLUDED.numero_e164
+           RETURNING id`,
+          [tenant, cuentaDe[tenant], `8324000000000${i}`, `+5763240000${i}`],
+        );
+        canalDe[tenant] = (canal.rows[0] as { id: string }).id;
+
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Contacto Demo A', now(), now())
+           ON CONFLICT (tenant_id, telefono_e164) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant, `+57332400000${i}`],
+        );
+        contactoDe[tenant] = (contacto.rows[0] as { id: string }).id;
+
+        const conversacion = await c.query(
+          `INSERT INTO conversaciones (id, tenant_id, contacto_id, canal_id, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant], canalDe[tenant]],
+        );
+        conversacionDe[tenant] = (conversacion.rows[0] as { id: string }).id;
+
+        etiquetaDe[tenant] = await crearEtiqueta(c, tenant, 'Pagado', 'verde');
+        await c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3)`,
+          [tenant, conversacionDe[tenant], etiquetaDe[tenant]],
+        );
+      });
+    }
+  });
+
+  afterAll(async () => {
+    // Las asignaciones y las etiquetas primero; luego la conversación, que es RESTRICT hacia el
+    // canal.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        await c.query('DELETE FROM conversacion_etiquetas WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM etiquetas WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM conversaciones WHERE id = $1', [conversacionDe[tenant]]);
+        await c.query('DELETE FROM canales WHERE id = $1', [canalDe[tenant]]);
+        await c.query('DELETE FROM cuentas_whatsapp WHERE id = $1', [cuentaDe[tenant]]);
+        await c.query('DELETE FROM contactos WHERE id = $1', [contactoDe[tenant]]);
+      });
+    }
+  });
+
+  it('E1 — las dos tablas: tenant_id NOT NULL, RLS forzada, una sola política canónica FOR ALL con USING = WITH CHECK, no son excepción y solo viajapro_app las toca', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname AS tabla, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT json_agg(json_build_object(
+                        'nombre', p.polname,
+                        'cmd', p.polcmd::text,
+                        'permisiva', p.polpermissive,
+                        'using', pg_get_expr(p.polqual, p.polrelid),
+                        'check', pg_get_expr(p.polwithcheck, p.polrelid)))
+                 FROM pg_policy p WHERE p.polrelid = c.oid) AS politicas,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = ANY($1)
+        ORDER BY c.relname`,
+      [[...TABLAS_DE_ETIQUETAS]],
+    );
+    const politica = {
+      nombre: 'tenant_isolation',
+      cmd: '*',
+      permisiva: true,
+      using: EXPRESION_AISLAMIENTO_CANONICA,
+      check: EXPRESION_AISLAMIENTO_CANONICA,
+    };
+    expect(rows).toEqual(
+      [...TABLAS_DE_ETIQUETAS].sort().map((tabla) => ({
+        tabla,
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        // Una sola política: otra permisiva al lado (FOR SELECT USING (true)) abriría la tabla.
+        politicas: [politica],
+        declarada: false,
+      })),
+    );
+
+    const esperados: Record<string, Record<string, string[]>> = {
+      etiquetas: { viajapro_app: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'] },
+      conversacion_etiquetas: { viajapro_app: ['DELETE', 'INSERT', 'SELECT'] },
+    };
+    for (const tabla of TABLAS_DE_ETIQUETAS) {
+      for (const rol of ROLES_DE_LOGIN_DECLARADOS) {
+        const p = await admin.query(
+          `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+            WHERE has_table_privilege($1, $2::regclass, p) ORDER BY 1`,
+          [rol, `public.${tabla}`],
+        );
+        expect(
+          p.rows.map((r) => r.p as string),
+          `${rol} sobre ${tabla}`,
+        ).toEqual(esperados[tabla]?.[rol] ?? []);
+      }
+    }
+
+    const defectos = await admin.query(
+      'SELECT tabla, problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = ANY($1)',
+      [[...TABLAS_DE_ETIQUETAS]],
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('E2 — las foráneas de la asignación son COMPUESTAS con el tenant, validadas y en cascada hacia la conversación y la etiqueta', async () => {
+    const { rows } = await admin.query(
+      `SELECT p.relname AS padre,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.confdeltype::text AS al_borrar,
+              c.convalidated
+         FROM pg_constraint c JOIN pg_class p ON p.oid = c.confrelid
+        WHERE c.contype = 'f' AND c.conrelid = 'public.conversacion_etiquetas'::regclass
+        ORDER BY 1, 2`,
+    );
+    expect(rows).toEqual([
+      {
+        padre: 'conversaciones',
+        columnas: ['conversacion_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        al_borrar: 'c',
+        convalidated: true,
+      },
+      {
+        padre: 'etiquetas',
+        columnas: ['etiqueta_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        al_borrar: 'c',
+        convalidated: true,
+      },
+      {
+        padre: 'tenants',
+        columnas: ['tenant_id'],
+        referidas: ['id'],
+        al_borrar: 'c',
+        convalidated: true,
+      },
+      {
+        padre: 'usuarios',
+        columnas: ['asignada_por', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        al_borrar: 'a',
+        convalidated: true,
+      },
+    ]);
+
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) =>
+          (TABLAS_DE_ETIQUETAS as readonly string[]).includes(r.hija) ||
+          (TABLAS_DE_ETIQUETAS as readonly string[]).includes(r.padre),
+      ),
+    ).toEqual([]);
+  });
+
+  it('E3 — una agencia no lista, no renombra, no borra ni planta etiquetas de otra, ni adivinando el id', async () => {
+    const cruzado = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT id FROM etiquetas WHERE id = $1', [etiquetaDe[TENANT_A]])).rowCount,
+      (await c.query('SELECT id FROM etiquetas WHERE tenant_id = $1', [TENANT_A])).rowCount,
+      (
+        await c.query("UPDATE etiquetas SET nombre = 'Secuestrada', color = 'rosa' WHERE id = $1", [
+          etiquetaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM etiquetas WHERE id = $1', [etiquetaDe[TENANT_A]])).rowCount,
+    ]);
+    expect(cruzado).toEqual([0, 0, 0, 0]);
+
+    // B solo ve la suya.
+    const deB = await comoTenant(TENANT_B, (c) => c.query('SELECT id, tenant_id FROM etiquetas'));
+    expect(deB.rows).toEqual([{ id: etiquetaDe[TENANT_B], tenant_id: TENANT_B }]);
+
+    // Plantar una etiqueta en A desde B: lo rechaza WITH CHECK.
+    await expect(
+      comoTenant(TENANT_B, (c) => crearEtiqueta(c, TENANT_A, 'Plantada por B')),
+    ).rejects.toThrow(/row-level security/i);
+    // Y mudar la propia a A, también: WITH CHECK en UPDATE.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE etiquetas SET tenant_id = $1 WHERE id = $2', [
+          TENANT_A,
+          etiquetaDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    const intacta = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT nombre, color FROM etiquetas WHERE id = $1', [etiquetaDe[TENANT_A]]),
+    );
+    expect(intacta.rows).toEqual([{ nombre: 'Pagado', color: 'verde' }]);
+  });
+
+  it('E4 — una agencia no ve, no filtra por, no planta ni quita las asignaciones de otra', async () => {
+    const cruzado = await comoTenant(TENANT_B, async (c) => [
+      (
+        await c.query('SELECT 1 FROM conversacion_etiquetas WHERE conversacion_id = $1', [
+          conversacionDe[TENANT_A],
+        ])
+      ).rowCount,
+      // El filtro de la bandeja con el id de una etiqueta ajena: cero filas, no un error.
+      (
+        await c.query('SELECT conversacion_id FROM conversacion_etiquetas WHERE etiqueta_id = $1', [
+          etiquetaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query('DELETE FROM conversacion_etiquetas WHERE conversacion_id = $1', [
+          conversacionDe[TENANT_A],
+        ])
+      ).rowCount,
+    ]);
+    expect(cruzado).toEqual([0, 0, 0]);
+
+    // Plantar una asignación con el tenant_id de A desde B (con los ids de A): WITH CHECK. Con
+    // ON CONFLICT DO NOTHING, como lo hará la API: no puede convertir el rechazo en silencio.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [TENANT_A, conversacionDe[TENANT_A], etiquetaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    const sigue = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT etiqueta_id FROM conversacion_etiquetas WHERE conversacion_id = $1', [
+        conversacionDe[TENANT_A],
+      ]),
+    );
+    expect(sigue.rows).toEqual([{ etiqueta_id: etiquetaDe[TENANT_A] }]);
+
+    // Sin contexto de tenant no se ve nada.
+    const ciego = await app.query(
+      'SELECT (SELECT count(*) FROM etiquetas)::int AS e, (SELECT count(*) FROM conversacion_etiquetas)::int AS a',
+    );
+    expect(ciego.rows).toEqual([{ e: 0, a: 0 }]);
+  });
+
+  it('E5 — la foránea compuesta impide colgar la conversación de una agencia de la etiqueta de otra, también con el rol propietario', async () => {
+    // Con el tenant PROPIO en la fila (WITH CHECK pasa) y los ids cruzados.
+    for (const [conversacion, etiqueta] of [
+      [conversacionDe[TENANT_A], etiquetaDe[TENANT_B]],
+      [conversacionDe[TENANT_B], etiquetaDe[TENANT_A]],
+    ] as const) {
+      await expect(
+        comoTenant(TENANT_A, (c) =>
+          c.query(
+            `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+             VALUES ($1, $2, $3)`,
+            [TENANT_A, conversacion, etiqueta],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '23503' });
+    }
+
+    // «Ni aunque falle un WHERE»: el propietario (en CI, superusuario: sin RLS) tampoco puede. Lo
+    // para la integridad referencial, no la política. Dentro de BEGIN … ROLLBACK: la base es
+    // compartida y, con el sistema roto, la fila quedaría plantada.
+    await admin.query('BEGIN');
+    try {
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+      await expect(
+        admin.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3)`,
+          [TENANT_A, conversacionDe[TENANT_A], etiquetaDe[TENANT_B]],
+        ),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'conversacion_etiquetas_etiqueta_id_tenant_id_fkey',
+      });
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+
+    // Mover una asignación propia a la etiqueta de otra tampoco: viajapro_app no tiene UPDATE.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('UPDATE conversacion_etiquetas SET etiqueta_id = $1 WHERE conversacion_id = $2', [
+          etiquetaDe[TENANT_B],
+          conversacionDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+  });
+
+  it('E6 — nombre único POR agencia sin distinguir mayúsculas ni espacios; la misma en dos agencias sí; forma y color los fija la base', async () => {
+    // «Pagado» existe en A y en B (beforeAll): dos agencias, la misma etiqueta. En A, «PAGADO»
+    // choca con la suya.
+    await expect(
+      comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, 'PAGADO')),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'etiquetas_tenant_id_nombre_normalizado_key',
+    });
+
+    // Sin espacios a los lados, ni vacía, ni con caracteres de control; 30 caracteres como mucho.
+    for (const nombre of [' Pagado', 'Pagado ', '', '   ', 'Pago\npendiente', 'Pago\tpendiente']) {
+      await expect(
+        comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, nombre)),
+        JSON.stringify(nombre),
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'etiquetas_nombre_forma',
+      });
+    }
+    await expect(
+      comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, 'x'.repeat(31))),
+    ).rejects.toMatchObject({ code: '22001' });
+
+    // Solo las ocho claves de la paleta: ni rojo, ni un hexadecimal, ni mayúsculas, ni vacío.
+    for (const color of ['rojo', '#ff0000', 'Verde', '']) {
+      await expect(
+        comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, 'Color fuera de paleta', color)),
+        JSON.stringify(color),
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'etiquetas_color_de_la_paleta',
+      });
+    }
+    const paleta = ['gris', 'azul', 'turquesa', 'verde', 'ambar', 'naranja', 'rosa', 'dorado'];
+    const creadas = await comoTenant(TENANT_A, async (c) => {
+      for (const color of paleta) await crearEtiqueta(c, TENANT_A, `Paleta ${color}`, color);
+      return (await c.query("DELETE FROM etiquetas WHERE nombre LIKE 'Paleta %'")).rowCount;
+    });
+    expect(creadas).toBe(paleta.length);
+  });
+
+  it('E7 — poner dos veces la misma no duplica, y borrar la etiqueta se la quita a sus conversaciones', async () => {
+    const r = await comoTenant(TENANT_A, async (c) => {
+      const otra = await crearEtiqueta(c, TENANT_A, 'Seguimiento', 'azul');
+      for (let i = 0; i < 2; i += 1) {
+        await c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [TENANT_A, conversacionDe[TENANT_A], otra],
+        );
+      }
+      const contar = async () =>
+        (
+          (
+            await c.query(
+              'SELECT count(*)::int AS n FROM conversacion_etiquetas WHERE etiqueta_id = $1',
+              [otra],
+            )
+          ).rows[0] as { n: number }
+        ).n;
+      const antes = await contar();
+      await c.query('DELETE FROM etiquetas WHERE id = $1', [otra]);
+      return [antes, await contar()];
+    });
+    expect(r).toEqual([1, 0]);
+
+    // Sin ON CONFLICT, la segunda vez la para la clave primaria.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3)`,
+          [TENANT_A, conversacionDe[TENANT_A], etiquetaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'conversacion_etiquetas_pkey',
+    });
+  });
+});
+// =============================================================================
 // Cotizaciones — cabecera mutable y versiones inmutables (20261019200000)
 //
 // Dos propiedades distintas, y las dos se prueban en rojo con `scripts/mutaciones-aislamiento.mjs`:
@@ -6577,6 +7016,10 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'definiciones_campo_personalizado.etiqueta',
   'etapas_pipeline.clave',
   'etapas_pipeline.nombre',
+  // T-324: catálogo de la agencia, sin PII sensible de viajeros. El nombre es texto libre y
+  // podría llevar un nombre de persona: logs, eventos y outbox llevan solo el id (HU-inbox-1 §3).
+  'etiquetas.color',
+  'etiquetas.nombre',
   'formatos_de_viaje.nombre',
   'mayoristas.contacto_correo',
   'mayoristas.contacto_nombre',
