@@ -12,9 +12,15 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    // Todas las e2e comparten UNA base (agencias que crean y borran, bloqueos de migración): los archivos
-    // corren de uno en uno, igual que en packages/database (T-510). Dentro de cada archivo ya era secuencial.
-    fileParallelism: false,
+    // Los archivos e2e corren en paralelo (el modo de siempre) contra UNA base. Se probo la ejecucion en
+    // serie (#415) y se retira (T-510): el unico 40P01 con log del servidor en el CI cruzaba un
+    // `TRUNCATE ... CASCADE` de packages/database con el borrado de agencias de la api, es decir, dos
+    // PAQUETES, y eso ya lo impide `apps/api/turbo.json` (la api espera a la base). Entre archivos de la
+    // propia api no se encontro DDL ni bloqueo de tabla, salvo un `TRUNCATE reserva_cambios_estado`
+    // rechazado por privilegios en booking-archivos.e2e-spec.ts (toma el bloqueo antes de comprobar
+    // permisos, un instante y sin CASCADE): es el unico candidato, y no hay un log que lo acuse. Si vuelve
+    // un 40P01 o una FK ausente DENTRO de apps/api, capturar `pg_locks` y el log del servidor antes de
+    // volver a poner `fileParallelism: false`: sin ese dato seria otra suposicion.
     include: ['src/**/*.spec.ts', 'src/**/*.e2e-spec.ts'],
     setupFiles: ['./src/vitest.setup.ts'],
     // Sin Redis en las pruebas: la cola se declara inerte. El encolado se prueba con un doble.
