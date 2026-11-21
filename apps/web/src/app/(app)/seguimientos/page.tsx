@@ -126,7 +126,7 @@ export default function SeguimientosPage() {
         <div>
           <nav className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
             <Link href="/" className="hover:text-acento-600 hover:underline">
-              Inicio
+              Hoy
             </Link>
             <span>/</span>
             <Link href="/contactos" className="hover:text-acento-600 hover:underline">

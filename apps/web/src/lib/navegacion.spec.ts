@@ -49,14 +49,15 @@ describe('NAVEGACION', () => {
     }
   });
 
-  it('Hoy y Seguimientos quedan fuera del menú hasta T-317; Cotizaciones entra (D2)', () => {
-    const fuera = NAVEGACION.filter((e) => !e.enMenu).map((e) => e.etiqueta);
-    expect(fuera).toEqual(['Hoy', 'Seguimientos']);
+  it('el menú es el objetivo: Hoy primero y Seguimientos entre Archivos de viaje y Contactos', () => {
+    expect(NAVEGACION.filter((e) => !e.enMenu)).toEqual([]);
     expect(entradasDelMenu().map((e) => e.etiqueta)).toEqual([
+      'Hoy',
       'Conversaciones',
       'Oportunidades',
       'Cotizaciones',
       'Archivos de viaje',
+      'Seguimientos',
       'Contactos',
       'Catálogo',
       'Reportes',

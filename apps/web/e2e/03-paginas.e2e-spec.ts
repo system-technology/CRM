@@ -31,8 +31,8 @@ for (const { ruta, titulo } of RUTAS) {
 /**
  * Marco compartido (ADR-0032, N1): toda ruta privada con marco muestra la barra lateral en
  * escritorio y la barra inferior en móvil, con a lo sumo un `aria-current="page"` en la barra
- * visible. «Hoy» y «Seguimientos» aún no son ítems del menú (T-317), así que en esas rutas no hay
- * ninguno activo; la barra móvil solo tiene 4 módulos (su composición es T-320).
+ * visible. «Hoy» y «Seguimientos» ya son ítems del menú lateral (T-317); la barra móvil solo tiene
+ * 4 módulos (su composición es T-320), así que en móvil Seguimientos no tiene ítem activo.
  */
 // Solo rutas ligeras y representativas: el marco es una única implementación (el layout `(app)`) y
 // `inventario-de-rutas.spec.ts` garantiza que toda página privada vive dentro de él; el módulo activo
@@ -42,12 +42,12 @@ for (const { ruta, titulo } of RUTAS) {
 const MIDE_DESPLAZAMIENTO = new Set(['/bandeja', '/seguimientos', '/viajes', '/configuracion']);
 
 const RUTAS_CON_MARCO: Array<{ ruta: string; activoEscritorio: boolean; activoMovil: boolean }> = [
-  { ruta: '/', activoEscritorio: false, activoMovil: false },
+  { ruta: '/', activoEscritorio: true, activoMovil: false },
   { ruta: '/bandeja', activoEscritorio: true, activoMovil: true },
   { ruta: '/pipeline', activoEscritorio: true, activoMovil: true },
   { ruta: '/cotizaciones', activoEscritorio: true, activoMovil: true },
   { ruta: '/viajes', activoEscritorio: true, activoMovil: true },
-  { ruta: '/seguimientos', activoEscritorio: false, activoMovil: false },
+  { ruta: '/seguimientos', activoEscritorio: true, activoMovil: false },
   { ruta: '/configuracion', activoEscritorio: true, activoMovil: false },
 ];
 
