@@ -1,17 +1,13 @@
 # T-377. Corre el arnes de mutaciones del aislamiento entre agencias
 # (packages/database/scripts/mutaciones-aislamiento.mjs): rompe RLS a proposito, una rotura cada vez,
-# y exige que la asercion correspondiente falle. Una aserción que nunca se ve en rojo es una esperanza.
+# y exige que la asercion correspondiente falle. Una asercion que nunca se ve en rojo es una esperanza.
 #
-# Por que NO es un job de ci.yml: arranca vitest sobre aislamiento.spec.ts (11 mil lineas) una vez por
-# prueba distinta del control y una vez por mutacion (25+ arranques con su preparacion de base), asi que
-# es de minutos, no de segundos. En cada PR frenaria la entrega de todo lo que no toca la base.
-# Corre, en cambio, donde puede romperse algo:
-#   - en todo PR que toque migraciones, politicas RLS, la prueba de aislamiento o el propio arnes;
-#   - cada noche sobre main, por si un cambio indirecto lo rompio;
-#   - a demanda (workflow_dispatch).
-# No esta en .github/proteccion-main.json: un check obligatorio con filtro de rutas dejaria sin
-# resultado a los PR que no lo disparan. Si falla en un PR, el integrador lo trata como bloqueante
-# (CLAUDE.md §3.1: en aislamiento no se recorta).
+# Coste MEDIDO (corrida de T-377): el arnes tarda 43 s y el job entero 1 min 45 s. Cabe en cada PR,
+# por eso corre en TODO PR contra main, sin filtro de rutas, ademas de cada noche y a demanda.
+#
+# Hoy NO es un check obligatorio por un solo motivo: la lista de checks obligatorios vive en
+# .github/proteccion-main.json, que es del propietario. El dia que la anada, este workflow ya sirve
+# sin tocar nada mas (sin filtro de rutas, el check siempre produce resultado).
 name: Mutaciones de aislamiento
 
 on:
@@ -20,12 +16,6 @@ on:
     - cron: '17 6 * * *'
   pull_request:
     branches: [main]
-    paths:
-      - 'packages/database/prisma/**'
-      - 'packages/database/tests/aislamiento.spec.ts'
-      - 'packages/database/scripts/mutaciones-aislamiento.mjs'
-      - 'packages/database/scripts/guarda-base-desechable.mjs'
-      - '.github/workflows/mutaciones-aislamiento.yml'
 
 permissions:
   contents: read
