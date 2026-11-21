@@ -106,7 +106,8 @@ describe('Configuración: pestañas en ?pestana= (T-318)', () => {
     busqueda = 'pestana=etiquetas';
     render(<ConfiguracionPage />);
     expect(await screen.findByTestId('tab-contenido-etiquetas')).toBeDefined();
-    expect(screen.getByText('bloque-etiquetas')).toBeDefined();
+    // El bloque se carga con import dinámico: aparece un instante después que su contenedor.
+    expect(await screen.findByText('bloque-etiquetas')).toBeDefined();
   });
 
   it('?pestana=etiquetas sin el permiso cae a la primera y no muestra la gestión', async () => {
