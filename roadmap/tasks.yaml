@@ -10031,3 +10031,76 @@ tasks:
     source: "hallazgo de la madre al integrar #428, 2026-11-21"
     created_at: 2026-11-21T13:00:00.000Z
     owner: dueno-de-producto
+  - id: T-543
+    title: "Web: formatearDeltaDinero pinta 100 veces de mas en toda moneda con decimales"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/src/lib/cotizaciones-diff.ts, formatearDeltaDinero: hace formateador.format(Number(absVal)) sobre unidades MINIMAS y nunca divide por 10**decimales"
+      - "En USD, 125050 unidades minimas (1250,50 USD) se pintan «125.050,00 USD»: dos ordenes de magnitud, y los «,00» le dan aire de exacto. En COP acierta por casualidad porque la unidad minima es el peso"
+      - "Es exactamente el error que R8 dice que ya llego a pantalla una vez. VERIFICADO por la madre leyendo el fuente, no reportado de oidas"
+      - "Dividir por los decimales de la moneda usando decimalesDeMoneda (T-520), no una tabla nueva, y una prueba con una moneda de 2 decimales que falle con el codigo actual"
+    source: "aviso de la sesion de T-520/T-521, verificado por la madre, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: frontend
+  - id: T-544
+    title: "Web: quedan dos copias mas de la tabla de decimales por moneda"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "T-520 unifico formato.ts y cobros-logica.ts, pero siguen vivas: apps/web/src/lib/dinero-entrada.ts (DECIMALES_POR_MONEDA = { COP: 0 }, con 2 por defecto) y la tabla en linea de cotizaciones-diff.ts"
+      - "Las dos pasan a decimalesDeMoneda. Se hace junto con T-543, que toca el mismo archivo"
+      - "La prueba de T-520 que anade KWD a MONEDAS debe cubrir tambien estos caminos"
+    source: "aviso de la sesion de T-520/T-521, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: frontend
+  - id: T-545
+    title: "Cobros: los archivos CANCELADOS con penalidad pendiente no entran en porCobrar"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "El saldo por cobrar de T-528 no cuenta los archivos CANCELADOS que dejan penalidad pendiente: es dinero real que la agencia espera cobrar y que hoy no aparece en ningun reporte"
+      - "Decidir con experto-turismo si la penalidad de un archivo cancelado es «por cobrar» (lo normal en una agencia) o una categoria aparte, y reflejarlo con prueba"
+      - "Mientras no se decida, el resumen esta subestimando lo que la agencia tiene por cobrar, sin avisar"
+    source: "cola que dejo T-528, traspaso de la madre saliente, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: experto-turismo
+  - id: T-546
+    title: "Web: pintar cotizaciones abiertas y saldo por cobrar del asesor, y retirar el conteo de listas de agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "El servidor ya las sirve desde T-528 (#428): cotizacionesAbiertas por tramos de antiguedad y porCobrar por moneda, con el alcance impuesto en el servidor"
+      - "Pintarlas en «Mis numeros» y en «Hoy»"
+      - "Retirar de apps/web/src/lib/inicio-logica.ts el conteo sobre listas de agencia: era el apano que T-343 se nego a hacer y que motivo T-528"
+      - "Respetar truncado: true (T-538) en vez de ensenar la cifra como total"
+    source: "cola que dejo T-528, traspaso de la madre saliente, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: frontend
+  - id: T-547
+    title: "La e2e de alcance entre asesores de T-528 no se verifico por mutacion"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "La sesion de T-528 aviso con honestidad de que NO corrio la mutacion: no comprobo con un build sin el filtro que la prueba se pone roja. Su argumento es por construccion (igualdades exactas con cifras distintas entre asesor y agencia)"
+      - "La auditoria independiente de la madre leyo la prueba y la dio por correcta, pero tampoco la muto: queda un hueco de verificacion, no un defecto conocido"
+      - "Quitar el filtro deAsesor en local y comprobar que reportes.e2e-spec.ts se pone ROJA. Si pasa en verde, la prueba no discrimina y hay que rehacerla"
+      - "Vale para toda prueba de aislamiento: una prueba de aislamiento que no se ha visto fallar no es evidencia de aislamiento"
+    source: "aviso de la sesion de T-528 via la madre saliente, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: qa

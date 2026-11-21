@@ -62,7 +62,9 @@ Dos causas distintas: **18 tareas** con `type`/`effort` fuera del enum (mecánic
 validador exige una (no mecánico: hay que decidir una por una, y es del `dueno-de-producto`, no de la madre).
 **Mientras siga roto, cerrar una tarea es manual y `tasks.yaml` miente si alguien se olvida.**
 
-**Ids usados hoy por la madre:** T-537..T-541 (cola de la auditoría de #428) y T-542. **Siguiente libre: T-543.**
+**Ids usados hoy por la madre:** T-537..T-541 (auditoría de #428), T-542 (compuerta rota), y T-543..T-547 (avisos de las sesiones de T-520/T-521 y T-528). **Siguiente libre: T-548.**
+
+**De lo nuevo, lo que no puede esperar: T-543 (P1).** `formatearDeltaDinero` pinta **cien veces de más** en toda moneda con decimales, porque formatea unidades mínimas sin dividir. En COP acierta por casualidad. Lo avisó la sesión de T-520/T-521 y **lo verificó la madre leyendo el fuente**. Es el error de R8 que ya llegó a pantalla una vez.
 
 **`main` en `e7c80045`: TRECE PR integrados el 2026-11-21**, todos en serie y a mano con squash: #414, #416 (T-505), #415 (T-510 sigue abierta), #410 (T-331), #417 (T-342), #418, #420 (T-516), #421 (ADR-0036), #419 (T-511), #422 (T-343), #424 (ADR-0033 aceptado), #423 (T-344 y su enganche) y #425 (T-535).
 
