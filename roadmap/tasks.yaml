@@ -11652,7 +11652,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - "El propietario lo reporto mirando la app el 2026-11-21: «el toque de contraste negro hace que se
         pierdan un poco los textos», y al preguntarle senalo la barra lateral, las pantallas de trabajo y el
@@ -11672,6 +11672,11 @@ tasks:
     source: revision visual del propietario, 2026-11-21
     created_at: 2026-11-21T15:42:00.000Z
     owner: frontend
+    started_at: 2026-11-21T16:07:13.511Z
+    done_at: 2026-11-21T16:07:13.511Z
+    evidence: "Mergeado en main por el PR #454 (rama b/T-561-contrastes-medidos) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: e5bfcc29886a4fc17b62cd66e4924cc044745714
   - id: T-562
     title: Manual de usuario funcional de lo que ya existe, con capturas, para ensenarlo a una agencia
     type: docs
