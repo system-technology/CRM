@@ -42,11 +42,13 @@ Ventana web abierta a **diseño** hasta 05:00 UTC.
 
 | # | PR | Qué | Estado verificado | Falta |
 |---|---|---|---|---|
-| 1 | #391 | Diseño Ola 1: tokens de estado y plazo, utilidades de puntero | Abierto, CI sin ver | 14/14 con `navegador`, rama al día; integrar a mano |
+| 1 | #391 | Diseño Ola 1: tokens de estado y plazo, utilidades de puntero | Abierto; 04:15 UTC: 3 checks en verde y el resto en curso o en cola | 14/14 con `navegador`, rama al día; integrar a mano |
 | 2 | #358 | Ingreso por apodo, API | **No integrable:** mi auditoría halló una carrera en el tope de fallos | Arreglo (reservar antes de comprobar o candado) + e2e de 20 ingresos en paralelo; luego repaso del diff y 15/15 |
 | 3 | #362 | Ingreso por apodo, web | `override-lane` aplicado por el propietario | Después de #358 y de traerle `main` |
 | 4 | #388 | Regla R14 + cierre del lote de la ola 0 + este tablero | Abierto; toca `CLAUDE.md`, `AGENTS.md` y `.github/` | Integro yo, CI verde |
-| 5 | #384, #389, #386, #390, #377 | Docs: cola de etiquetas, diseño, cierre de pagos, docs de cobros, bandeja | Abiertos, sin auto-merge | En ese orden; resolver `ESTADO.md` y `tasks.yaml` en cada uno |
+| 5 | #384, #389, #386, #390, #392, #377 | Docs: cola de etiquetas, diseño, cierre de pagos, docs de cobros, reportes por nivel (T-339), bandeja | Abiertos, sin auto-merge | En ese orden; resolver `ESTADO.md` y `tasks.yaml` en cada uno |
+
+**Ramas remotas sin uso que borra el propietario si quiere** (el proxy corta el borrado desde las sesiones): `b/T-000-auditoria-visual-y-ux`, `b/T-443-tokens-y-puntero`. **Numeración de docs:** el de reportes pasa a `11-reportes-por-nivel-catalogo.md` (el `10-` es el de diseño).
 
 **Ids de tarea reservados:** T-425..T-427 (#384), T-428..T-435 (roadmap, cierre de T-322), T-440..T-471 (diseño, #389), T-472..T-479 (cobros, #386).
 
@@ -54,7 +56,7 @@ Ventana web abierta a **diseño** hasta 05:00 UTC.
 
 - Aplicar la redacción ampliada del criterio de salida 9 y el principio 7 de [`docs/08-roadmap/08`](../08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md) a celular, tablet y escritorio (la propone el informe de diseño, §4.4).
 - Auditar T-330 (API de pagos) cuando la sesión de cobros lo pida: dinero + aislamiento, completa.
-- Auditar T-339 (reportes por nivel): permisos y margen.
+- Auditar el cierre provisional de H1/H2 (reportes y seguimientos con alcance impuesto por el servidor; P1, rama `a/`, la lanza la sesión del roadmap) y T-339..T-346: permisos y margen. Las 14 preguntas del documento de reportes (#392) están en la bandeja del propietario (ítem 12c).
 - Reabrir el PR de `navegador` obligatorio (contenido en el commit `27412e7`) **solo** cuando el propietario lo aplique en el servidor.
 - Verificar el `navegador` de `main` tras los últimos merges y que `AP14` no reaparezca en rojo en `test`.
 - Redesplegar la web con el `main` actual y comprobar la API en Render, **con la confirmación del propietario** (el despliegue vivo es de antes de la ola 0).
