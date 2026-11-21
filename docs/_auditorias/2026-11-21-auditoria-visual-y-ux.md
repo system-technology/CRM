@@ -4,7 +4,7 @@
 |---|---|
 | Quién | Sesión de diseño (carril `b/`), por encargo del propietario: analizar, mejorar y rediseñar toda la interfaz |
 | Cliente de referencia | JD Tours (Colombia). El asesor trabaja casi todo desde el **celular (390 px)**, también cotiza; hoy usa WhatsApp Business y una hoja de Google |
-| Prioridad | Navegabilidad y usabilidad móvil, luego escritorio (1440) |
+| Prioridad | Navegabilidad y usabilidad en **tres familias de dispositivo** (corrección del propietario, 2026-11-21): celular (360–430 px, vertical y horizontal; referencia 390), **tablet** (768, 820, 1024 y 1180 px, vertical y horizontal) y escritorio (1280, 1440, 1920). Mismo diseño adaptable, no «móvil que se estira». Comodidad con dedo **y** con ratón/teclado |
 | Base | `origin/main` en `5c152a0a` (PR #383). Las auditorías del 2026-11-20 (UX y navegación) ya se ejecutaron en buena parte: este informe **no las repite**, mide qué quedó |
 | Alcance de esta fase | Solo análisis. **No se tocó código de producto.** El rediseño (Fase 2) espera el OK del orquestador |
 
@@ -16,9 +16,16 @@
 - **Entorno:** solo la web, en modo demo con datos de maqueta (`next dev -p 3456`, `NEXT_PUBLIC_USE_REAL_CRM=false`,
   `…USE_REAL_INBOX=false`, `…AUTH_MAQUETA=true`, sin API ni Postgres). Mismo método que la auditoría del 2026-11-20. El «modo de un
   solo proceso» con Postgres no se levantó: pide Docker con daemon y esta máquina no lo tiene. Los datos son de demo; no hay datos reales.
-- **Recorrido:** Playwright, 390×844 (móvil con táctil) y 1440×900, `deviceScaleFactor` 2, 14 rutas más detalle de conversación,
-  cotización (y su vista imprimible), contacto, archivo de viaje, paleta y hoja «Más». Más de 120 capturas en el scratchpad de la
-  sesión; **no se versionan** (los nombres citados abajo, como `m-det-conv`, son los de esa carpeta).
+- **Recorrido (primera pasada):** Playwright, 390×844 (móvil con táctil) y 1440×900, `deviceScaleFactor` 2, 14 rutas más detalle de
+  conversación, cotización (y su vista imprimible), contacto, archivo de viaje, paleta y hoja «Más». Más de 120 capturas en el
+  scratchpad de la sesión; **no se versionan** (los nombres citados abajo, como `m-det-conv`, son los de esa carpeta).
+- **Matriz de dispositivos (segunda pasada, tras la corrección del propietario):** Playwright con 10 tamaños —celular 360×800 y 430×932,
+  celular horizontal 844×390, tablet 768×1024, 820×1180 (vertical), 1024×768 y 1180×820 (horizontal), escritorio 1280×720 y 1920×1080,
+  y un **zoom del 200 %** emulado con una ventana de 720×450 px CSS— sobre 8 rutas (Hoy, Conversaciones, conversación, Cotizador,
+  Archivos de viaje, Oportunidades, detalle de cotización, Contactos). Se midió por ruta y tamaño: desbordes horizontales, controles < 44 px
+  y qué `nav`/`aside` hay a la vista. Capturas con `deviceScaleFactor` 1 (nombres `caps3/<tamaño>-<ruta>.png`; no se versionan).
+- **Navegadores:** solo hay **Chromium** instalado (`/opt/pw-browsers`). **Safari iOS/WebKit, Firefox y Edge: sin verificar** (no se instaló
+  nada). Todo lo que depende de ellos queda como **[S]** en §3.5.
 - **No se vio:** la pantalla de ingreso real (en demo `/ingresar` redirige a Hoy), la campana abierta, estados de carga y de error
   (la maqueta responde al instante), el foco de teclado recorrido a mano, el contraste real de los grises (no se midió con
   herramienta), una sesión con rol de dueña frente a asesora, y nada contra la API real. Cada uno queda como **[S]** donde se cita.
@@ -36,7 +43,10 @@
 3. **La ventaja de turismo ya aparece donde más se usa** (fila de bandeja con `Cancún · dic`, panel «Solicitud de viaje», tarjeta de
    oportunidad con `San Andrés · dic · 2+1` y «Time limit mañana»). No hay que inventar identidad: hay que **sostenerla** con un
    componente único de «línea del viaje» y una escala de plazos única, y quitar lo que la tapa.
-4. **Lo que más le cuesta al cliente piloto hoy**, en este orden: el aviso de cookies que tapa el 40 % del móvil en la primera visita;
+4. **El producto tiene dos diseños (< 768 px y ≥ 768 px), no tres.** La tablet no tiene diseño propio: hereda el de escritorio con riel de
+   iconos sin etiquetas y controles pensados para ratón (14 de 57 controles < 44 px en la bandeja a 768 px); el celular horizontal (844×390) cae
+   en el mismo riel y se queda sin altura. El zoom del 200 % sí reflota bien. Detalle en §3.5.
+5. **Lo que más le cuesta al cliente piloto hoy**, en este orden: el aviso de cookies que tapa el 40 % del móvil en la primera visita;
    la cabecera de la conversación rota a 390 px; el detalle de la cotización con la acción de enviar a cinco bloques de distancia; los datos
    de prueba extrema que abren la demo.
 
@@ -137,6 +147,34 @@ Cada uno: pantalla · referencia de captura · causa · propuesta · en qué ola
 - **B-4.** Hoy: tarea «Confirmar pago de anticipo $2.500.000» con hora «1:54 a. m.» [V `d-hoy`]: dato de demo incoherente con una jornada de trabajo; arreglo en el sembrado (§6).
 - **B-5.** «Vista Asesor (Operativa)» en Reportes es una píldora gris sin aspecto de control [V `m-reportes`]; si cambia la vista debe verse como selector, si no, es texto.
 
+### 3.5 Las tres familias de dispositivo (celular, tablet, escritorio)
+
+**Cómo está resuelto hoy [C + V].** Hay **dos** diseños, no tres, y el corte es único:
+
+| Ancho | Navegación | Bandeja | Quién cae aquí |
+|---|---|---|---|
+| < 768 px (`md`) | Cabecera de 44 px con lupa + barra inferior de 56 px + hoja «Más» | Una columna: lista **o** hilo | Celular vertical; **escritorio con zoom 200 %** (1440 → 720 px CSS) [V `zoom200-*`] |
+| 768 – 1279 px | **Riel de iconos de 56 px, sin etiquetas** (el mismo de escritorio) | Riel + lista fija de 320 px + hilo; la ficha del viajero **no cabe** y pasa a cajón | **Tablet vertical y horizontal, y celular horizontal (844)** [V `tab768v-conv`, `tab1024h-conv`, `celH-bandeja`] |
+| ≥ 1280 px (`xl`) | El mismo riel de 56 px (a 1920 también) | Lista de 340 px + hilo + ficha fija de 340 px | Escritorio 1280, 1440, 1920 [V `esc1920-bandeja`] |
+
+Puntos de quiebre usados [M, `grep`]: `sm` 448 veces, `md` 151, `lg` 59, `xl` 14, `2xl` 2. Los de Tailwind v4 (640, 768, 1024, 1280, 1536) son los mismos que usa el layout `(app)` (conmuta en `md` y en `xl`): **son coherentes entre sí**, pero no hay ningún quiebre propio ni por altura ni por tipo de puntero. Resultado: la tablet no tiene diseño propio; hereda el de escritorio con controles pensados para ratón.
+
+**Desbordes de página:** 0 en las 80 combinaciones medidas (10 tamaños × 8 rutas) [M]. Lo que falla no es el desborde, es la comodidad.
+
+**Hallazgos por familia**
+
+- **D1 · Tablet vertical (768 / 820): dos paneles sin aire.** [V `tab768v-conv`] Riel 56 + lista 320 + hilo de **392 px** (a 820: 444 px). En el hilo, el número de teléfono se trunca a «+…», «Tomar» y «Reasignar» se apilan, y el botón «Cómoda» de la lista queda **cortado** («Co»), cosa que ocurre en **todos** los anchos porque la lista mide siempre 320–340 px [V todas las `*-bandeja`]. *Propuesta:* regla por familia (ver «Reglas por familia» en §4.3): en 768–1023 la lista pasa a 300 px con controles en una fila y la cabecera del hilo se rehace a una línea (B2); la ficha, cajón. Si aun así el hilo queda < 440 px, patrón de **una columna** (lista → hilo con flecha de volver), con riel visible.
+- **D2 · Celular horizontal (844×390) cae en el diseño de tablet/escritorio.** [V `celH-bandeja`, M] El riel necesita 428 px de alto dentro de una ventana de 390: los iconos de abajo (campana, perfil) quedan **fuera de pantalla**, la lista enseña **una conversación y media** (los controles gastan ≈ 300 de 390 px) y la cabecera de cotizar/archivo igual. *Propuesta:* regla por **altura** (`@media (max-height: 480px)`): cabecera y controles colapsados, riel con scroll o barra inferior compacta, bandeja en una columna.
+- **D3 · Riel sin etiquetas, ahora también en tablet.** (A5, agravado) En tablet no hay ratón: no hay `title` ni tooltip que valga [C: Tailwind v4 solo aplica `hover:` donde el dispositivo tiene hover]. Doce iconos sin nombre y un punto amarillo. *Propuesta:* **riel con icono + etiqueta debajo** (≈ 72 px de ancho, objetivos de 44+ px) entre 768 y 1279; menú lateral **expandido con etiqueta al lado** desde 1280; el punto amarillo pasa a «Demo» (M4).
+- **D4 · Objetivos táctiles en tablet.** [M] A partir de 768 px el DOM mide con densidad de ratón: controles < 44 px en la bandeja **14 de 57**, en la conversación **18 de 64** (73 a 1280), en Contactos **19 de 40**, en Hoy 9 de 38; en celular vertical son 2/45, 0/7, 16/30 y 6/28. O sea, la tablet táctil es la **peor** servida. *Propuesta:* utilidad única «objetivo» con `pointer-coarse:` de Tailwind v4 (≥ 44 px con dedo) y densidad compacta con `pointer-fine:` (ratón); una **tablet con teclado y ratón** debe poder compactarse sin que otra con dedo pierda 44 px.
+- **D5 · Escritorio ancho (1920).** [V `esc1920-bandeja`] Con la bandeja sin conversación, **≈ 1.500 px vacíos**; con la ficha fija, el hilo se estira (línea de mensaje de ≈ 1.100 px: ilegible por largo) [S, no capturé una conversación a 1920]. *Propuesta:* columna de mensajes con ancho máximo ≈ 720 px centrada; páginas de lista con `max-w` ≈ 1600 px; en 1920 la ficha y una vista previa de la cotización caben a la vez.
+- **D6 · Zona segura (notch y barra de inicio).** [C] No hay `viewport-fit=cover` ni un solo `env(safe-area-inset-*)`; la barra inferior (`h-14`, fija) y las barras de acción no reservan el inset inferior ni el lateral en horizontal. [S, **sin verificar en WebKit**] En iPhone con barra de inicio, en una PWA instalada o en horizontal con notch, la barra puede quedar bajo el gesto o bajo la muesca.
+- **D7 · Alto de la ventana y teclado en pantalla.** [C] El marco privado usa `100dvh` (bien: sigue la barra del navegador). Las páginas públicas (ingreso, invitación, legales, 404, error, imprimible) usan `min-h-screen` / `100vh` (11+ usos): en Safari iOS `100vh` incluye la barra de herramientas y el botón del ingreso puede quedar tapado [S, sin WebKit]. El teclado virtual **no se pudo probar** (Playwright no lo emula): **sin verificar**. Sí hay un defecto verificable: el pie del hilo lleva `pb-24 md:pb-3` [C `bandeja/[id]/page.tsx:1299`], **96 px de relleno pensados para la barra inferior**, pero el hilo en celular es pantalla completa y **no tiene barra** [V `m-det-conv`: ≈ 95 px de vacío bajo «Cotizar»]; con el teclado abierto, ese relleno empuja el campo. *Propuesta:* quitar el relleno en el detalle móvil; `min-h-dvh` en las públicas; `interactive-widget=resizes-content` en el `viewport`; probar con teclado real en un dispositivo.
+- **D8 · Zoom del 200 %.** [V `zoom200-*`, M] A 720 px CSS el diseño reflota a celular con barra inferior; **0 desbordes** en las 8 rutas y se puede operar. Pendientes: Contactos sigue con tabla de desplazamiento interno y 16 de 30 controles < 44 px (A7). Es resultado aceptable; a 400 % es un celular de 360 px.
+- **D9 · Hover y teclado.** [C] 948 usos de `hover:`; Tailwind 4.3.5 los envuelve en `@media (hover: hover)`, así que **no hay «hover pegado» en táctil**. Foco de teclado: ver M7 (sin recorrer). Navegación por teclado en la bandeja: atajos `j/k`, `/`, `?` ya existen y se conservan.
+- **D10 · Cotizador por familia.** [V `tab820v-cotizador`, `tab1024h`] Funciona: una columna con el resultado debajo en tablet vertical y total fijo al pie; en horizontal la columna de formulario baja a 285–370 px y el resultado ocupa el resto. Sigue valiendo A9 (salidas, contexto del viajero).
+- **D11 · Navegadores.** Chrome/Chromium: medido. **Safari iOS, Firefox, Edge: sin verificar.** Riesgos conocidos por código que solo WebKit confirmaría: D6, D7, `dvh`, `backdrop-blur` en la hoja «Más», `100vh` en públicas y los `select` nativos del cotizador. Se pide una pasada manual en un iPhone y un iPad antes de dar por cerrada la Ola 2.
+
 ## 4. Dirección de diseño y plan de rediseño por olas
 
 ### 4.1 Plan de dirección (pasos 1 y 2 de `diseno-web` y `frontend-design`)
@@ -168,19 +206,37 @@ Cada uno: pantalla · referencia de captura · causa · propuesta · en qué ola
 
 Sin dependencias nuevas en ninguna ola. `lucide-react` (ya presente) cubre los iconos.
 
-### 4.3 Olas (cada PR es una pantalla o un componente; carril `b/`; todos sin auto-merge y con capturas antes y después a 390 y 1440)
+### 4.3 Olas (cada PR es una pantalla o un componente; carril `b/`; todos sin auto-merge y con capturas antes y después de **celular, tablet en las dos orientaciones y escritorio**)
 
-**Ola 1 — Sistema: tokens, componentes base y limpieza común** *(lo primero: sin esto, cada PR siguiente pelea contra el color crudo)*
+**Reglas por familia (propuesta que fija la Ola 1; se discute al aprobar el plan).** Un solo diseño adaptable con **tres modos** y dos
+reglas ortogonales (altura y puntero), en lugar del corte único de hoy:
+
+| Modo | Rango | Navegación | Bandeja | Puntero y densidad |
+|---|---|---|---|---|
+| **Celular** | < 768 px | Cabecera 44–56 px + barra inferior de 5 + hoja «Más» | Una columna (lista → hilo con flecha) | Táctil: objetivos ≥ 44 px |
+| **Tablet** | 768 – 1279 px (vertical y horizontal) | **Riel de ≈ 72 px con icono + etiqueta**, sin barra inferior | 768–1023: lista 300 px + hilo, ficha en cajón; 1024–1279: lista 320 + hilo, ficha en cajón; si el hilo queda < 440 px, una columna | **Táctil por defecto**: objetivos ≥ 44 px; compacta solo con `pointer-fine` |
+| **Escritorio** | ≥ 1280 px | **Menú lateral expandido** con etiqueta y contador (colapsable por preferencia) | Lista 340 + hilo (columna de mensajes ≤ 720 px) + ficha fija | Compacto con ratón; el foco de teclado siempre visible |
+
+Reglas ortogonales: **altura ≤ 480 px** (celular horizontal) → cabecera y controles colapsados, riel con scroll, bandeja en una columna;
+**`pointer-coarse` / `pointer-fine`** (variantes de Tailwind v4, sin dependencias nuevas) para el tamaño de objetivo, no el ancho;
+**zonas seguras** (`viewport-fit=cover` + `env(safe-area-inset-*)`) en barras fijas; **`dvh`** en todas las alturas de ventana;
+puntos de quiebre **los de Tailwind** (640 · 768 · 1024 · 1280 · 1536), declarados una vez en `@theme` con nombre de dominio y usados
+también por el layout `(app)`. Todo cambio de ancho de panel se verifica con las diez ventanas de §0.
+
+**Ola 1 — Sistema y layout responsivo: puntos de quiebre, marco, tokens y componentes base** *(lo primero: sin esto, cada PR siguiente pelea contra el color crudo y contra un corte único en 768 px)*
 
 | PR | Contenido | Hallazgos | Archivos principales |
 |---|---|---|---|
+| 1.0a | **Marco responsivo:** tres modos, riel de tablet con etiquetas, menú lateral expandido en escritorio, regla de altura, `viewport-fit`/zonas seguras, `dvh` | D1–D3, D6, D7, A5 | `components/comun/marco-de-trabajo.tsx`, `components/bandeja/barra-modulos.tsx`, `app/layout.tsx` |
+| 1.0b | **Utilidades de puntero:** objetivo ≥ 44 px con `pointer-coarse`, densidad con `pointer-fine`; revisar los controles < 44 px de cada ruta | D4, M6 | `app/globals.css` + componentes base |
+| 1.0c | **Bandeja adaptable:** lista a 300/320/340 según modo, controles de la lista sin recorte («Cómoda»), hilo con columna de mensajes ≤ 720 px, quitar el relleno `pb-24` del hilo móvil | D1, D5, D7 | `app/(app)/bandeja/layout.tsx`, `bandeja/[id]/page.tsx`, `components/bandeja/` |
 | 1.1 | Tokens semánticos de plazo/estado/canal/demo en `@theme`; escala tipográfica con piso de 12 px; `tabular-nums`; anillo de foco único. Sin tocar pantallas | A1, A2, M7 | `app/globals.css` |
 | 1.2 | `LineaDeViaje` y `InsigniaDePlazo` (texto + icono + token, una escala de plazos: vencido · hoy · próximo · en plazo) con pruebas | A1 | `components/comun/` (nuevos) |
 | 1.3 | Formateador único de fecha y de dinero visible, y prueba que bloquea ISO y colores crudos nuevos (con lista de excepciones que baja) | M3, A1 | `lib/` (formato), `*.spec.ts` |
 | 1.4 | Aviso de cookies compacto (B1) y distintivo «Demo» único en el marco (M4) | B1, M4 | `components/privacidad/`, `components/comun/marco-de-trabajo.tsx`, `distintivo-datos-demo.tsx` |
 | 1.5 | Modo `?estado=` para forzar cargando/error/vacío, solo en demo, para capturar estados | M5 | un helper de maqueta |
 
-**Ola 2 — Móvil núcleo de JD Tours** *(lo que el asesor hace con el celular)*
+**Ola 2 — Celular y tablet: núcleo de JD Tours** *(lo que el asesor hace con el celular o la tablet; cada PR se verifica en celular vertical y horizontal y en tablet vertical y horizontal)*
 
 | PR | Pantalla | Hallazgos |
 |---|---|---|
@@ -191,7 +247,7 @@ Sin dependencias nuevas en ninguna ola. `lucide-react` (ya presente) cubre los i
 | 2.5 | Archivo de viaje (detalle): acción principal única, plazos con `InsigniaDePlazo`, enlaces a chat y cotización como fila | A1 |
 | 2.6 | Hoy móvil: lista de trabajo por vencimiento | A3 |
 
-**Ola 3 — Escritorio núcleo** *(1440)*
+**Ola 3 — Escritorio núcleo** *(1280, 1440 y 1920; con ratón y teclado, y con zoom al 200 %)*
 
 | PR | Pantalla | Hallazgos |
 |---|---|---|
@@ -217,13 +273,25 @@ Sin dependencias nuevas en ninguna ola. `lucide-react` (ya presente) cubre los i
 
 **Ola 5 (aparte, propuesta)** — La propuesta al viajero y su versión imprimible: portada, itinerario, incluye / no incluye, RNT. Es donde sí cabe libertad estética (fotos, tipografía con carácter). Va después de que el propietario fije la marca y el logo.
 
-**Criterio de salida del rediseño** (comprobado en navegador): a 390 px, la primera pantalla de cada módulo muestra **trabajo** (filas, no controles) en ≥ 60 % de la altura; en cada pantalla hay **una** acción principal; los plazos usan la misma escala de cuatro estados; ningún texto informativo < 12 px; ningún `emerald|amber|rose|red` crudo fuera de la lista de excepciones; cero desbordes horizontales de página; cada PR trae captura antes y después a 390 y 1440.
+**Criterio de salida del rediseño** (comprobado en navegador): en celular (390 px) y en tablet vertical (768 y 820), la primera pantalla de cada módulo muestra **trabajo** (filas, no controles) en ≥ 60 % de la altura; en cada pantalla hay **una** acción principal; los plazos usan la misma escala de cuatro estados; ningún texto informativo < 12 px; ningún `emerald|amber|rose|red` crudo fuera de la lista de excepciones; **cero desbordes horizontales de página en los diez tamaños de §0**; con dedo (`pointer-coarse`) ningún control < 44 px; cada PR trae captura antes y después de celular, tablet (vertical y horizontal) y escritorio, y deja anotado lo que **no** se pudo probar (WebKit, Firefox, teclado en pantalla).
+
+### 4.4 Redacción propuesta del criterio de salida de JD Tours (celular, tablet y escritorio)
+
+Hoy, `08-roadmap-jd-tours-reservas-cobros-y-navegacion.md` §3 dice, en el punto 9, «**Móvil de verdad (390 px, sin desplazamiento lateral)**…», y el
+principio 7 de §1 habla del celular como único dispositivo. El documento lo edita el orquestador; esta es la redacción propuesta:
+
+> **Principio 7 (ampliado).** El asesor trabaja desde el **celular, la tablet o el navegador de escritorio**, a veces los tres el mismo día. Todo lo que hace una asesora —responder, cotizar y enviar, poner una etiqueta, registrar un pago, ver quién debe y qué le toca hoy— debe poder hacerse en **cada** familia sin desplazarse de lado, con **dedo** (objetivos ≥ 44 px) y con **ratón y teclado** (foco visible, atajos), en vertical y en horizontal.
+>
+> **Criterio de salida, punto 9 (ampliado).** *Celular, tablet y escritorio de verdad.* En un navegador, con datos de demo creíbles y **en cada una de las tres familias** (celular 390 px; tablet 768 / 820 vertical y 1024 / 1180 horizontal; escritorio 1280 / 1440 / 1920) y sin desplazamiento lateral de página: una cotización completa (paquete, salida, pasajeros, total, guardar, enviar por WhatsApp y volver al chat), poner o quitar una etiqueta, registrar un pago y consultar el saldo de un archivo de viaje. Además: la navegación es la propia de cada familia (barra inferior, riel con etiquetas o menú lateral) y cualquier módulo está a dos toques o clics; con el zoom del navegador al 200 % se sigue pudiendo operar; y lo que no se probó en un dispositivo real (Safari en iPhone y iPad, Firefox, Edge, teclado en pantalla) consta como «sin verificar» en la bitácora, no como hecho.
+>
+> **Punto 1 (ajuste).** «… dos clics o menos (dos toques en celular y tablet)…».
 
 ## 5. Anticolisión con la sesión funcional (apps/web)
 
-PR abiertos al 2026-11-21 que tocan `apps/web` [gh]: **#387** (`b/T-000-quita-union-de-etiquetas-de-permisos`, etiquetas de permisos: Configuración), **#385** (`feat/web-salida-en-el-error-de-sesion`: campana y guarda de sesión), **#362** (`a/T-000-apodo-ingreso-web`: pantalla de ingreso). Por eso:
+PR abiertos al 2026-11-21 que tocan `apps/web` [gh, archivos listados con `pulls/<n>/files`]: **#387** (solo `lib/permisos.ts`), **#385** (`feat/web-salida-en-el-error-de-sesion`: `error.tsx`, `not-found.tsx`, `guarda-sesion.tsx`, **`components/bandeja/barra-modulos.tsx`**, `panel-notificaciones.tsx` y librerías de notificaciones), **#362** (`a/T-000-apodo-ingreso-web`: `formulario-ingreso.tsx`, `bloque-equipo.tsx`, librerías de auth). Por eso:
 
-- **Ingreso (4.8), campana y guarda de sesión:** no se tocan hasta que #385 y #362 entren.
+- **#385 toca `barra-modulos.tsx`**, que la **PR 1.0a** (marco responsivo, riel con etiquetas) necesita reescribir: **1.0a espera a que #385 entre** (o se acuerda con su autora). Mientras tanto, 1.0b (utilidades de puntero, `globals.css`) y los componentes base de 1.1 a 1.3 no chocan con ningún PR abierto.
+- **Ingreso (4.8), campana y guarda de sesión, 404 y error:** no se tocan hasta que #385 y #362 entren.
 - **T-321 (N7, contexto del cotizador) y T-334 (tabla de archivos)** son de la sesión funcional y se solapan con 2.4, 3.4: **no empiezo ninguno sin acordar** el reparto por mensaje con la sesión del roadmap (`session_01R81Xh5cU4HFUZKTZJ7kcHe`). Propuesta: ella hace la lógica (qué datos, qué ruta); yo la presentación, en PR separados y en ese orden.
 - Antes de editar cualquier archivo: `git fetch` y revisar `gh api repos/system-technology/CRM/pulls?state=open`, como en la regla 2 del encargo.
 
