@@ -135,7 +135,20 @@ test.describe('sin sesion', () => {
 
 test('al quitar el usuario ya no entra con el, pero si con el correo', async ({ page }) => {
   await page.goto('/configuracion?pestana=equipo');
-  await page.getByRole('button', { name: `Editar usuario de ${miembroNombre}` }).click();
+  const editar = page.getByRole('button', { name: `Editar usuario de ${miembroNombre}` });
+  try {
+    await expect(editar).toBeVisible({ timeout: 30_000 });
+  } catch {
+    // Dice POR QUE: si la sesion guardada murio al ingresar en otro contexto, la URL sera /ingresar.
+    const texto = await page
+      .locator('body')
+      .innerText({ timeout: 2_000 })
+      .catch(() => '(sin cuerpo)');
+    throw new Error(
+      `No aparecio «Editar usuario de ${miembroNombre}». URL: ${page.url()}. Pantalla: ${texto.slice(0, 300).replace(/\s+/g, ' ')}`,
+    );
+  }
+  await editar.click();
   await guardarUsuario(page, '');
   await expect(
     page.locator('tr', { hasText: miembroNombre }).getByTestId('usuario-de-ingreso'),
