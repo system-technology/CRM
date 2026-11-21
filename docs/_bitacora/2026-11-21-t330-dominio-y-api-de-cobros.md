@@ -54,3 +54,40 @@ Lo completa quien integre. No hay resultados todavía.
 - Veredicto de la auditoría (`auditor-seguridad` / `auditor-codigo`) y hallazgos que pasaron a la cola: _pendiente_
 - Estado final de las rutas y los eventos (qué quedó en `main`, qué se recortó): _pendiente_
 - Actualizar `ESTADO.md`: mover la fila de T-330 de «a medias» a «en `main`» con su evidencia: _pendiente_
+
+## Estado al relevo de la sesión de cobros (2026-11-21, tarde)
+
+La sesión que llevó los cobros se releva (sesiones cortas, decisión del propietario). Lo que solo estaba en su
+conversación, escrito aquí para quien siga.
+
+**Qué está hecho e integrado:** T-328 (ADR-0034, #378), T-329 (migración `20261121140000`, #382), el PR web previo
+de permisos (#383) y su limpieza (#387).
+
+**PR abiertos de cobros (verificar el estado con `gh`, no con este texto):**
+
+| PR | Qué es | Estado |
+|---|---|---|
+| #393 | T-330, solo código: dominio puro, contratos y módulo `payments` | Sin auto-merge. La auditoría de seguridad dio B1 (una penalidad vigente podía quedar sin pagar tras devolver o reversar un pago): corregido, con C1 (límite de espera del candado) y C2 (ids en minúsculas). Falta ver el CI de la última cabeza y el repaso de la auditoría |
+| #390 | Documentación de cobros (este PR) | En la fila de documentación de la sesión madre; al integrarse #388, actualizar con `main` y resolver `ESTADO.md` a mano conservando las dos filas |
+| #386 | Cierre de T-328 y T-329 en `tasks.yaml` y su cola (T-472 a T-479) | Sin auto-merge, en la misma fila |
+
+**Lo siguiente, en orden:**
+
+1. Cuando #393 pase la auditoría y el CI (`test` con el e2e de cobros contra Postgres real), integrarlo por la sesión madre y, en un PR `i/` de cierre, marcar T-330 como hecha, rellenar «Pendiente de rellenar al cerrar T-330» y actualizar `ESTADO.md`.
+2. **T-331** (pantalla del archivo con el cobro, carril `b/`): registrar un pago y ver el saldo; depende de T-330 y T-316. Se verifica en celular, tablet y escritorio. Sin auto-merge en `apps/web`.
+3. T-332 (vista «quién pagó y quién debe») y T-333 («Hoy» y la campana avisan cobros vencidos).
+
+**Cola de la auditoría de T-330 por registrar en `tasks.yaml`** (con ids libres tras `git fetch` y mirar los PR de
+documentación abiertos; ya chocaron dos veces):
+
+- **Luhn:** el filtro no quita `/`, `_`, `,` ni reconoce dígitos Unicode (`backend`).
+- **Reverso idempotente:** un reverso idempotente con otro motivo responde 200; anotarlo en la documentación de la API de cobros (`backend`).
+- **Guardia de fronteras:** `payments` y `booking` fuera del mapa `DUENOS` de `scripts/verificar-fronteras.mjs`, ruta protegida (`devops`).
+- **Cobros cancelados y parámetros:** vista de archivos cancelados con «pagado sin devolver» (`dueno-de-producto` y `frontend`); un `GET /cobros/parametros` si el diseño de ajustes lo pide (`backend`).
+
+**Trampas que no estaban en los documentos:**
+
+- Código (`a/`) y documentos (`i/`) no pueden ir en el mismo PR: `Carril y tarea` queda en rojo y `override-lane` solo lo decide el propietario.
+- Un permiso nuevo del contrato exige su etiqueta en la web (el mapa es `Record<Permiso, …>`): se resolvió con un PR web previo, no con `override-lane`.
+- No hay Postgres local: ni migraciones ni e2e se pueden ejecutar fuera del CI, y no se debe intentar levantarlo. Un log grande del CI se lee guardando la salida en archivo y filtrándola con una expresión regular.
+- `commitlint` rechaza el tipo `wip` y los asuntos con mayúsculas; el hook de pre-commit corre `eslint` y no se evita con `--no-verify`.
