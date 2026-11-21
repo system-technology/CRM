@@ -7119,7 +7119,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-325, T-315]
     acceptance:
       - "Se ve, se pone y se quita desde el chat; se filtra la bandeja; colores con contraste suficiente y texto además de color"
@@ -7128,6 +7128,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T03:35:00.000Z
+    evidence: "Integrada en main por el PR #381 (4fc1152) con los 14 checks en verde, incluido navegador, que corre el e2e 06-etiquetas contra la API real (escritorio y 390×844; crea sus propios datos). Chips con nombre, icono y color en la lista y el chat; poner y quitar desde el chat (hoja inferior en móvil, popover en escritorio) optimista, idempotente y con avisos accionables (sin conexión, tope de 10, etiqueta borrada por otra persona, sin acceso); filtro por etiqueta en la URL (?etiquetas=&modo=, UUID validado); Configuración → «Etiquetas» solo con etiquetas.administrar; demo coherente con la API. La primera pasada del CI falló por una prueba de Configuración con una carrera de import dinámico, corregida. SIN verificar: eventos en vivo entre asesores y «etiqueta borrada por otra persona» (solo con mocks); contraste AA medido por cálculo, no sobre captura. Cola: T-418, T-425 a T-427."
   - id: T-327
     title: 'C0: historia de usuario y alcance mínimo de los cobros del viajero; preguntas al dueño'
     type: docs
@@ -8432,3 +8434,45 @@ tasks:
     source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
     created_at: 2026-11-21T03:00:00.000Z
     owner: backend
+  - id: T-425
+    title: "Decidir y construir «Archivar» y la vista «Archivadas» de la bandeja"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-326]
+    acceptance:
+      - "El dueño de producto decide por escrito si «Archivar» entra y con qué reglas (las etiquetas se conservan al archivar, HU-inbox-1); si entra, «Filtro sin resultados» ofrece «Buscar en Archivadas»"
+      - "Con la decisión, historia y tarea de frontend y backend con criterios de aceptación"
+    source: "cola de T-326 (2026-11-21): la HU lo deja abierto"
+    created_at: 2026-11-21T03:35:00.000Z
+    owner: dueno-de-producto
+  - id: T-426
+    title: "A 1440 px el botón de densidad de la cabecera de la lista de conversaciones no se corta"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-326]
+    acceptance:
+      - "En la columna de 320 px de la lista, el botón «Cómoda» cabe entera o se acorta con su nombre accesible completo; captura a 1440×900 que lo muestre"
+      - "Ya ocurría antes de T-326"
+    source: "cola de T-326 (2026-11-21)"
+    created_at: 2026-11-21T03:35:00.000Z
+    owner: frontend
+  - id: T-427
+    title: "Documentar las etiquetas: atajo e en la ayuda, entrada de bitácora y «Etiqueta» en el lenguaje ubicuo"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-326]
+    acceptance:
+      - "La ayuda de atajos y la bitácora recogen el atajo e (poner o quitar etiqueta); «Etiqueta» (Label) queda confirmada en docs/01-producto/02-lenguaje-ubicuo.md"
+      - "Se anota la decisión de que la hoja de etiquetas en móvil es modal y cubre la barra inferior mientras está abierta"
+    source: "cola de T-326 (2026-11-21)"
+    created_at: 2026-11-21T03:35:00.000Z
+    owner: documentador
