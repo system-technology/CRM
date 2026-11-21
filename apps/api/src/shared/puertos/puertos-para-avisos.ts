@@ -35,7 +35,11 @@ export abstract class PuertoArchivoDeUnAviso {
   ): Promise<ArchivoDeUnAviso | null>;
 }
 
-/** Lo que `notifications` pide a `crm`. */
+/**
+ * Lo que `notifications` pide a `crm` —y también `booking` (T-529): las dos preguntas son la misma,
+ * «quién responde por esto», y por eso no se duplica el puerto. Una es de a uno, dentro de la
+ * transacción del despachador; la otra es de a muchos, para una pantalla.
+ */
 export abstract class PuertoAsesorDeOportunidad {
   /** El asesor asignado a la oportunidad; `null` si no existe en ese tenant o no tiene asesor. */
   abstract asesorDe(
@@ -43,6 +47,17 @@ export abstract class PuertoAsesorDeOportunidad {
     tenantId: string,
     oportunidadId: string,
   ): Promise<string | null>;
+
+  /**
+   * El asesor de varias oportunidades, en una sola consulta (T-529: la pantalla «Sin responsable»
+   * mira hasta 500 archivos y una por una serían 500 viajes a la base). **Omite** las que no
+   * existen en ese tenant: ausencia y `asesorId: null` se tratan igual, «sin asesor».
+   */
+  abstract asesoresDe(
+    tx: ClienteTenant,
+    tenantId: string,
+    oportunidadIds: readonly string[],
+  ): Promise<Array<{ oportunidadId: string; asesorId: string | null }>>;
 }
 
 /** Lo que `notifications` pide a `identity`. */

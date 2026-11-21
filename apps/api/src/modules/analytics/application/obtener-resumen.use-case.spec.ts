@@ -179,7 +179,7 @@ describe('ObtenerResumenDeReportes', () => {
   // --- alcance (T-342, ADR-0035 §1 y §4) -------------------------------------------------------
 
   it('sin reportes.ver_agencia el alcance es PROPIO y LOS TRES puertos lo reciben', async () => {
-    const { resultado, cotizaciones, oportunidades, respuesta, cobros } = ejecutar([]);
+    const { resultado, cotizaciones, oportunidades, respuesta, cobros } = ejecutar(['cobro.ver']);
     const r = await resultado;
     const propio = { nivel: 'PROPIO', asesorId: YO };
     expect(cotizaciones.llamadas[0]?.alcance).toEqual(propio);
@@ -237,8 +237,8 @@ describe('ObtenerResumenDeReportes', () => {
 
   // --- cotizaciones abiertas y por cobrar (T-528) ----------------------------------------------
 
-  it('la respuesta trae SIEMPRE las dos cifras de hoy, con el alcance de la sesión', async () => {
-    const { resultado, cotizaciones, cobros } = ejecutar([]);
+  it('con cobro.ver trae las dos cifras de hoy, con el alcance de la sesión', async () => {
+    const { resultado, cotizaciones, cobros } = ejecutar(['cobro.ver']);
     const r = await resultado;
 
     expect(r.cotizacionesAbiertas).toEqual({
@@ -259,11 +259,51 @@ describe('ObtenerResumenDeReportes', () => {
   });
 
   it('con reportes.ver_agencia y filtro de asesor, los dos puertos nuevos lo reciben', async () => {
-    const { resultado, cotizaciones, cobros } = ejecutar(['reportes.ver_agencia'], OTRO);
+    const { resultado, cotizaciones, cobros } = ejecutar(
+      ['reportes.ver_agencia', 'cobro.ver'],
+      OTRO,
+    );
     await resultado;
     const esperado = { nivel: 'AGENCIA', asesorId: OTRO };
     expect(cotizaciones.abiertasLlamadas[0]?.alcance).toEqual(esperado);
     expect(cobros.llamadas[0]?.alcance).toEqual(esperado);
+  });
+
+  // --- por cobrar y `cobro.ver` (T-537, ADR-0035 §4) --------------------------------------------
+
+  it('sin cobro.ver NO se consulta el puerto y la clave `porCobrar` no existe', async () => {
+    const { resultado, cobros } = ejecutar([]);
+    const r = await resultado;
+
+    expect(cobros.llamadas).toHaveLength(0);
+    expect(r).not.toHaveProperty('porCobrar');
+    // Ni en cero ni en `null`: la clave no está en el JSON, como el margen sin su permiso.
+    expect(JSON.stringify(r)).not.toContain('porCobrar');
+    // Y lo que no depende de ese permiso sigue ahí: se recorta la cifra, no el reporte.
+    expect(r.cotizacionesAbiertas?.total).toBe(7);
+  });
+
+  it('otro permiso no abre el saldo por cobrar, tampoco el de ver toda la agencia', async () => {
+    for (const permisos of [
+      ['cotizacion.ver_neto_y_margen'],
+      ['reportes.ver_agencia'],
+      ['cobro.registrar'],
+    ] satisfies Permiso[][]) {
+      const { resultado, cobros } = ejecutar(permisos);
+      const r = await resultado;
+      expect(cobros.llamadas).toHaveLength(0);
+      expect(r).not.toHaveProperty('porCobrar');
+    }
+  });
+
+  it('el reporte nunca es más amplio que la pantalla: con reportes.ver_agencia pero sin cobro.ver tampoco hay cifra de agencia', async () => {
+    const { resultado, cotizaciones } = ejecutar(['reportes.ver_agencia']);
+    const r = await resultado;
+    // Ve toda la agencia en todo lo demás...
+    expect(r.alcance).toBe('AGENCIA');
+    expect(cotizaciones.llamadas[0]?.alcance).toEqual({ nivel: 'AGENCIA', asesorId: null });
+    // ...pero el dinero por cobrar de la agencia, que su pantalla de cobros le niega, no viene.
+    expect(r).not.toHaveProperty('porCobrar');
   });
 
   it('un solo reloj para toda la respuesta: `ahora` no se lee dos veces', async () => {

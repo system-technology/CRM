@@ -175,6 +175,22 @@ describe('armarResumen', () => {
     expect(r.respuesta.sinResponder).toBe(0);
   });
 
+  it('sin agregado de cobros (sin `cobro.ver`), la clave `porCobrar` no se construye (T-537)', () => {
+    const r = armarResumen({
+      alcance: DE_AGENCIA,
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: undefined,
+    });
+    expect(r).not.toHaveProperty('porCobrar');
+    expect(JSON.stringify(r)).not.toContain('porCobrar');
+    // El resto del resumen no se recorta: lo que falta es la cifra, no el reporte.
+    expect(r.cotizacionesAbiertas).toBeDefined();
+  });
+
   it('respuesta: tasa = respondidas / nuevas, del mismo grupo; respondidas + sinResponder = nuevas', () => {
     const r = armarResumen({
       alcance: DE_AGENCIA,

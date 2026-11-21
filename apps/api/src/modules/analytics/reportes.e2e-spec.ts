@@ -7,6 +7,8 @@
  *   · `valentinaA`   — asesora: ni `reportes.ver_agencia` ni margen.
  *   · `betoA`        — asesor CON el permiso de margen pero SIN `reportes.ver_agencia`: los dos
  *     ejes son independientes (§6), el margen que ve es el de sus propias cotizaciones.
+ *   · `sinCobrosA`   — `reportes.ver_agencia` pero SIN `cobro.ver` (T-537): ve toda la agencia en
+ *     todo menos en el dinero por cobrar, que su propia pantalla de cobros le niega.
  *   · `duenoB`       — los mismos permisos, en la agencia B.
  *
  * Lo que afirma:
@@ -16,7 +18,8 @@
  *     de otro responde 403 —idéntico con un id inexistente o de otra agencia, no es un oráculo—;
  *   · quien tiene `reportes.ver_agencia` ve la suma de los dos y puede filtrar por asesor;
  *   · el margen sigue protegido por SU permiso en los dos alcances, y sin él las claves no
- *     existen (se busca en el texto crudo, no en claves conocidas);
+ *     existen (se busca en el texto crudo, no en claves conocidas), y lo mismo `porCobrar` con
+ *     `cobro.ver` (T-537: un reporte nunca enseña más que la pantalla del mismo dato);
  *   · las cifras de A salen de los datos de A y nada más: las de B (más caras, para que se note)
  *     no se cuelan, y un `asesorId` de la otra agencia no trae nada;
  *   · un periodo sin datos devuelve ceros y razones `null`, y el rango se valida en el borde.
@@ -57,6 +60,7 @@ const correo = {
   valentinaA: `fixture-aislamiento-rep-vale-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   betoA: `fixture-aislamiento-rep-beto-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   operacionesA: `fixture-aislamiento-rep-oper-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
+  sinCobrosA: `fixture-aislamiento-rep-sincob-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   duenoB: `fixture-aislamiento-rep-dueno-b-${randomBytes(3).toString('hex')}${DOMINIO}`,
 };
 type Quien = keyof typeof correo;
@@ -155,6 +159,7 @@ async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigin
       'cotizacion.escribir',
       'crm.escribir',
       'reportes.ver_agencia',
+      'cobro.ver',
     ],
     'DUENO',
   );
@@ -163,12 +168,27 @@ async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigin
     'cotizacion.escribir',
     'crm.escribir',
     'reportes.ver_agencia',
+    'cobro.ver',
   ]);
-  const asesor = await rol('Asesor', ['cotizacion.escribir', 'crm.escribir'], 'ASESOR');
+  // `cobro.ver` lo llevan los tres roles sembrados (`siembra-de-tenant.ts`): el fixture los imita.
+  const asesor = await rol(
+    'Asesor',
+    ['cotizacion.escribir', 'crm.escribir', 'cobro.ver'],
+    'ASESOR',
+  );
   const asesorConMargen = await rol('Asesor con margen', [
     'cotizacion.escribir',
     'crm.escribir',
     'cotizacion.ver_neto_y_margen',
+    'cobro.ver',
+  ]);
+  // T-537: el rol a medida que hoy ninguna agencia puede componerse todavía (no hay endpoint),
+  // y que es justo el caso que el recorte de `porCobrar` existe para cubrir.
+  const deAgenciaSinCobros = await rol('Supervisión sin cobros', [
+    'conversaciones.ver_todas',
+    'cotizacion.escribir',
+    'crm.escribir',
+    'reportes.ver_agencia',
   ]);
   const contacto = await admin.contacto.create({
     data: {
@@ -210,6 +230,7 @@ async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigin
     deAgenciaSinMargen: deAgenciaSinMargen.id,
     asesor: asesor.id,
     asesorConMargen: asesorConMargen.id,
+    deAgenciaSinCobros: deAgenciaSinCobros.id,
     contacto: contacto.id,
     paquete: paquete.id,
   };
@@ -288,6 +309,7 @@ beforeAll(async () => {
   const b = await crearAgencia(TENANT_B, 'B', 2_100_000n);
   await persona('duenoA', TENANT_A, a.deAgenciaConMargen);
   await persona('operacionesA', TENANT_A, a.deAgenciaSinMargen);
+  await persona('sinCobrosA', TENANT_A, a.deAgenciaSinCobros);
   await persona('valentinaA', TENANT_A, a.asesor);
   await persona('betoA', TENANT_A, a.asesorConMargen);
   await persona('duenoB', TENANT_B, b.deAgenciaConMargen);
@@ -881,5 +903,45 @@ describe('cotizaciones abiertas y por cobrar, con el mismo alcance (T-528)', () 
     expect(r.estado).toBe(200);
     expect(r.json.porCobrar).toEqual({ porMoneda: [], truncado: false });
     expect(r.json.cotizacionesAbiertas?.total).toBe(0);
+  });
+});
+
+/**
+ * T-537: `porCobrar` es el MISMO dato que sirven las pantallas de cobro, que exigen `cobro.ver`.
+ * Un reporte puede ser más estrecho que ellas, nunca más amplio (ADR-0035 §4).
+ *
+ * `sinCobrosA` es el rol que hoy ninguna agencia puede componerse —los tres sembrados llevan
+ * `cobro.ver` y no hay endpoint para armar roles a medida—, y por eso esto no era una fuga en
+ * producción: es la compuerta puesta ANTES de que ese endpoint exista (R12).
+ */
+describe('el saldo por cobrar exige `cobro.ver` (T-537)', () => {
+  it('con reportes.ver_agencia pero sin cobro.ver: ve la agencia, menos el dinero por cobrar', async () => {
+    const r = await reporte('sinCobrosA');
+    expect(r.estado).toBe(200);
+    // Ve toda la agencia en todo lo demás: el recorte es de la CIFRA, no del reporte.
+    expect(r.json.alcance).toBe('AGENCIA');
+    expect(r.json.cotizacionesAbiertas).toEqual({
+      total: 5,
+      borradores: 1,
+      enviadas: 4,
+      porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 2 },
+    });
+
+    // La clave no existe: ni en cero, ni en `null`, ni vacía. Se mira el texto CRUDO.
+    expect(r.json.porCobrar).toBeUndefined();
+    expect(r.texto).not.toContain('porCobrar');
+    // Y el saldo de la agencia tampoco se cuela por otra parte de la respuesta.
+    expect(r.texto).not.toContain('3200000');
+  });
+
+  it('el mismo alcance CON el permiso sí la trae: lo que cambia es el permiso, no el alcance', async () => {
+    const sin = await reporte('sinCobrosA');
+    const con = await reporte('operacionesA');
+    expect(sin.json.alcance).toBe(con.json.alcance);
+    expect(sin.json.cotizacionesAbiertas).toEqual(con.json.cotizacionesAbiertas);
+    expect(con.json.porCobrar).toEqual({
+      porMoneda: [{ moneda: 'COP', archivos: 2, saldo: { unidades: '3200000', moneda: 'COP' } }],
+      truncado: false,
+    });
   });
 });
