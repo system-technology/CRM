@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 1 | **Cargar los secretos de la API en Render** | Son claves; nunca pasan por una sesión | `CAMPOS_SENSIBLES_KEY` (+`_VERSION`, con copia fuera de Render), `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY` (+`_VERSION`), `CORREO_PAYLOAD_KEY`, `WHATSAPP_DIRECTORY_PEPPER` (+`_VERSION`), `POSTMARK_SERVER_TOKEN`, `POSTMARK_MESSAGE_STREAM`, `MAIL_FROM` |
 | 2 | **Secreto `DIRECT_URL` en GitHub Actions** | Es una cadena de conexión de la base | Sin él no corren las migraciones contra Neon (hoy faltan decenas) |
-| 3 | **Proyecto de la web en Vercel** | El panel de Vercel es tuyo | Conectar la integración de GitHub y crear el proyecto; luego se fija `WEB_PUBLIC_URL` |
+| 3 | ~~Proyecto de la web en Vercel~~ **Existe** (`viajapro-staging`, 2026-11-21) | — | Falta que despliegue lo nuevo de `main` y fijar `WEB_PUBLIC_URL`; sin API en Render la web no tiene con qué hablar (Render, sin verificar) |
 | 4 | **Mover el servicio de Render a tu proyecto** y poner `healthCheckPath` en `/salud` | La herramienta no elige proyecto | Panel de Render |
 
 ## Bloquean el flujo de PR
