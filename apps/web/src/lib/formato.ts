@@ -12,6 +12,8 @@
  * 4. Cupos: «Agotado», «1 cupo disponible», «12 de 20 cupos», «12 cupos disponibles».
  */
 
+import { MONEDAS, esCodigoMoneda } from '@viajapro/domain';
+
 export const ZONA_HORARIA_COLOMBIA = 'America/Bogota';
 export const LOCALE_COLOMBIA = 'es-CO';
 
@@ -40,6 +42,18 @@ export interface OpcionesFormatoTelefono {
 
 export interface OpcionesFormatoCupo {
   total?: number | null | undefined;
+}
+
+/**
+ * Decimales de una moneda: los de `MONEDAS` de `@viajapro/domain` y de ninguna otra tabla (T-520).
+ *
+ * Tener aquí un `moneda === 'COP' ? 0 : 2` sería una segunda fuente de verdad que coincide hoy y
+ * se rompe el día que entre una moneda de 3 decimales. Una moneda que el dominio no habilita no
+ * tiene decimales conocidos: se usan 2, que es lo que `Intl` asume, solo para poder pintarla.
+ */
+export function decimalesDeMoneda(moneda: string): number {
+  const codigo = moneda.toUpperCase();
+  return esCodigoMoneda(codigo) ? MONEDAS[codigo].decimales : 2;
 }
 
 /**
@@ -78,7 +92,7 @@ function extraerMontoYMoneda(
   }
 
   if (entrada.unidades !== undefined) {
-    const decimales = moneda === 'COP' ? 0 : 2;
+    const decimales = decimalesDeMoneda(moneda);
     const num = Number(entrada.unidades) / 10 ** decimales;
     return { valor: Number.isFinite(num) ? num : 0, moneda };
   }
@@ -93,8 +107,7 @@ function extraerMontoYMoneda(
  */
 export function formatearDinero(entrada: EntradaDinero, opciones?: OpcionesFormatoDinero): string {
   const { valor, moneda } = extraerMontoYMoneda(entrada, opciones);
-  const esCOP = moneda.toUpperCase() === 'COP';
-  const decimales = esCOP ? 0 : 2;
+  const decimales = decimalesDeMoneda(moneda);
 
   const formateador = new Intl.NumberFormat(LOCALE_COLOMBIA, {
     style: 'currency',

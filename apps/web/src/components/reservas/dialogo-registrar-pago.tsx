@@ -7,6 +7,7 @@ import {
   ETIQUETA_MEDIO_DE_PAGO,
   aUnidadesMinimas,
   admiteCentavos,
+  ecoDeMonto,
   hoyEnLaAgencia,
 } from '../../lib/cobros-logica';
 import { formatearDinero } from '../../lib/formato';
@@ -71,6 +72,8 @@ export function DialogoRegistrarPago({
   const contenedorRef = useFocoModal<HTMLDivElement>({ abierto: true, alCerrar: onCerrar });
 
   const id = useId();
+  // Lo que se va a registrar con lo escrito hasta ahora (T-521); `null` mientras no sea una cifra.
+  const eco = ecoDeMonto(monto, moneda);
 
   const registrar = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,12 +147,26 @@ export function DialogoRegistrarPago({
                 autoComplete="off"
                 autoFocus
                 placeholder={admiteCentavos(moneda) ? '1.250,50' : '1.250.000'}
-                aria-describedby={`${id}-monto-ayuda`}
+                aria-describedby={`${id}-monto-eco ${id}-monto-ayuda`}
                 className={`${CAMPO} tabular-nums`}
                 value={monto}
                 onChange={(e) => setMonto(e.target.value)}
               />
             </div>
+            {/*
+              El eco (T-521): el importe ya normalizado, para que `1.250` en USD se vea como lo que
+              es (mil doscientos cincuenta) ANTES de pulsar. Siempre en el DOM, con el alto
+              reservado, para que el lector de pantalla lo anuncie al cambiar y el diálogo no salte.
+            */}
+            <p
+              id={`${id}-monto-eco`}
+              role="status"
+              aria-live="polite"
+              data-testid="eco-del-monto"
+              className="mt-1 min-h-[1.25rem] text-xs font-semibold text-neutral-900 tabular-nums dark:text-white"
+            >
+              {eco}
+            </p>
             <p
               id={`${id}-monto-ayuda`}
               className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400"
