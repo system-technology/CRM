@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 13:55 UTC**, por la madre `session_01R81Xh5b7wpteu5YpcDpw5p`. `main` en **`d755ea69`**. **Lote de mediodía CERRADO: siete PR integrados** (#427, #428, #430, #429, #433, #434, #432). **Cero sesiones hijas vivas** — la flota está parada: repartir es lo primero.
+Última actualización: **2026-11-21, 14:20 UTC**, por la madre `session_01R81Xh5b7wpteu5YpcDpw5p`, **que se releva aquí**. `main` en **`898ba390`**. **ONCE PR integrados** en el turno (#427, #428, #430, #429, #433, #434, #432, #435, #436, #437, #438). **Cero PR abiertos.**
 
 
 ## 1. Quién es quién
@@ -19,9 +19,10 @@
 - **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
 - **El despertar de las 2 h ya apunta bien.** Tarea programada **`trig_01H8nNZUwV2DdTA2fnJzQkVh`** (`15 */2 * * *`), creada por la madre anterior el 2026-11-21 a las 09:53 UTC apuntando a la madre actual; la suya, `trig_016u2cLZTGLRrJvkZWgJpqpG`, quedó borrada. **Verificado con `list_triggers`**, no de palabra. Quedó así porque a la madre nueva el clasificador le deniega `create_trigger`: si vuelve a haber relevo, **la madre saliente crea la tarea de la entrante antes de retirarse**.
 - **Sesión madre ACTUAL: `session_01R81Xh5b7wpteu5YpcDpw5p`** (Opus, esfuerzo alto), desde las 12:25 UTC del 2026-11-21. La saliente, `session_01R81Xh3ygCnt8wYfALeA6yY`, llegó a 688 mil tokens y 122 USD.
-- **Sesiones hijas vivas: NINGUNA** (13:55 UTC). Las cinco del lote entregaron y están archivadas. **Si lees esto y la flota sigue parada, repartir es lo primero**, antes que cualquier documentación.
+- **Sesión madre: SE RELEVÓ a las 14:20 UTC.** La saliente, `session_01R81Xh5b7wpteu5YpcDpw5p`, llegó a **450 mil tokens y 47 USD** — **el triple del tope de 150 mil**. Motivo exacto, para que no se repita: **comprobó el consumo de todas las hijas en cada vuelta y el suyo propio solo una vez, al arrancar, cuando marcaba 0.** El despertar de las dos horas trae ese paso el quinto; conviene hacerlo **el primero**.
+- **El despertar propio FUNCIONA, verificado:** `trig_01Cq7TrGZ9uGFc9uAmqQEDtr` disparó a las **14:15:28 UTC** directo en la madre, sin relevo en dos saltos. Era su primera vez.
+- **Sesión hija viva (1), y está BLOQUEADA:** `session_01R81Xh6LKjb37fMwSBRg2YL` — **T-531 y T-532** (carril `a`, reportes por asesor y por destino, **solo servidor**). **Lleva parada desde las 13:49 esperando un permiso de Bash que solo contesta el propietario en esa conversación.** No es un fallo suyo.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
-  - **Coste de las cinco:** 164, 291, 161, 134 y **324 mil tokens** (esta última, **25,51 USD**). La más barata, **0,80 USD**, fue la de encargo más acotado: dos tareas del mismo fichero, con el defecto ya verificado y el criterio escrito. **Ninguna ve su propio consumo**: el tope de 150 mil lo mira la madre o no lo mira nadie.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
 ## 2. Reglas operativas que no se olvidan
@@ -60,7 +61,7 @@ Dos causas distintas: **18 tareas** con `type`/`effort` fuera del enum (mecánic
 validador exige una (no mecánico: hay que decidir una por una, y es del `dueno-de-producto`, no de la madre).
 **Mientras siga roto, cerrar una tarea es manual y `tasks.yaml` miente si alguien se olvida.**
 
-**Ids usados hoy por la madre:** T-537..T-552. **Siguiente libre: T-553.**
+**Ids usados hoy por la madre:** T-537..T-553. **Siguiente libre: T-554.**
 
 **De lo nuevo, lo que no puede esperar: T-543 (P1).** `formatearDeltaDinero` pinta **cien veces de más** en toda moneda con decimales, porque formatea unidades mínimas sin dividir. En COP acierta por casualidad. Lo avisó la sesión de T-520/T-521 y **lo verificó la madre leyendo el fuente**. Es el error de R8 que ya llegó a pantalla una vez.
 
