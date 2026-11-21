@@ -190,7 +190,7 @@ export class RespuestaParaReportesPrisma extends PuertoRespuestaParaReportes {
                COUNT(*)::int AS nuevas,
                COUNT(primera_respuesta_en)::int AS respondidas,
                AVG(minutos)::text AS promedio,
-               (percentile_cont(0.5) WITHIN GROUP (ORDER BY minutos))::text AS mediana,
+               (percentile_cont(0.9) WITHIN GROUP (ORDER BY minutos))::text AS mediana,
                (percentile_cont(0.9) WITHIN GROUP (ORDER BY minutos))::text AS p90
           FROM atribuidas
          GROUP BY asesor_id`;

@@ -296,7 +296,7 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
     return this.prisma.conTenant(async (tx) => {
       const filas = await tx.$queryRaw<FilaDeVentasPorDestino[]>`
         SELECT v.destino,
-               v.moneda_iso,
+               MIN(v.moneda_iso) AS moneda_iso,
                COUNT(*)::int AS cantidad,
                SUM(v.venta_unidades)::text AS venta
                ${columnasDeMargen}
@@ -313,8 +313,8 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
                     AND h.cotizacion_id = c.id
                     AND h.estado_hasta = 'ACEPTADA'
                     AND h.ocurrido_en >= ${desde} AND h.ocurrido_en < ${hasta})
-         GROUP BY v.destino, v.moneda_iso
-         ORDER BY v.moneda_iso, SUM(v.venta_unidades) DESC, v.destino`;
+         GROUP BY v.destino
+         ORDER BY MIN(v.moneda_iso), SUM(v.venta_unidades) DESC, v.destino`;
       return filas.map((f) => ({ destino: f.destino, ...aVenta(f, incluirMargen) }));
     });
   }
