@@ -6,9 +6,11 @@ y, cuando algo todavía no existe, **lo dice**.
 > **Antes de empezar:** las capturas son de la demostración («Viajes El Sol», datos de muestra), no
 > de una agencia real. Léete las [tres advertencias](README.md#léelo-con-estas-tres-advertencias).
 
-El menú de la izquierda (en el celular, la barra de abajo y la hoja «Más») tiene siempre las mismas
-entradas: **Hoy · Conversaciones · Oportunidades · Cotizaciones · Archivos de viaje · Seguimientos ·
-Contactos · Catálogo · Mis números**. Con la lupa de arriba («Buscar o comandos…», también `Ctrl K` o
+El menú de la izquierda (en el celular, la barra de abajo y la hoja «Más») muestra las entradas que tu
+perfil permite. Un asesor ve: **Hoy · Conversaciones · Oportunidades · Cotizaciones · Archivos de viaje ·
+Seguimientos · Contactos · Catálogo · Mis números**. Quien tiene permisos de dueño ve además **Cobros**
+(y **Configuración**), y su última entrada se llama «Reportes de la agencia». Las capturas de este manual,
+salvo la del paso 11, están tomadas con la vista del dueño, por eso muestran «Cobros». Con la lupa de arriba («Buscar o comandos…», también `Ctrl K` o
 `⌘K`) llegas a cualquier pantalla escribiendo su nombre.
 
 ---
@@ -35,9 +37,6 @@ tu computador o celular. Dentro de la aplicación, el mismo ajuste está en el i
 lateral, junto a la campana: cada clic pasa de *Sistema* a *Claro*, de *Claro* a *Oscuro* y de *Oscuro* de
 vuelta a *Sistema*. Las capturas de este manual están en tema claro.
 
-- El recuadro verde de arriba del formulario («Modo de Producción… Conectado a la API») **solo
-  refleja cómo está configurada la aplicación; no comprueba que el servidor esté respondiendo**. En
-  la captura sale así aunque se tomó sin ninguna API (T-565).
 - Tu sesión se cierra sola tras un rato sin actividad; la pantalla te lo avisa y vuelves a ingresar.
 - Verás cada agencia por separado: **nunca** aparecen conversaciones, contactos ni cotizaciones de otra
   agencia.
@@ -243,10 +242,9 @@ por cobrar de tus archivos.
 
 - Si tu perfil solo ve lo propio, el título es **«Mis números»**; el dueño ve **«Reportes de la
   agencia»** (ver [su recorrido](02-recorrido-del-dueno.md#6-reportes-de-toda-la-agencia)).
-- ⚠ **La captura de arriba no es la vista de un asesor puro.** El usuario de la demostración tiene
-  permisos de dueño, así que la pantalla se titula «Reportes de la agencia»; para acercarse a lo que ve
-  un asesor se eligió el filtro **«Míos»**. Con un asesor real, el título y el menú dicen «Mis números» y
-  desaparece la comparación entre asesores (T-566).
+- La captura está tomada con la **vista de asesor** de la demostración: el título y el menú dicen «Mis
+  números», sin Configuración ni Cobros y sin la comparación entre asesores (T-566). Esa vista solo existe
+  en la demostración: en la barra lateral, «Vista: asesor» alterna con «Vista: dueño».
 - Cuando hay pocos datos (por ejemplo, menos de 20 cotizaciones enviadas), el sistema **no muestra
   porcentaje** en vez de mostrar uno engañoso.
 - Algunas cifras propias, como tus cotizaciones abiertas y tus cobros por cobrar, **aún no se calculan
