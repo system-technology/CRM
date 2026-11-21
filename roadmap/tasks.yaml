@@ -9646,13 +9646,14 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: review
     acceptance:
       - "Un reintento con la misma clave pero la nota editada devuelve 200 con la fila original: la asesora cree que corrigio la nota y no corrigio nada"
       - "O el servidor rechaza el reintento con datos distintos, o lo dice en la respuesta; en silencio no"
     source: "auditoria independiente de #410 (T-331), 2026-11-21"
     created_at: 2026-11-21T09:10:00.000Z
     owner: backend
+    notes: "EN REVISION en #420 (carril a) y su PR de rastro (carril i); SIN INTEGRAR. Decision: RECHAZAR, no aceptar-y-avisar. mismoContenido compara ahora todo el cuerpo (referencia, nota y motivo ademas del dinero); si algo difiere, 409 CLAVE_DE_IDEMPOTENCIA_REUTILIZADA y no se escribe nada. El reintento identico sigue devolviendo 200 con la misma fila. El reverso compara tambien su motivo. Excepcion: en una fila tachada (ADR-0034 2.4) nota y referencia no cuentan, porque las vacio la base. Razonado en ADR-0036, que enmienda ADR-0034 4 paso 2. Verificado en local: typecheck, lint y las unitarias de apps/api. SIN VERIFICAR: las e2e y el build (esta sesion no levanta Postgres) y la auditoria independiente que el propietario exige antes de integrar por ser dinero."
   - id: T-517
     title: "Web: cobro.avisos no se pinta en ningun sitio"
     type: feature
@@ -9718,4 +9719,17 @@ tasks:
       - "Si se decide que la columna no hace falta, se retira con migración nueva en vez de quedar muerta"
     source: "T-342: al escribir `creado_por` para la atribución de reportes se vio que la columna hermana sigue sin escribirse. No bloquea: ningún reporte la usa"
     created_at: 2026-11-21T22:00:00.000Z
+    owner: backend
+  - id: T-522
+    title: "Cobros: la excepcion de la fila tachada asume que el tachado vacia nota y referencia a la vez"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "mismoContenido se salta nota y referencia cuando nota_tachada_en no es nulo (T-516, ADR-0036). Hoy lo sostiene el disparador de 20261121140000_pagos_del_viajero_libro_de_cobro, que obliga a vaciar las dos a la vez"
+      - "Si el tachado llega a tener ruta de API, o el disparador cambia, la comparacion se relajaria de mas: una prueba debe fallar si deja de ser cierto que el tachado vacia ambas"
+    source: "T-516, riesgo aceptado en ADR-0036"
+    created_at: 2026-11-21T09:50:00.000Z
     owner: backend
