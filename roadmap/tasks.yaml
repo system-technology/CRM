@@ -12475,6 +12475,29 @@ tasks:
     evidence: "Mergeado en main por el PR #485 (rama i/T-593-diario-del-lote) con el CI en verde: format, analyze,
       tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 5f150305882db109f5e57461eabb62aaa8e2ba88
+  - id: T-595
+    title: "Staging: verificar de verdad el estado de Neon (migraciones y roles), que el hilo daba por sabido y no cuadra"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: leer el estado de Neon exige el panel o una credencial de la base, las dos fuera de la autorizacion del orquestador. El MCP de Neon rechaza su credencial (HTTP 401)."
+    acceptance:
+      - "ESTADO.md venia afirmando «Neon viajapro-staging existe con 32 de 47 migraciones aplicadas y
+        faltan 3 roles». Esa cifra es de una comprobacion anterior y se arrastraba como un hecho"
+      - "NO CUADRA con lo medido el 2026-11-21 a las 22:55 UTC: /salud/listo responde 200 con
+        baseDeDatos ok, rol viajapro_app y aislamiento forzado. Por R2 cada proceso ABORTA al arrancar
+        si no es el rol que esperaba ser, asi que una API viva con ese rol contradice que falten roles"
+      - "Las dos cosas pueden ser ciertas a la vez solo si los roles que faltan son otros distintos del
+        de la aplicacion. Eso es justo lo que hay que mirar, no suponer"
+      - "Comprobar contra Neon: cuantas migraciones estan aplicadas de verdad y que roles existen.
+        Mientras no se mire, ESTADO.md lo marca como SIN VERIFICAR, que es lo honesto"
+      - "Si faltan migraciones, el ingreso del cliente puede fallar por una tabla ausente y no solo por
+        T-594. Las dos causas se investigan juntas"
+    source: "contradiccion encontrada al revisar el hilo tras el aviso del propietario (2026-11-21)"
+    owner: propietario
+
   - id: T-594
     title: "Staging: el cliente entra a la web pero el ingreso lo rechaza; WEB_PUBLIC_URL no incluye el dominio de Vercel"
     type: bug
