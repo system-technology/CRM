@@ -41,7 +41,16 @@ for (const { ruta, titulo } of RUTAS) {
 // de las demás lo cubre `navegacion.spec.ts`. Recorrer también catálogo, reportes o contactos
 // agotaba el límite de 300 peticiones por minuto por IP de la API del CI («Demasiadas peticiones»).
 // Rutas medidas a mano a 390×844 al arreglar el doble desplazamiento; el resto del marco es el mismo.
-const MIDE_DESPLAZAMIENTO = new Set(['/bandeja', '/seguimientos', '/viajes', '/configuracion']);
+// `/reportes` entra con T-343: su criterio de aceptacion exige 390 px sin desplazamiento lateral y
+// hasta ahora no lo comprobaba nadie — ni capturas (el clasificador no deja arrancar `next dev`) ni
+// esta prueba. Se mide sobre la misma carga, asi que no suma peticiones al limite de la API del CI.
+const MIDE_DESPLAZAMIENTO = new Set([
+  '/bandeja',
+  '/seguimientos',
+  '/viajes',
+  '/configuracion',
+  '/reportes',
+]);
 
 const RUTAS_CON_MARCO: Array<{ ruta: string; activoEscritorio: boolean; activoMovil: boolean }> = [
   { ruta: '/', activoEscritorio: true, activoMovil: true },
