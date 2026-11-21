@@ -7861,7 +7861,7 @@ tasks:
     owner: qa
   - id: T-383
     title: "Garantizar que la suite de aislamiento no corra en paralelo contra la misma base (ACCESS EXCLUSIVE)"
-    type: devops
+    type: infra
     phase: 2
     priority: P3
     effort: S
@@ -9411,7 +9411,7 @@ tasks:
     type: test
     phase: 2
     priority: P3
-    effort: XS
+    effort: S
     status: backlog
     acceptance:
       - "La aserción de la línea 505 falla si el tope por identificador no corta la ráfaga; se comprueba rompiéndolo a propósito"
@@ -9531,7 +9531,7 @@ tasks:
     owner: frontend
   - id: T-507
     title: "Migracion 20261121160000: el relleno recorre tenants dos veces en una transaccion; pasar a lotes"
-    type: perf
+    type: refactor
     phase: 1
     priority: P3
     effort: S
@@ -9543,7 +9543,7 @@ tasks:
     owner: datos
   - id: T-508
     title: "Web: puedeVerReportesDeLaAgencia exportada en permisos.ts sin consumidor ni prueba"
-    type: chore
+    type: refactor
     phase: 1
     priority: P3
     effort: S
@@ -9644,7 +9644,7 @@ tasks:
 
   - id: T-515
     title: "Web: mock-cobros.ts entra al bundle de produccion por import estatico"
-    type: chore
+    type: refactor
     phase: 1
     priority: P2
     effort: S
@@ -9657,7 +9657,7 @@ tasks:
     owner: frontend
   - id: T-516
     title: "Cobros: la idempotencia del servidor ignora referencia y nota, y el cambio se pierde en silencio"
-    type: fix
+    type: bug
     phase: 1
     priority: P2
     effort: S
@@ -9685,7 +9685,7 @@ tasks:
     owner: frontend
   - id: T-518
     title: "Web: un error de red en el panel de cobro se explica como falta de permiso"
-    type: fix
+    type: bug
     phase: 1
     priority: P3
     effort: S
@@ -9711,7 +9711,7 @@ tasks:
     owner: datos
   - id: T-513
     title: "Retirar el alias transitorio ResumenDeReportes y dejar solo la unión discriminada"
-    type: chore
+    type: refactor
     phase: 1
     priority: P2
     effort: S
@@ -9726,7 +9726,7 @@ tasks:
     notes: "Hecho en la rama de T-343: la web lee `alcance`; ResumenDeReportes es la unión discriminada y desaparece el objeto permisivo. `ResumenDeReportesPorAlcance` queda como alias de exportación del mismo esquema porque apps/api lo importa (renombrarlo allí es del carril de API, no cambia el contrato)."
   - id: T-514
     title: "cotizaciones.actualizado_por no se escribe nunca"
-    type: chore
+    type: refactor
     phase: 1
     priority: P3
     effort: S
@@ -9739,7 +9739,7 @@ tasks:
     owner: backend
   - id: T-522
     title: "Cobros: en una fila tachada, un reintento con otro texto vuelve a descartar la edicion en silencio"
-    type: fix
+    type: bug
     phase: 1
     priority: P3
     effort: S
@@ -9766,7 +9766,7 @@ tasks:
     owner: qa
   - id: T-524
     title: "Cobros: un cliente no-web puede recibir 409 por un texto semanticamente igual"
-    type: chore
+    type: refactor
     phase: 1
     priority: P3
     effort: S
@@ -9779,7 +9779,7 @@ tasks:
     owner: backend
   - id: T-525
     title: "Web: reutilizar una clave en otro archivo da un mensaje que no encaja con la pantalla"
-    type: fix
+    type: bug
     phase: 1
     priority: P3
     effort: S
@@ -9792,10 +9792,10 @@ tasks:
     owner: frontend
   - id: T-526
     title: "Subir LIMITE_TASA_POR_TENANT en el job navegador del CI (hoy 600/min)"
-    type: chore
+    type: infra
     phase: 1
     priority: P3
-    effort: XS
+    effort: S
     status: backlog
     acceptance:
       - "El job navegador fija LIMITE_TASA_POR_TENANT junto a LIMITE_TASA_POR_IP (5000); sin eso, la suite agota los 600/min de la agencia demo y las pantallas ultimas dan «Demasiadas peticiones» (429). Ruta protegida (.github/): espera al propietario"
@@ -9804,7 +9804,7 @@ tasks:
     owner: devops
   - id: T-527
     title: "ADR-0035 §1 promete validar el asesorId de alcance AGENCIA y el codigo lo devuelve tal cual"
-    type: chore
+    type: refactor
     phase: 1
     priority: P3
     effort: S
@@ -9853,7 +9853,7 @@ tasks:
 
   - id: T-530
     title: "Paleta de comandos y bloque «Rendimiento comercial» de «Hoy» hablan de «equipo» ante un asesor que solo ve lo suyo"
-    type: chore
+    type: refactor
     phase: 2
     priority: P3
     effort: S
@@ -9914,7 +9914,7 @@ tasks:
     owner: backend
   - id: T-534
     title: "Reportes de agencia: ventas, embudo y respuesta están dos veces (ReportesListo y los bloques de DashboardAdmin)"
-    type: chore
+    type: refactor
     phase: 1
     priority: P3
     effort: M
@@ -9928,7 +9928,7 @@ tasks:
     owner: frontend
   - id: T-535
     title: "Errores de acceso: la web ya no pinta el mensaje del servidor sin mirarlo"
-    type: fix
+    type: bug
     phase: 1
     priority: P1
     effort: S
@@ -9946,7 +9946,7 @@ tasks:
     type: security
     phase: 1
     priority: P2
-    effort: XS
+    effort: S
     status: ready
     acceptance:
       - "NO es una fuga y conviene que quede dicho: el valor se genera dentro del job con openssl rand, firma cookies de prueba contra un Postgres efimero y muere con el job. No da acceso a nada. Verificado en el log de 3a91bda7"
