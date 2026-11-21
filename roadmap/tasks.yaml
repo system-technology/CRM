@@ -12475,6 +12475,39 @@ tasks:
     evidence: "Mergeado en main por el PR #485 (rama i/T-593-diario-del-lote) con el CI en verde: format, analyze,
       tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 5f150305882db109f5e57461eabb62aaa8e2ba88
+  - id: T-594
+    title: "Staging: el cliente entra a la web pero el ingreso lo rechaza; WEB_PUBLIC_URL no incluye el dominio de Vercel"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: WEB_PUBLIC_URL es sync:false en render.yaml, o sea que su valor NO esta en el repositorio y solo se pone en el panel de Render, que esta fuera de la autorizacion del orquestador."
+    acceptance:
+      - "SINTOMA reportado por el propietario (2026-11-21, 22:5x UTC): el cliente abre la URL de
+        staging y la ve, pero al poner usuario y contrasena no le deja entrar"
+      - "MEDIDO, no supuesto, el mismo dia. La web responde 200 en / y en /ingresar con su
+        formulario. La API de Render ESTA VIVA: /salud da 200 y /salud/listo da 200 con
+        estado ok, baseDeDatos ok, rol viajapro_app y aislamiento forzado. La reescritura web
+        hacia API funciona: /api/v1/salud da el MISMO 401 desde Vercel que desde Render directo"
+      - "CAUSA MAS PROBABLE, por lectura del codigo: origen.ts linea 33 devuelve UNA SOLA entrada,
+        WEB_PUBLIC_URL, y si falta usa http://localhost:3000. origin-check.middleware.ts rechaza con
+        403 ORIGEN_NO_CONFIABLE toda MUTACION cuyo Origin no este en esa lista, y salta los metodos
+        seguros. Por eso un GET se ve bien y el POST del ingreso no: el navegador manda
+        Origin: https://viajapro-staging.vercel.app y la API no lo reconoce"
+      - "Arreglo: poner WEB_PUBLIC_URL en Render al origen EXACTO que usa el cliente, con esquema y
+        sin barra final. El comentario de render.yaml propone https://staging.<dominio>, que es un
+        dominio propio que todavia no existe"
+      - "SEGUNDA CAUSA POSIBLE, no descartada: que no exista el usuario del cliente en la base de
+        staging, o que su clave se perdiera (punto 8e de PENDIENTES-DEL-PROPIETARIO). Se distingue
+        en diez segundos: si el POST de ingreso responde 403 con ORIGEN_NO_CONFIABLE es lo primero;
+        si responde 401 con error de credenciales es lo segundo"
+      - "NO SE PUDO CONFIRMAR desde la sesion: hace falta un POST con cabecera Origin para ver el
+        codigo y el cuerpo, y el clasificador deniega curl y el navegador. Las herramientas de
+        Vercel, Render y Neon rechazan sus credenciales"
+    source: "sintoma del propietario y verificacion por HTTP de la madre septima (2026-11-21)"
+    owner: propietario
+
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
