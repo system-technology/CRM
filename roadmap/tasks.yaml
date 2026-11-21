@@ -12498,6 +12498,29 @@ tasks:
     source: "contradiccion encontrada al revisar el hilo tras el aviso del propietario (2026-11-21)"
     owner: propietario
 
+  - id: T-597
+    title: "API: avisar al arrancar si WEB_PUBLIC_URL o API_PUBLIC_URL faltan o apuntan a localhost"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Las dos son sync:false en render.yaml: su valor solo existe en el panel y olvidarlas es
+        facil. Sin ellas el codigo cae a localhost EN SILENCIO y el sintoma es que la web se ve pero
+        nadie entra, sin una linea que diga por que. Es lo que le pasa al cliente del piloto"
+      - "Avisar con un error en el registro al arrancar, nombrando la variable, el valor en uso y la
+        consecuencia concreta. NO abortar: tumbaria un staging que hoy atiende a alguien"
+      - "El rechazo por origen debe registrar el Origin recibido y la lista de confianza, para
+        distinguir una web mal configurada de un sitio ajeno"
+      - "MEDIDO por la sesion que lo implemento: el rechazo del ingreso lo da NUESTRO middleware, no
+        Better Auth, porque va registrado primero con forRoutes(*) y no salta POST. Better Auth solo
+        valida Origin si la peticion trae cookie, y un primer ingreso no la trae"
+      - "Lo que se ve en el navegador: 403 de POST /api/v1/auth/sign-in/email con cuerpo
+        {error:{code:ORIGEN_NO_CONFIABLE,message:Origen no permitido.}}"
+    source: "sintoma del cliente del piloto y lectura del codigo (2026-11-21)"
+    owner: backend
+
   - id: T-594
     title: "Staging: el cliente entra a la web pero el ingreso lo rechaza; WEB_PUBLIC_URL no incluye el dominio de Vercel"
     type: bug
