@@ -58,3 +58,20 @@
 | 16 | **Contador** para el ADR-0023 (comisión del proveedor, fiscal) | ADR-0023 |
 | 17 | **Rotar la clave de 21st.dev** que se pegó en un chat | — |
 | 18 | Un mensaje real de WhatsApp desde un celular a la bandeja | Cierra la prueba de punta a punta |
+
+## 13. T-083: el JSON de ramas protegidas difiere del servidor en tres campos
+
+**Qué pasa:** la reconciliación de las P1 (PR #463, 2026-11-21) encontró que
+`.github/proteccion-main.json` ya no coincide con la protección que `main` tiene de verdad en el
+servidor: difieren en tres campos. **Reaplicar el JSON tal cual apagaría los code owners**, que es
+justo lo que hace que las rutas protegidas esperen su aprobación.
+
+**Por qué no lo hago yo:** la configuración de GitHub está fuera de mi autorización, y aquí
+equivocarse abre la puerta de `main`. No lo toco ni por aproximación.
+
+**Qué hace falta de usted:** decidir cuál de los dos manda — el archivo o el servidor — y aplicarlo
+en la configuración del repositorio. Si manda el servidor, basta con que alguien actualice el JSON
+para que deje de mentir; si manda el archivo, hay que reaplicarlo **sin perder los code owners**.
+
+**Mientras tanto:** la protección del servidor sigue en pie y `main` no está desprotegido. Lo que
+está roto es que el archivo versionado ya no describe lo que hay.

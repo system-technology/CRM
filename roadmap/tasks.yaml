@@ -8366,13 +8366,17 @@ tasks:
     title: Mutación que cubra T-307 (M24) y evaluar correr mutaciones-aislamiento.mjs en el CI
     type: test
     phase: 2
-    priority: P3
+    priority: P1
     effort: M
     status: ready
     human_required: true
     depends_on:
       - T-307
     acceptance:
+      - "Sube de P3 a P1 el 2026-11-21: la reconciliacion de las P1 (PR #463) dejo ver que el arnes de
+        mutaciones de aislamiento NO corre en el CI mientras esta tarea dormia en P3. CLAUDE.md §3.1 dice que
+        el aislamiento entre agencias es el unico sitio donde no se recorta: una compuerta de aislamiento que
+        no se ejecuta no es una compuerta. Lo demas de la tarea no cambia"
       - M24 restaura el cuerpo de proteger_verificacion_del_perfil de T-268 (sin la fijación de fechas) y la
         prueba P-7 debe ponerse en rojo
       - Se ejecutan por primera vez M22 y M23 (hoy nunca corrieron) y se anota el resultado
@@ -11974,3 +11978,63 @@ tasks:
     source: "aviso de la sesion de T-560 al entregar #457, 2026-11-21"
     created_at: 2026-11-21T16:25:00.000Z
     owner: frontend
+  - id: T-574
+    title: "Roadmap: las 14 tareas P0 abiertas nunca se contrastaron contra el codigo"
+    type: audit
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "La reconciliacion de T-563 (PR #463) solo cubrio las P1: de 74 abiertas, 8 ya estaban hechas y 49 estaban
+        mal priorizadas. Las P0 no se tocaron y hoy hay 14 abiertas: T-079, T-080, T-081, T-093, T-120, T-121,
+        T-123, T-126, T-131, T-132, T-133, T-134, T-135 y T-136"
+      - "La sesion que reconcilio las P1 avisa de que T-131 y T-132, ambas P0 en backlog, YA estan en el codigo.
+        No esta verificado por nadie mas: verificarlo es parte de la tarea"
+      - "Por que es P1 y no cola: P0 significa «lo mas urgente». Si la mitad de esa lista esta hecha o mal
+        priorizada, la cola miente justo donde mas se mira, y se reparte trabajo ya hecho"
+      - "Por cada P0: decir si esta hecha (nombrando el simbolo, archivo o prueba que lo demuestra), si sigue
+        abierta de verdad, o si su prioridad esta mal. Reescribir a lo que FALTA, no a lo que se penso en su dia"
+      - "Mismo metodo que #463: tomar origin/main como base y reaplicar tarea por tarea, nunca pegar bloques.
+        Verificar al cerrar que el YAML parsea, que no hay ids duplicados y que cada titulo lleva su cuerpo"
+    source: "hallazgo de la reconciliacion de las P1 (PR #463), 2026-11-21"
+    created_at: 2026-11-21T17:10:00.000Z
+    owner: dueno-de-producto
+  - id: T-575
+    title: "ADR-0035 sigue en estado «Propuesto» con todo su codigo ya integrado en main"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "docs/03-adr/0035-niveles-de-acceso-a-reportes.md dice «Estado: Propuesto», pero las tareas que habilita
+        ya estan en main: T-341 (el permiso reportes.ver_agencia) y T-342 (el alcance impuesto por el servidor)"
+      - "Incumple R7: la decision estructural se escribe ANTES de implementarse, y un ADR que sigue «Propuesto»
+        con codigo encima deja sin saber si lo que hay en main es la decision tomada o un borrador"
+      - "El propio ADR declara dos consultados pendientes (auditor-seguridad por la lista de su §9, y
+        experto-turismo por la atribucion cuando una persona cotiza y otra cierra, T-493). O se resuelven y pasa
+        a «Aceptado», o se escribe en el ADR por que se acepta sin ellos"
+      - "Ruta protegida (ADR): el PR espera aprobacion del propietario, que la sesion madre tiene delegada"
+    source: "hallazgo de la reconciliacion de las P1 (PR #463), 2026-11-21"
+    created_at: 2026-11-21T17:10:00.000Z
+    owner: arquitecto
+  - id: T-576
+    title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "T-565 quito el cartel que afirmaba «Conectado a la API y PostgreSQL en vivo» y T-566 anadio la vista de
+        asesor en la demostracion. Los dos entregaron en carril b, asi que el rastro en docs/ quedo fuera: un PR
+        que mezclara apps/web con docs/ lo rechaza el check «Carril y tarea»"
+      - "Quitar del paso 1 de docs/06-manual/01-recorrido-del-asesor.md la nota sobre el recuadro verde, y del
+        paso 11 la advertencia de que «Mis numeros» hubo que capturarla con el filtro «Mios» del dueno"
+      - "Volver a tomar asesor-01-ingreso y asesor-11-mis-numeros con docs/06-manual/capturas.mjs; regenera
+        todas de una pasada, asi que revisar que las demas no cambien de forma inesperada"
+      - "Sin esto el manual que se le ensena a una agencia describe una pantalla que ya no existe"
+    source: "criterios de T-565 y T-566 que cruzaban de carril, 2026-11-21"
+    created_at: 2026-11-21T17:10:00.000Z
+    owner: documentador
