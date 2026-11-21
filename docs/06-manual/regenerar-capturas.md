@@ -45,8 +45,8 @@ la insignia «datos de demostración» y entran directo a «Hoy».
   pudimos verificar tu sesión», porque no hay API que la confirme.
 
 Por eso: compila con `NEXT_PUBLIC_USE_REAL_AUTH=true`, toma solo `asesor-01-ingreso`, y vuelve a
-compilar **sin** esa variable para todas las demás. El recuadro verde del formulario («Conectado a la
-API y PostgreSQL en vivo») sale igual aunque no haya API: refleja la configuración, no una comprobación.
+compilar **sin** esa variable para todas las demás. Desde T-565 el formulario ya no muestra el recuadro
+verde de conexión.
 
 ## Generar las capturas: un comando
 

@@ -10,10 +10,10 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-21, **lote nocturno de cobros y permisos** (PR #475, #476 y #477; [bitácora](docs/_bitacora/2026-11-21-lote-nocturno-cobros-permisos-y-adr.md)) |
-| Actualizado por | Claude, sesión madre `session_01R81Xh5mmenvvqrBAdaBUW1` (hilo al día con los PR #289 a #477) |
+| Última actualización | 2026-11-21, **lote de contraste, pasajeros en cobros y manual** (PR #479, #480, #481, #482 y #484) |
+| Actualizado por | Claude, sesión madre `session_01R81Xh4xCBnaheEL9Gxa6TL` (hilo al día con los PR #289 a #484) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | **249 tareas `done`** en `roadmap/tasks.yaml` (555 en total; **303 abiertas, 4 P0 y 12 P1**, que eran 17). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real. **Quedan 4 P0**, y ninguna es de código: esperan despliegue, al propietario o un recorrido manual. **Aviso: el cierre automático de tareas no cierra nada** (comprobado en tres lotes seguidos), así que toda cifra de avance hay que confirmarla a mano |
+| Avance | **252 tareas `done`** en `roadmap/tasks.yaml` (564 en total; **309 abiertas, 4 P0 y 15 P1**). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real. **Quedan 4 P0**, y ninguna es de código: esperan despliegue, al propietario o un recorrido manual. **Corregido el 2026-11-21:** el aviso de que «el cierre automático no cierra nada» era un síntoma mal diagnosticado. `scripts/cerrar-tarea.mjs` valida la cola entera antes de tocar nada, y tres tareas `blocked` sin `blocked_reason` (T-334, T-336, T-584) lo abortaban, así que **ningún** PR cerraba su tarea. Arreglado. Además, el job **no escribe en `main`**: deja una rama `i/cerrar-T-XXX-prNNN` cuyo PR hay que integrar, o la tarea no llega a `done` |
 | Próximo hito | **El despliegue y la lista de chats de JD Tours, las dos del propietario.** A eso se suma ahora **la muestra de su hoja de reservas**, sin la cual T-334 y T-336 no arrancan (punto 12 de los pendientes). El código que impedía enseñar la demostración ya está en `main`: se puede aceptar una cotización desde la pantalla (T-563), verla con los ojos de un asesor (T-566) y el ingreso dejó de afirmar una conexión que no comprobaba (T-565). Después, la clave de cifrado y la prueba con Meta real (T-080) |
 
 ---

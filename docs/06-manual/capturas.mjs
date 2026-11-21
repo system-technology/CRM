@@ -86,14 +86,10 @@ const CAPTURAS = {
       .click();
     await p.waitForTimeout(800);
   },
-  // El usuario de la demostración tiene permisos de dueño: se elige «Míos» para acercarse a lo que ve un
-  // asesor. La vista de un asesor puro («Mis números», sin comparación entre asesores) no se puede
-  // capturar en demostración.
-  'asesor-11-mis-numeros': async (p) => {
-    await ir(p, '/reportes');
-    await p.getByRole('combobox').first().selectOption({ label: 'Míos' });
-    await p.waitForTimeout(1500);
-  },
+  // La vista de asesor puro de la demostración (T-566): `?vista=asesor` pinta «Mis números» y el menú de
+  // un asesor, sin tocar permisos reales. Solo vale para esta carga; las demás capturas quedan en la
+  // vista del dueño.
+  'asesor-11-mis-numeros': (p) => ir(p, '/reportes?vista=asesor'),
   'dueno-01-configuracion': (p) => ir(p, '/configuracion'),
   'dueno-02-etapas': (p) => abrirSeccionDeConfiguracion(p, 'Etapas del Pipeline'),
   'dueno-03-catalogo': (p) => ir(p, '/catalogo'),
