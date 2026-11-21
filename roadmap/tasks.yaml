@@ -7724,7 +7724,7 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
-  - id: T-378
+  - id: T-380
     title: "Guardar la semilla de la demo (seed.ts) con la regla de una sola agencia del ADR-0031"
     type: security
     phase: 2
@@ -7743,7 +7743,7 @@ tasks:
     source: "auditorías de seguridad del PR 1b (#363, cola C2 y hallazgos 1 y 8 de la segunda auditoría, 2026-11-21): seed.ts:61 crea agencia-demo sin la guarda de ADR-0031 §4"
     created_at: 2026-11-21T00:00:00.000Z
     owner: datos
-  - id: T-379
+  - id: T-381
     title: "Endurecer el cinturón de crear_agencia (usado_en IS NULL) y restaurar la R-7 original con la fase 2"
     type: security
     phase: 2
@@ -7763,7 +7763,7 @@ tasks:
     source: "auditorías de seguridad del PR 1b (#363, cola C1 y hallazgo 3 de la segunda auditoría, 2026-11-21): la R-7 reformulada ya no detecta consumir un código dos veces tras un COMMIT"
     created_at: 2026-11-21T00:00:00.000Z
     owner: datos
-  - id: T-380
+  - id: T-382
     title: "Pruebas de la guarda de agencias: rama activa en R-10, conexión real de viajapro_app y AP14 sin superusuario"
     type: test
     phase: 2
@@ -7781,7 +7781,7 @@ tasks:
     source: "auditorías de seguridad del PR 1b (#363, cola C4 y hallazgos 2 y 4 de la segunda auditoría, 2026-11-21)"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
-  - id: T-381
+  - id: T-383
     title: "Garantizar que la suite de aislamiento no corra en paralelo contra la misma base (ACCESS EXCLUSIVE)"
     type: devops
     phase: 2
@@ -7799,7 +7799,7 @@ tasks:
     source: "auditorías de seguridad del PR 1b (#363, cola C3 y hallazgo 5 de la segunda auditoría, 2026-11-21). Causa real observada en el CI de #363 (2026-11-21): el job test corre pnpm test con todos los paquetes en paralelo contra la misma base (ci.yml) y AP14, que vacía tenants, falló de forma intermitente con «Ciclo de dependencias entre: contactos, cotizaciones, roles, usuarios» (y antes con 40001), mientras aislamiento-tenants, que corre sola, pasaba"
     created_at: 2026-11-21T00:00:00.000Z
     owner: devops
-  - id: T-382
+  - id: T-384
     title: "Documentar el candado público (7410103, 0) de la guarda de agencias"
     type: security
     phase: 2
@@ -7816,7 +7816,7 @@ tasks:
     source: "segunda auditoría de seguridad del PR 1b (#363, 2026-11-21): el candado de la guarda es un advisory lock público"
     created_at: 2026-11-21T00:00:00.000Z
     owner: datos
-  - id: T-383
+  - id: T-385
     title: "Traducir VPR05 de crear_agencia a un 503 genérico en la API"
     type: feature
     phase: 2
