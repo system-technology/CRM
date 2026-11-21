@@ -8,6 +8,7 @@ import {
   estaAuthHabilitada,
   usaAuthReal,
   mapearErrorAcceso,
+  mensajeDeErrorDeAcceso,
   AuthApiError,
   MOCK_SESION_UNICA_AGENCIA,
 } from './auth-api';
@@ -55,6 +56,91 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
       expect(mapearErrorAcceso('CODIGO_INVALIDO')).toContain('El código ingresado no es válido');
       expect(mapearErrorAcceso('ORIGEN_NO_CONFIABLE')).toContain('origen de navegación no seguro');
       expect(mapearErrorAcceso('CODIGO_DESCONOCIDO', 'Mensaje fallback')).toBe('Mensaje fallback');
+    });
+
+    it('NUNCA echa a la pantalla un volcado del servidor en vez de una frase', () => {
+      // Esto se vio de verdad en el staging de noviembre de 2026: la pantalla de ingreso mostró
+      // los `issues` de Zod en crudo, con nombres de campo y códigos de validación dentro.
+      const volcado =
+        '[ { "validation": "email", "code": "invalid_string", "message": "Invalid email", "path": [ "correo" ] } ]';
+      const pintado = mapearErrorAcceso('CODIGO_DESCONOCIDO', volcado);
+      expect(pintado).not.toContain('validation');
+      expect(pintado).not.toContain('invalid_string');
+      expect(pintado).not.toContain('path');
+      expect(pintado).toContain('Ocurrió un error');
+
+      // Un objeto serializado tampoco pasa.
+      expect(mapearErrorAcceso('X', '{"code":"ALGO"}')).toContain('Ocurrió un error');
+      // Pero una frase de verdad del servidor sí se respeta.
+      expect(mapearErrorAcceso('X', 'La agencia ya no existe.')).toBe('La agencia ya no existe.');
+    });
+
+    it('ENTRADA_INVALIDA distingue lo que FALTA de lo que está mal escrito', () => {
+      // Campo vacío: se pide, no se manda «revisar» algo que no se escribió.
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'Hay datos que no cumplen el formato esperado.', {
+          contrasena: 'String must contain at least 1 character(s)',
+        }),
+      ).toBe('Escribe tu contraseña para entrar.');
+
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', {
+          identificador: 'Required',
+          contrasena: 'String must contain at least 1 character(s)',
+        }),
+      ).toBe('Escribe tu correo o usuario y tu contraseña para entrar.');
+
+      // Escrito pero mal: ahí sí se manda revisar.
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', { correo: 'Invalid email' }),
+      ).toBe('Revisa tu correo: no tiene el formato esperado.');
+
+      // Mezcla: una cosa falta y la otra está mal.
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', {
+          contrasena: 'Required',
+          correo: 'Invalid email',
+        }),
+      ).toBe('Escribe tu contraseña y revisa tu correo.');
+
+      // Sin detalles utilizables, un mensaje honesto en vez de inventarse el campo.
+      expect(mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual')).toBe(
+        'Revisa los datos del formulario e intenta de nuevo.',
+      );
+      expect(mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', { '(raíz)': 'x' })).toBe(
+        'Revisa los datos del formulario e intenta de nuevo.',
+      );
+    });
+  });
+
+  describe('el volcado de Zod del CLIENTE no llega a la pantalla', () => {
+    it('iniciarSesionApi con campos vacíos lanza AuthApiError, no ZodError', async () => {
+      // Es el caso exacto de la captura de staging: el formulario envía cadenas vacías, el
+      // esquema compartido falla en el navegador y ZodError.message es el JSON de los issues.
+      process.env['NEXT_PUBLIC_USE_REAL_AUTH'] = 'false';
+      await expect(iniciarSesionApi({ identificador: '', contrasena: '' })).rejects.toMatchObject({
+        name: 'AuthApiError',
+        code: 'ENTRADA_INVALIDA',
+        // Los dos campos llegan vacíos: el mensaje los PIDE, no manda «revisar» nada.
+        message: 'Escribe tu correo o usuario y tu contraseña para entrar.',
+      });
+
+      const fallo: unknown = await iniciarSesionApi({
+        identificador: '',
+        contrasena: '',
+      }).catch((e: unknown) => e);
+      const mensaje = fallo instanceof Error ? fallo.message : String(fallo);
+      expect(mensaje).not.toContain('too_small');
+      expect(mensaje).not.toContain('path');
+      expect(mensaje).not.toContain('"code"');
+    });
+
+    it('mensajeDeErrorDeAcceso nunca devuelve un volcado, venga de donde venga', () => {
+      const volcado = '[{"code":"too_small","path":["contrasena"]}]';
+      expect(mensajeDeErrorDeAcceso(new Error(volcado))).not.toContain('too_small');
+      expect(mensajeDeErrorDeAcceso(new Error(volcado))).toContain('Ocurrió un error');
+      expect(mensajeDeErrorDeAcceso('una cadena suelta')).toContain('Ocurrió un error');
+      expect(mensajeDeErrorDeAcceso(new Error('La red falló.'))).toBe('La red falló.');
     });
   });
 

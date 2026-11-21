@@ -21,7 +21,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import * as authApi from '../../lib/auth-api';
-import type { AuthApiError } from '../../lib/auth-api';
 import type { SesionActual, AgenciaDeAcceso } from '@viajapro/contracts';
 import { BotonTurismo } from '../comun/boton-turismo';
 import { sanitizarRutaRedireccion } from '../../lib/errores-sistema';
@@ -71,10 +70,11 @@ export function FormularioIngreso() {
         }, 500);
       }
     } catch (err) {
-      const errorObj = err as AuthApiError;
       setError(
-        errorObj.message ||
+        authApi.mensajeDeErrorDeAcceso(
+          err,
           'Credenciales no reconocidas. Revisa tu correo o usuario y tu contraseña, o contacta al administrador.',
+        ),
       );
     } finally {
       setCargando(false);
@@ -93,10 +93,11 @@ export function FormularioIngreso() {
         router.push(destinoFinal);
       }, 500);
     } catch (err) {
-      const errorObj = err as AuthApiError;
       setError(
-        errorObj.message ||
+        authApi.mensajeDeErrorDeAcceso(
+          err,
           'No se pudo seleccionar la agencia. Verifica tus permisos o contacta al administrador.',
+        ),
       );
     } finally {
       setCargando(false);
