@@ -12,6 +12,68 @@
 
 ---
 
+## 2026-11-21 (lote de la tarde) — Reportes por asesor y por destino, y tres cierres que mentían
+
+**Verificado** con `gh` y `git` en el mismo turno. `main`: `47fb844e` → `cfae145c` → `a5e1fc44` → `2149b9db`.
+Cuatro PR, en serie y con squash a mano.
+
+- **#439** — relevo de la madre saliente. Solo documentación. Sus tres checks «cancelados» **se clasificaron
+  antes de integrar**: no eran fallo ni prueba frágil, los mató `concurrency: cancel-in-progress: true` al
+  entrar otro commit en la rama.
+- **#440 — T-546 y T-538.** «Hoy» y «Mis números» pintan las cotizaciones abiertas por tramos de antigüedad y
+  el saldo por cobrar por moneda, y una cifra truncada se presenta **como mínimo, no como total**. Se retiró de
+  `inicio-logica.ts` el conteo sobre listas de agencia, el apaño que T-343 se negó a hacer.
+- **#442** — cierra T-542 y T-548 tras verificarlas una por una, abre T-555 y manda T-553 a la bandeja.
+- **#441 — T-531 y T-532.** El reporte de agencia trae las cifras **por asesor en una sola consulta** (antes era
+  una por asesor, en lotes de cuatro, con tope de 12) y las **ventas del periodo por destino**.
+
+### Las auditorías independientes (R13: en dinero no se recorta)
+
+Las dos entregas de producto tocan dinero, así que la madre auditó el código, no el informe.
+
+- **#440:** el dinero pasa por el formateador canónico, que entra por la rama de `unidades` y divide por
+  `10 ** decimales` **según la moneda** —en COP no divide—, así que **no repite T-543**, el bug que pintaba cien
+  veces de más. El contrato declara `saldo: Dinero`, hay una fila por moneda y nunca se suman (R8), y `null`
+  omite el bloque en vez de pintar ceros.
+- **#441:** `GROUP BY v.destino, v.moneda_iso` — las monedas nunca se suman. `porAsesor` y `ventasPorDestino`
+  existen solo con alcance de agencia, con **tres guardas independientes**: el tipo `AlcanceDeAgenciaEntera`
+  (un alcance propio no compila), la comprobación en ejecución y el contrato `strict`. Sin permiso de margen,
+  sus columnas **ni entran en la consulta**: no hay valor que filtrar después.
+
+### Lo que de verdad se aprendió
+
+**«Una prueba que nadie ha visto fallar no es evidencia» volvió a pagar, y esta vez contra sí misma.** La sesión
+de T-531/T-532 avisó por su cuenta de que su mutación de la mediana **pasó primero en verde**: cada asesor tenía
+una sola conversación respondida, así que promedio, mediana y p90 coincidían. Endureció el caso (respuestas a
+20/40/90 minutos) y la volvió a ver roja. Después mutó las dos e2e que reconocía no haber visto fallar: al quitar
+el predicado de asesor, la respuesta `PROPIO` de una asesora pasó a traer **la suma suya y la de su compañero**
+(`"unidades":"3600000"`). La prueba detecta la fuga. Ninguna de las dos hizo falta endurecerla.
+
+**Tres tareas estaban integradas y el roadmap decía que no.** El cierre automático había fallado cuatro veces
+seguidas, y la causa raíz (T-542) ya estaba arreglada por #437 y #438 sin que nadie lo hubiera comprobado. Se
+verificó una por una en vez de marcarlas en bloque: T-542 y T-548 sí estaban hechas; **T-549 no**, y ahí estaba
+lo serio — su rama llevaba su id porque un PR de *documentación* la registraba, no porque alguien la hubiera
+hecho. De no haber estado roto el validador, ese merge la habría cerrado en falso.
+
+**Defecto nuevo, verificado tres veces el mismo día:** una rama que nombra **dos** tareas solo cierra la primera,
+porque `cerrar-tarea.mjs` captura un único id. Pasó con T-538 (rama de T-546), y con T-532 (rama de T-531). Las
+dos se cerraron a mano. Mientras siga así, **cada rama con dos ids deja una tarea mintiendo, en silencio**.
+
+### Supuesto, no verificado
+
+Que las cuatro ramas con bugs puestos a propósito no entrañan riesgo real: no hay PR para ninguna y `main` está
+protegido, pero el repositorio es público y **nadie ha podido borrarlas** (403 para la sesión, denegado por el
+clasificador para la madre). Están en el punto 12 de la bandeja del propietario.
+
+### Cola que deja el lote
+
+**T-555** (mitad web de T-531/T-532, carril `b`, lista para repartir), **T-556** (el modo demo enseña un error
+donde debería enseñar datos de muestra), **T-557** (ventas por destino sin tope) y **T-558** (decidir si «Hoy»
+enseña al dueño lo suyo o lo de toda la agencia). Sigue abierta **T-553**, la raíz que queda: nada valida
+`roadmap/tasks.yaml` en el CI **antes** del merge, y pide tocar `.github/`.
+
+---
+
 ## 2026-11-21 (cierre de la tarde) — Un foco que robaba teclas, una compuerta reparada y el relevo de la madre
 
 **Verificado** (`gh`/`git`, mismo turno): `main` de `d755ea69` a **`898ba390`**. Integrados: **#436** (T-548), **#437** (T-542 parcial) y **#438** (el triaje aplicado). **Once PR en todo el turno.** Abierto solo **#439**, este relevo.
