@@ -2092,9 +2092,9 @@ tasks:
       al replantearla, decidir si se renombra a 'proceso unico en staging'."
     prior_evidence: "PR #195 (commit 098e70c, rama i/T-079-redis-staging-render): cierre automatico por el
       runbook, con el CI en verde."
-    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0. Verificado: no hay servicio desplegado (ESTADO.md: deploy
-      de staging configurado y sin ejecutar, ADR-0028). Falta que el propietario siga la guia de paneles y que
-      un mensaje de la app de prueba de Meta aparezca como conversacion alli."
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0. Verificado: no hay servicio desplegado
+      (ESTADO.md: deploy de staging configurado y sin ejecutar, ADR-0028). Falta que el propietario siga la
+      guia de paneles y que un mensaje de la app de prueba de Meta aparezca como conversacion alli."
   - id: T-080
     title: Iniciar la verificación del negocio en Meta y la solicitud de Tech Provider
     type: docs
@@ -2112,9 +2112,9 @@ tasks:
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: "Solo el propietario puede hacerla: exige documentos legales de la empresa y su cuenta de
       Meta; tarda semanas"
-    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0 pese a estar bloqueada, porque tarda semanas y solo la
-      inicia el propietario. Verificado: ESTADO.md la lista como «sin iniciar» y no hay fecha de solicitud
-      registrada."
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0 pese a estar bloqueada, porque tarda semanas y
+      solo la inicia el propietario. Verificado: ESTADO.md la lista como «sin iniciar» y no hay fecha de
+      solicitud registrada."
   - id: T-081
     title: "Ensayo de la jornada piloto: 20 conversaciones, 5 cotizaciones recibidas, seguimientos y sin abrir el
       WhatsApp del celular"
@@ -2136,10 +2136,10 @@ tasks:
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: Depende de Redis y trabajador en staging y del número de prueba de Meta con el propietario presente
-    reprioritized_at: "2026-11-21T18:00:00.000Z"
-    reprioritized_note: "Bajada de P0 a P1 (T-574, 2026-11-21). Es un ensayo y depende de T-079 (nada desplegado) y del numero de
-      prueba de Meta con el propietario presente: no se puede hacer antes que T-079. Sube a P0 cuando T-079
-      tenga un servicio vivo."
+    reprioritized_at: 2026-11-21T18:00:00.000Z
+    reprioritized_note: "Bajada de P0 a P1 (T-574, 2026-11-21). Es un ensayo y depende de T-079 (nada desplegado)
+      y del numero de prueba de Meta con el propietario presente: no se puede hacer antes que T-079. Sube a P0
+      cuando T-079 tenga un servicio vivo."
   - id: T-082
     title: "Migración: tabla seguimientos con RLS para varios seguimientos por oportunidad y por conversación
       (T-077)"
@@ -2393,9 +2393,10 @@ tasks:
     created_at: 2026-10-28T02:16:36.573Z
     blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
       sobre el texto y los plazos
-    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0 y bloqueada. Las paginas /privacidad y /terminos ya
-      existen en apps/web/src/app/ con la insignia «Borrador en revision juridica» (page.spec.tsx); falta solo
-      la revision de un abogado y que el propietario apruebe el texto y los plazos."
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0 y bloqueada. Las paginas /privacidad y
+      /terminos ya existen en apps/web/src/app/ con la insignia «Borrador en revision juridica»
+      (page.spec.tsx); falta solo la revision de un abogado y que el propietario apruebe el texto y los
+      plazos."
   - id: T-094
     title: Inventario de cookies y almacenamiento del navegador, y política de cookies
     type: docs
@@ -3040,11 +3041,11 @@ tasks:
       - packages/contracts/src/crm.ts
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.915Z
-    done_at: "2026-11-21T18:00:00.000Z"
-    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). crm.controller.ts expone GET/POST/PATCH etapas y POST
-      etapas/reordenar (crm.escribir para mutar); etapas.e2e-spec.ts prueba crear, editar, reordenar y el
+    done_at: 2026-11-21T18:00:00.000Z
+    evidence: Verificada contra el codigo el 2026-11-21 (T-574). crm.controller.ts expone GET/POST/PATCH etapas y
+      POST etapas/reordenar (crm.escribir para mutar); etapas.e2e-spec.ts prueba crear, editar, reordenar y el
       aislamiento entre agencias (con crm-aislamiento.e2e-spec.ts). La web guarda contra la API real en
-      apps/web/src/lib/crm-api.ts (PATCH por etapa y POST /crm/etapas/reordenar)."
+      apps/web/src/lib/crm-api.ts (PATCH por etapa y POST /crm/etapas/reordenar).
   - id: T-121
     title: "Web: la lista de miembros llama GET /identidad/usuarios que no existe; usar el endpoint real de
       miembros"
@@ -3064,7 +3065,7 @@ tasks:
       - apps/api/src/modules/identity/interface/miembros.controller.ts
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
-    done_at: "2026-11-21T18:00:00.000Z"
+    done_at: 2026-11-21T18:00:00.000Z
     evidence: "Verificada contra el codigo el 2026-11-21 (T-574). miembros.controller.ts expone GET
       /api/v1/identidad/miembros (ListarMiembrosUseCase, T-121) y la web lo consume en modo real; equipo-
       api.spec.ts («modo real: GET /api/v1/identidad/miembros») prueba la respuesta real y el error.
@@ -3123,11 +3124,11 @@ tasks:
       - README.md
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
-    done_at: "2026-11-21T18:00:00.000Z"
-    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). .env.example deja NEXT_PUBLIC_USE_REAL_CRM,
+    done_at: 2026-11-21T18:00:00.000Z
+    evidence: Verificada contra el codigo el 2026-11-21 (T-574). .env.example deja NEXT_PUBLIC_USE_REAL_CRM,
       NEXT_PUBLIC_USE_REAL_INBOX y NEXT_PUBLIC_USE_REAL_AUTH en true (lineas 34, 38 y 42) y el README abre con
       «La web arranca en modo real» y documenta el arranque local; la frase «todavia no hay codigo» ya no
-      existe."
+      existe.
   - id: T-124
     title: "Web: reportes sin margen ni costo inventados; las pantallas que solo usan localStorage dicen que son
       locales o hablan con la API"
@@ -3210,9 +3211,10 @@ tasks:
       automatizar. ALCANCE REDUCIDO: recorrido manual con bitacora de hallazgos ANTES de la primera
       demostracion al piloto. AVISO OPERATIVO: una rama cuyo nombre contenga T-126 la cierra sola
       (cerrar-tarea.yml)."
-    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0. docs/_bitacora/hallazgos-funcionales-2026-11-05.md
-      declara «recorrido NO ejecutado» y no hay otro: falta que una persona recorra H1 a H6 en un navegador y
-      deje la bitacora de hallazgos antes de ensenar el producto."
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0.
+      docs/_bitacora/hallazgos-funcionales-2026-11-05.md declara «recorrido NO ejecutado» y no hay otro: falta
+      que una persona recorra H1 a H6 en un navegador y deje la bitacora de hallazgos antes de ensenar el
+      producto."
   - id: T-127
     title: Atajos de teclado en la bandeja con ayuda en pantalla
     type: feature
@@ -3339,13 +3341,13 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.630Z
     owner: datos
-    done_at: "2026-11-21T18:00:00.000Z"
-    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). La tabla oportunidad_cambios_etapa existe (migracion
-      20261104150000_historial_de_etapas_de_oportunidad, con aplicar_aislamiento_tenant).
+    done_at: 2026-11-21T18:00:00.000Z
+    evidence: Verificada contra el codigo el 2026-11-21 (T-574). La tabla oportunidad_cambios_etapa existe
+      (migracion 20261104150000_historial_de_etapas_de_oportunidad, con aplicar_aislamiento_tenant).
       CrmPrisma.moverOportunidad (crm.prisma.ts) y EscrituraCrmPrisma.crearOportunidad (escritura-
       crm.prisma.ts) escriben la fila y cerrada_en en la misma transaccion. Lo demuestran historial-de-
       etapas.e2e-spec.ts (A->B->perdida->A deja cuatro filas y cerrada_en vacia; aislamiento entre agencias) e
-      historial-de-etapas.prisma.spec.ts."
+      historial-de-etapas.prisma.spec.ts.
   - id: T-132
     title: "Captura: historial de estados de la cotizacion con instante de aceptacion, rechazo o vencimiento"
     type: feature
@@ -3372,12 +3374,12 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.632Z
     owner: datos
-    done_at: "2026-11-21T18:00:00.000Z"
-    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). La tabla cotizacion_cambios_estado existe (migracion
-      20261104160000_historial_de_estados_de_cotizacion, con aplicar_aislamiento_tenant). cotizaciones.use-
-      case.ts:104 (tx.cotizacionCambioEstado.create) la escribe en la transaccion del cambio. Lo demuestran
-      historial-de-estados.e2e-spec.ts y cotizaciones-historial.spec.ts; cotizaciones-para-reportes.prisma.ts
-      ya la consume."
+    done_at: 2026-11-21T18:00:00.000Z
+    evidence: Verificada contra el codigo el 2026-11-21 (T-574). La tabla cotizacion_cambios_estado existe
+      (migracion 20261104160000_historial_de_estados_de_cotizacion, con aplicar_aislamiento_tenant).
+      cotizaciones.use- case.ts:104 (tx.cotizacionCambioEstado.create) la escribe en la transaccion del
+      cambio. Lo demuestran historial-de-estados.e2e-spec.ts y cotizaciones-historial.spec.ts;
+      cotizaciones-para-reportes.prisma.ts ya la consume.
   - id: T-133
     title: "Captura: origen del lead como tabla por agencia (R12) y columna en la oportunidad"
     type: feature
@@ -3405,11 +3407,11 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.632Z
     owner: datos
-    reprioritized_at: "2026-11-21T18:00:00.000Z"
-    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Hoy no hay tabla origenes_lead ni oportunidades.origen_id
-      (busqueda por esos nombres en packages/ y apps/: cero resultados), asi que sigue pendiente entera. Pero
-      atribuir el origen del lead alimenta un reporte que ninguna agencia ha pedido todavia: sin agencia real
-      ni mensajes reales, no es lo mas urgente."
+    reprioritized_at: 2026-11-21T18:00:00.000Z
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Hoy no hay tabla origenes_lead ni
+      oportunidades.origen_id (busqueda por esos nombres en packages/ y apps/: cero resultados), asi que sigue
+      pendiente entera. Pero atribuir el origen del lead alimenta un reporte que ninguna agencia ha pedido
+      todavia: sin agencia real ni mensajes reales, no es lo mas urgente."
   - id: T-134
     title: "Captura: referral de Click-to-WhatsApp en el primer mensaje entrante y origen «Anuncio de Meta»
       automatico"
@@ -3436,11 +3438,11 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.632Z
     owner: backend
-    reprioritized_at: "2026-11-21T18:00:00.000Z"
-    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Sigue pendiente entera: el parseo del change no extrae
-      messages[].referral (cero resultados de referral/ctwa en apps/api/src ni en el esquema). Depende de
-      T-133 y sirve a anuncios de Click-to-WhatsApp que ninguna agencia ha activado; por debajo de desplegar y
-      de la primera agencia."
+    reprioritized_at: 2026-11-21T18:00:00.000Z
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Sigue pendiente entera: el parseo del change no
+      extrae messages[].referral (cero resultados de referral/ctwa en apps/api/src ni en el esquema). Depende
+      de T-133 y sirve a anuncios de Click-to-WhatsApp que ninguna agencia ha activado; por debajo de
+      desplegar y de la primera agencia."
   - id: T-135
     title: "Captura: politica de atencion por agencia (minutos de SLA, horario semanal, horas de silencio) como
       tabla, no constante"
@@ -3468,11 +3470,12 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.633Z
     owner: datos
-    reprioritized_at: "2026-11-21T18:00:00.000Z"
-    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Sigue pendiente: no existe la tabla politica_de_atencion ni
-      GET/PUT /configuracion/atencion. El SLA de primera respuesta ya funciona con el valor por defecto de 15
-      minutos (MINUTOS_SLA_PRIMERA_RESPUESTA_POR_DEFECTO en plazo-de-primera-respuesta.ts), asi que falta solo
-      volverlo dato por agencia (R12), que no bloquea al piloto."
+    reprioritized_at: 2026-11-21T18:00:00.000Z
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Sigue pendiente: no existe la tabla
+      politica_de_atencion ni GET/PUT /configuracion/atencion. El SLA de primera respuesta ya funciona con el
+      valor por defecto de 15 minutos (MINUTOS_SLA_PRIMERA_RESPUESTA_POR_DEFECTO en
+      plazo-de-primera-respuesta.ts), asi que falta solo volverlo dato por agencia (R12), que no bloquea al
+      piloto."
   - id: T-136
     title: "Armar conversaciones.sla_vence_en en cada entrante que abre un episodio: hoy nadie lo escribe y el
       filtro SLA_VENCIDO siempre sale vacio"
@@ -3497,9 +3500,9 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.633Z
     owner: backend
-    reprioritized_at: "2026-11-21T18:00:00.000Z"
-    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). El diagnostico del titulo ya es falso: bandeja.prisma.ts:181-190
-      fija sla_vence_en en el primer entrante (slaTrasEntrante, T-182) y inbox-
+    reprioritized_at: 2026-11-21T18:00:00.000Z
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). El diagnostico del titulo ya es falso:
+      bandeja.prisma.ts:181-190 fija sla_vence_en en el primer entrante (slaTrasEntrante, T-182) y inbox-
       visibilidad.e2e-spec.ts:1105-1137 prueba que SLA_VENCIDO lo lista y que responder lo anula. Lo que FALTA
       es solo el segundo episodio: slaTrasEntrante no rearma si ya hubo primera respuesta (primeraRespuestaEn
       se fija una vez en la vida de la conversacion), y no usa horas de silencio ni los minutos de T-135.
@@ -7932,7 +7935,11 @@ tasks:
         ABIERTO/CANCELADO)"
       - "e2e: registrar un pago cambia el saldo y el filtro"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
-    notes: "Reconciliación 2026-11-21: T-331 está hecha; pasa a ready. || CERRADA 2026-11-21: PR #476 integrado en main. La pantalla (app)/cobros con los cuatro filtros de estado de cobro, entrada en el menu, e2e y capturas a 390 y 1440. SALVEDAD DECLARADA: no muestra pasajeros porque FilaDeCobro no los trae; eso es T-582 y no esta en el criterio de salida del piloto. El cierre automatico NO la cerro: seguia en ready en main despues de integrar."
+    notes: "Reconciliación 2026-11-21: T-331 está hecha; pasa a ready. || CERRADA 2026-11-21: PR #476 integrado en
+      main. La pantalla (app)/cobros con los cuatro filtros de estado de cobro, entrada en el menu, e2e y
+      capturas a 390 y 1440. SALVEDAD DECLARADA: no muestra pasajeros porque FilaDeCobro no los trae; eso es
+      T-582 y no esta en el criterio de salida del piloto. El cierre automatico NO la cerro: seguia en ready
+      en main despues de integrar."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-333
@@ -7959,7 +7966,9 @@ tasks:
     priority: P1
     effort: M
     status: blocked
-    blocked_reason: "human_required: exige las columnas de la hoja real del piloto JD Tours. Esa muestra (sin nombres ni telefonos, R10) no existe en el repositorio y solo la puede entregar el propietario. Es el punto 12 de PENDIENTES-DEL-PROPIETARIO.md"
+    blocked_reason: "human_required: exige las columnas de la hoja real del piloto JD Tours. Esa muestra (sin
+      nombres ni telefonos, R10) no existe en el repositorio y solo la puede entregar el propietario. Es el
+      punto 12 de PENDIENTES-DEL-PROPIETARIO.md"
     depends_on:
       - T-316
       - T-327
@@ -7968,7 +7977,12 @@ tasks:
       - Se ve a 1440 y a 390 px; estados vacío y error
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     notes: "Reconciliación 2026-11-21: intacta (/viajes solo filtra por estado ABIERTO/CANCELADO y no tiene las
-      columnas de la hoja); sus dependencias T-316 y T-327 están hechas, pasa a ready. || CORRECCION 2026-11-21 (madre del lote nocturno): estaba marcada ready y es FALSO. Su primer criterio exige las columnas de la hoja REAL del piloto y esa muestra NO existe en el repositorio (buscado: ningun .csv). El propio roadmap pone las preguntas al dueno ANTES de T-334 y la ultima es su hoja: cuantas reservas y que columnas, muestra sin nombres ni telefonos (R10). Es el punto 12 de PENDIENTES-DEL-PROPIETARIO. Pasa a blocked: la desbloquea el propietario, no una sesion de codigo."
+      columnas de la hoja); sus dependencias T-316 y T-327 están hechas, pasa a ready. || CORRECCION
+      2026-11-21 (madre del lote nocturno): estaba marcada ready y es FALSO. Su primer criterio exige las
+      columnas de la hoja REAL del piloto y esa muestra NO existe en el repositorio (buscado: ningun .csv). El
+      propio roadmap pone las preguntas al dueno ANTES de T-334 y la ultima es su hoja: cuantas reservas y que
+      columnas, muestra sin nombres ni telefonos (R10). Es el punto 12 de PENDIENTES-DEL-PROPIETARIO. Pasa a
+      blocked: la desbloquea el propietario, no una sesion de codigo."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-335
@@ -7985,7 +7999,15 @@ tasks:
       - Escapado de celdas contra inyección de fórmulas
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     notes: "Confirmada P1: no hay exportación CSV de archivos de viaje (apps/web/src/lib/exportar-csv.ts existe
-      pero no lo usa /viajes); es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: su dependencia pasa de T-334 a T-332. Lo que hay que exportar es la tabla con total, pagado y saldo del criterio de salida (§3 punto 4), que la entrega T-332; NO hacen falta las columnas de la hoja del propietario, que son lo que bloquea a T-334. Se entrega junto a T-332 en el mismo PR. || CERRADA 2026-11-21: PR #476 integrado en main, junto a T-332. exportarCobrosCSV en apps/web/src/lib/exportar-csv.ts. Auditado por la madre: los importes salen de Money.desdeUnidades().aDecimal(), sin dividir a mano por 100 (R8: en COP la unidad minima es el peso); el escapado contra inyeccion de formulas solo exime numeros negativos puros con expresion anclada, y el entrecomillado RFC 4180 sigue corriendo despues; y no hay neto ni margen que ocultar porque el contrato no los trae. El cierre automatico NO la cerro: seguia en backlog en main."
+      pero no lo usa /viajes); es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: su dependencia
+      pasa de T-334 a T-332. Lo que hay que exportar es la tabla con total, pagado y saldo del criterio de
+      salida (§3 punto 4), que la entrega T-332; NO hacen falta las columnas de la hoja del propietario, que
+      son lo que bloquea a T-334. Se entrega junto a T-332 en el mismo PR. || CERRADA 2026-11-21: PR #476
+      integrado en main, junto a T-332. exportarCobrosCSV en apps/web/src/lib/exportar-csv.ts. Auditado por la
+      madre: los importes salen de Money.desdeUnidades().aDecimal(), sin dividir a mano por 100 (R8: en COP la
+      unidad minima es el peso); el escapado contra inyeccion de formulas solo exime numeros negativos puros
+      con expresion anclada, y el entrecomillado RFC 4180 sigue corriendo despues; y no hay neto ni margen que
+      ocultar porque el contrato no los trae. El cierre automatico NO la cerro: seguia en backlog en main."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-336
@@ -7995,7 +8017,8 @@ tasks:
     priority: P1
     effort: L
     status: blocked
-    blocked_reason: "human_required: importar la hoja del piloto exige la hoja del piloto. Misma muestra que bloquea T-334, punto 12 de PENDIENTES-DEL-PROPIETARIO.md"
+    blocked_reason: "human_required: importar la hoja del piloto exige la hoja del piloto. Misma muestra que
+      bloquea T-334, punto 12 de PENDIENTES-DEL-PROPIETARIO.md"
     depends_on:
       - T-334
       - T-327
@@ -8004,7 +8027,9 @@ tasks:
         datos personales en los logs (R10)
       - "Auditoría de seguridad: importa datos de personas dentro de una sola agencia y no cruza agencias"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
-    notes: "Confirmada P1: no existe importación de la hoja; es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: pasa a blocked por la misma razon que T-334. Importar la hoja del piloto exige la hoja del piloto."
+    notes: "Confirmada P1: no existe importación de la hoja; es del criterio de salida de JD Tours. || CORRECCION
+      2026-11-21: pasa a blocked por la misma razon que T-334. Importar la hoja del piloto exige la hoja del
+      piloto."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-337
@@ -8103,7 +8128,10 @@ tasks:
     owner: arquitecto
     notes: "ADR-0035 (Propuesto) en la rama i/T-340-adr-niveles-reportes. Pasa a done cuando se integre en main ||
       Reconciliación 2026-11-21: sigue en review. Un ADR que ya se implementó sin estar Aceptado es un agujero
-      de proceso (R7). || CERRADA 2026-11-21 por la madre del lote nocturno: PR #475 integrado en main. El ADR-0035 pasa a Aceptado con la auditoria de su seccion 9 recorrida punto por punto contra el codigo. OJO: el cierre automatico de tareas NO la cerro pese a que la rama la nombraba; tercer lote seguido. Comprobar siempre el status en main despues de integrar."
+      de proceso (R7). || CERRADA 2026-11-21 por la madre del lote nocturno: PR #475 integrado en main. El
+      ADR-0035 pasa a Aceptado con la auditoria de su seccion 9 recorrida punto por punto contra el codigo.
+      OJO: el cierre automatico de tareas NO la cerro pese a que la rama la nombraba; tercer lote seguido.
+      Comprobar siempre el status en main despues de integrar."
   - id: T-341
     title: "F2: permisos de reportes en el catálogo de roles y su sembrado (absorbe T-141)"
     type: feature
@@ -8246,7 +8274,12 @@ tasks:
       2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
-    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta tarea se construya."
+    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir
+      §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan
+      visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con
+      reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica
+      hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta
+      tarea se construya."
   - id: T-346
     title: "F7: revisión móvil de los dos dashboards y e2e de navegador de permisos entre asesores (el e2e de API
       y la medida de 390 px de /reportes ya existen)"
@@ -8267,7 +8300,14 @@ tasks:
         otro asesor, y el administrador sí"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario
       2026-11-20)
-    notes: "Reconciliación 2026-11-21: sus dependencias T-343 y T-344 están hechas; pasa a ready. || CERRADA 2026-11-21: PR #477 integrado en main. apps/web/e2e/09-reportes-por-alcance.e2e-spec.ts: una asesora no ve las cifras de su companero ni las de la agencia, la duena si, y pedir a mano el asesorId ajeno responde 403 sin cifras. Las cifras se siembran DENTRO de la prueba porque la semilla no da movimiento por asesor, y se compara por diferencia. Las aserciones se vieron en ROJO antes, mutando la API falsa en dos sentidos; eso prueba que muerden, no que el servidor real sea correcto (de eso responde reportes.e2e-spec.ts). El contraste se midio y salieron defectos reales: T-583. El cierre automatico NO la cerro."
+    notes: "Reconciliación 2026-11-21: sus dependencias T-343 y T-344 están hechas; pasa a ready. || CERRADA
+      2026-11-21: PR #477 integrado en main. apps/web/e2e/09-reportes-por-alcance.e2e-spec.ts: una asesora no
+      ve las cifras de su companero ni las de la agencia, la duena si, y pedir a mano el asesorId ajeno
+      responde 403 sin cifras. Las cifras se siembran DENTRO de la prueba porque la semilla no da movimiento
+      por asesor, y se compara por diferencia. Las aserciones se vieron en ROJO antes, mutando la API falsa en
+      dos sentidos; eso prueba que muerden, no que el servidor real sea correcto (de eso responde
+      reportes.e2e-spec.ts). El contraste se midio y salieron defectos reales: T-583. El cierre automatico NO
+      la cerro."
     created_at: 2026-11-20T21:30:00.000Z
     owner: qa
   - id: T-347
@@ -8550,7 +8590,12 @@ tasks:
       verificacion por confiar en lecturas (T-547 y el e2e de T-529). Se queda backlog hasta que el arnes
       corra. Lo hecho si esta en main: migracion 20261120150000, AP1-AP12 en aislamiento.spec.ts. ||
       Reconciliación 2026-11-21: se mantiene la decisión del triaje de la madre (no cerrarla moviendo el
-      criterio a T-377). Solo se estrecha el texto a lo que falta. || MEDIDA Y CERRADA 2026-11-21 por la madre del lote nocturno. El arnes YA se ejecuta en todo PR desde T-377. En la corrida 44934621499 (rama i/tablero-y-seguimientos-del-arnes, ya integrada en main, 18:18 UTC) M17 (el disparador NO borra el par OLD al cambiar identidad_id o tenant_id) y M21 (el disparador sin la rama del apodo: un cambio de apodo no llega al indice) salieron las dos ROJAS, que es exactamente el criterio que faltaba. Resumen de esa corrida: 23 mutaciones detectadas, 1 no aplicable. Rastro en la bitacora del lote."
+      criterio a T-377). Solo se estrecha el texto a lo que falta. || MEDIDA Y CERRADA 2026-11-21 por la madre
+      del lote nocturno. El arnes YA se ejecuta en todo PR desde T-377. En la corrida 44934621499 (rama
+      i/tablero-y-seguimientos-del-arnes, ya integrada en main, 18:18 UTC) M17 (el disparador NO borra el par
+      OLD al cambiar identidad_id o tenant_id) y M21 (el disparador sin la rama del apodo: un cambio de apodo
+      no llega al indice) salieron las dos ROJAS, que es exactamente el criterio que faltaba. Resumen de esa
+      corrida: 23 mutaciones detectadas, 1 no aplicable. Rastro en la bitacora del lote."
   - id: T-373
     title: "ADR-0031 PR 2 API: identificador, centinela, tope por identidad y PATCH del apodo"
     type: feature
@@ -8675,8 +8720,15 @@ tasks:
     depends_on:
       - T-307
     acceptance:
-      - "HECHA (PR #471, 2026-11-21): el arnes corre en TODO PR contra main, cada noche y a demanda.\n        Coste medido 43 s (job 1m45), lo que desmintio la premisa de que eran minutos y permitio quitar\n        el filtro de rutas. M24 anadida y DEMOSTRADA en rojo. Resultado: 17 controles verdes, M1-M21\n        rojas, M22 no aplicable, M23 y M24 rojas; 23 detectadas, 1 no aplicable"
-      - "Su primera ejecucion destapo que el arnes moria en M22 y que M23 y M24 nunca corrian: una\n        mutacion rota escondia a todas las posteriores. Corregido con cuatro estados por mutacion.\n        Lo que queda abierto va en T-577, T-578 y T-579, ninguno bloqueante"
+      - >-
+        HECHA (PR #471, 2026-11-21): el arnes corre en TODO PR contra main, cada noche y a demanda.
+                Coste medido 43 s (job 1m45), lo que desmintio la premisa de que eran minutos y permitio quitar
+                el filtro de rutas. M24 anadida y DEMOSTRADA en rojo. Resultado: 17 controles verdes, M1-M21
+                rojas, M22 no aplicable, M23 y M24 rojas; 23 detectadas, 1 no aplicable
+      - |-
+        Su primera ejecucion destapo que el arnes moria en M22 y que M23 y M24 nunca corrian: una
+                mutacion rota escondia a todas las posteriores. Corregido con cuatro estados por mutacion.
+                Lo que queda abierto va en T-577, T-578 y T-579, ninguno bloqueante
       - "Sube de P3 a P1 el 2026-11-21: la reconciliacion de las P1 (PR #463) dejo ver que el arnes de
         mutaciones de aislamiento NO corre en el CI mientras esta tarea dormia en P3. CLAUDE.md §3.1 dice que
         el aislamiento entre agencias es el unico sitio donde no se recorta: una compuerta de aislamiento que
@@ -9796,7 +9848,12 @@ tasks:
     source: aportes de la sesión de cobros a T-339 (2026-11-21)
     created_at: 2026-11-21T04:10:00.000Z
     owner: backend
-    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta tarea se construya."
+    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir
+      §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan
+      visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con
+      reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica
+      hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta
+      tarea se construya."
   - id: T-484
     title: Cerrar por rol y con dueño los hallazgos H4 a H8 del catálogo de reportes por nivel
     type: security
@@ -12260,7 +12317,10 @@ tasks:
     effort: M
     status: done
     acceptance:
-      - "HECHA (PR #473, 2026-11-21): las 41 clases de la familia primary mapeadas a acento-* del mismo\n        tono, sin colores ni familias nuevas. Anade una prueba en contraste-de-tokens.spec.ts que exige\n        que toda familia de color usada exista en Tailwind o en el tema"
+      - >-
+        HECHA (PR #473, 2026-11-21): las 41 clases de la familia primary mapeadas a acento-* del mismo
+                tono, sin colores ni familias nuevas. Anade una prueba en contraste-de-tokens.spec.ts que exige
+                que toda familia de color usada exista en Tailwind o en el tema
       - "bloque-etapas-pipeline.tsx, modal-reasignar.tsx y bandeja/[id]/page.tsx usan 41 clases de una familia
         `primary` que NO existe ni en @theme ni en Tailwind: no emiten una sola linea de CSS"
       - Es EXACTAMENTE el mismo defecto que T-561 arreglo para ok y alerta, pero en una familia que ni
@@ -12356,7 +12416,10 @@ tasks:
     effort: M
     status: done
     acceptance:
-      - "HECHA (PR #472, 2026-11-21): de 14 P0 abiertas quedan 4 reales. 5 pasaron a done con su\n        simbolo o prueba citada, 5 bajaron de prioridad. La madre verifico tres de las cinco citas\n        contra el codigo antes de integrar y las tres eran exactas"
+      - |-
+        HECHA (PR #472, 2026-11-21): de 14 P0 abiertas quedan 4 reales. 5 pasaron a done con su
+                simbolo o prueba citada, 5 bajaron de prioridad. La madre verifico tres de las cinco citas
+                contra el codigo antes de integrar y las tres eran exactas
       - "La reconciliacion de T-563 (PR #463) solo cubrio las P1: de 74 abiertas, 8 ya estaban hechas y 49
         estaban mal priorizadas. Las P0 no se tocaron y hoy hay 14 abiertas: T-079, T-080, T-081, T-093,
         T-120, T-121, T-123, T-126, T-131, T-132, T-133, T-134, T-135 y T-136"
@@ -12401,17 +12464,17 @@ tasks:
     effort: S
     status: ready
     acceptance:
-      - "T-565 quito el cartel que afirmaba «Conectado a la API y PostgreSQL en vivo» y T-566 anadio la vista
-        de asesor en la demostracion. Los dos entregaron en carril b y el rastro en docs/ quedo fuera"
-      - "CORRECCION DE LA CORRECCION (2026-11-21, 20:05 UTC): la nota anterior decia que el check
-        «Carril y tarea» NO rechaza mezclar apps/web con docs/, citando los PR #471, #472 y #473. Eso
-        es ENGANOSO y costo dos rondas de CI en este lote. El check SI lo rechaza, con este texto:
-        «El carril b toca rutas de otro carril: docs/_bitacora/... (carril i)». Lo que pasaba con
-        aquellos tres PR es que sus ramas se llamaban test/..., chore/... y fix/..., SIN prefijo de
-        carril, y el check deduce el carril DEL PREFIJO DE LA RAMA: con b/ lo aplica, con fix/ no"
-      - "La regla util: una rama con prefijo a/, b/ o i/ solo toca su carril. La bitacora de un PR de
-        codigo va al PR de cierre del lote, que R14 admite expresamente. La tarea sigue siendo
-        necesaria por el contenido del manual"
+      - T-565 quito el cartel que afirmaba «Conectado a la API y PostgreSQL en vivo» y T-566 anadio la vista
+        de asesor en la demostracion. Los dos entregaron en carril b y el rastro en docs/ quedo fuera
+      - "CORRECCION DE LA CORRECCION (2026-11-21, 20:05 UTC): la nota anterior decia que el check «Carril y
+        tarea» NO rechaza mezclar apps/web con docs/, citando los PR #471, #472 y #473. Eso es ENGANOSO y
+        costo dos rondas de CI en este lote. El check SI lo rechaza, con este texto: «El carril b toca rutas
+        de otro carril: docs/_bitacora/... (carril i)». Lo que pasaba con aquellos tres PR es que sus ramas se
+        llamaban test/..., chore/... y fix/..., SIN prefijo de carril, y el check deduce el carril DEL PREFIJO
+        DE LA RAMA: con b/ lo aplica, con fix/ no"
+      - "La regla util: una rama con prefijo a/, b/ o i/ solo toca su carril. La bitacora de un PR de codigo
+        va al PR de cierre del lote, que R14 admite expresamente. La tarea sigue siendo necesaria por el
+        contenido del manual"
       - Quitar del paso 1 de docs/06-manual/01-recorrido-del-asesor.md la nota sobre el recuadro verde, y del
         paso 11 la advertencia de que «Mis numeros» hubo que capturarla con el filtro «Mios» del dueno
       - Volver a tomar asesor-01-ingreso y asesor-11-mis-numeros con docs/06-manual/capturas.mjs; regenera
@@ -12428,19 +12491,19 @@ tasks:
     effort: S
     status: backlog
     acceptance:
-      - "T-377 puso mutaciones-aislamiento.mjs a correr en el CI (workflow propio, en PR que tocan
-        prisma/**, nocturno sobre main y a demanda). No es check obligatorio: con filtro de rutas, un
-        check obligatorio dejaria sin veredicto a los PR que no lo disparan y los bloquearia para siempre"
+      - "T-377 puso mutaciones-aislamiento.mjs a correr en el CI (workflow propio, en PR que tocan prisma/**,
+        nocturno sobre main y a demanda). No es check obligatorio: con filtro de rutas, un check obligatorio
+        dejaria sin veredicto a los PR que no lo disparan y los bloquearia para siempre"
       - "Hoy, que salga rojo no impide integrar: lo sostiene la disciplina del integrador, no una compuerta"
-      - "MEDIDO el 2026-11-21, y desmiente la premisa con la que nacio el workflow: el arnes tarda 43
-        segundos y el job entero 1m45, no 'minutos'. El comentario de cabecera decia que en cada PR
-        frenaria la entrega; era falso. Por eso se le quito el filtro de rutas y corre en todo PR"
+      - "MEDIDO el 2026-11-21, y desmiente la premisa con la que nacio el workflow: el arnes tarda 43 segundos
+        y el job entero 1m45, no 'minutos'. El comentario de cabecera decia que en cada PR frenaria la
+        entrega; era falso. Por eso se le quito el filtro de rutas y corre en todo PR"
       - "Sin filtro de rutas ya puede ser check obligatorio: solo falta anadirlo a la lista de
-        .github/proteccion-main.json, que es del propietario. El punto 13 de
-        PENDIENTES-DEL-PROPIETARIO.md avisa de que ese fichero difiere del servidor en tres campos y
-        reaplicarlo apagaria los code owners, asi que el cambio lo hace el en el servidor, no nosotros"
-      - "Por que no bloquea: pasamos de cero cobertura a 23 mutaciones detectadas y 1 no aplicable,
-        corriendo de verdad en cada PR. Lo unico que falta es que un rojo ademas impida integrar"
+        .github/proteccion-main.json, que es del propietario. El punto 13 de PENDIENTES-DEL-PROPIETARIO.md
+        avisa de que ese fichero difiere del servidor en tres campos y reaplicarlo apagaria los code owners,
+        asi que el cambio lo hace el en el servidor, no nosotros"
+      - "Por que no bloquea: pasamos de cero cobertura a 23 mutaciones detectadas y 1 no aplicable, corriendo
+        de verdad en cada PR. Lo unico que falta es que un rojo ademas impida integrar"
     source: "auditoria de la madre sobre el PR #471, 2026-11-21"
     created_at: 2026-11-21T18:10:00.000Z
     owner: devops
@@ -12452,11 +12515,11 @@ tasks:
     effort: S
     status: backlog
     acceptance:
-      - "El workflow de T-377 corre cada noche a las 06:17 UTC sobre main. Si sale rojo, hoy no avisa a
-        ningun sitio: hay que entrar a Actions a mirarlo"
-      - "Un rojo que nadie lee es el mismo problema que T-377 arreglo, un piso mas arriba"
-      - "Decidir el canal con el propietario antes de montarlo; puede exigir un secreto, y los secretos
-        son suyos"
+      - "El workflow de T-377 corre cada noche a las 06:17 UTC sobre main. Si sale rojo, hoy no avisa a ningun
+        sitio: hay que entrar a Actions a mirarlo"
+      - Un rojo que nadie lee es el mismo problema que T-377 arreglo, un piso mas arriba
+      - Decidir el canal con el propietario antes de montarlo; puede exigir un secreto, y los secretos son
+        suyos
     source: "auditoria de la madre sobre el PR #471, 2026-11-21"
     created_at: 2026-11-21T18:10:00.000Z
     owner: devops
@@ -12468,24 +12531,24 @@ tasks:
     effort: M
     status: backlog
     acceptance:
-      - "M22 muta haciendo GRANT <dueno de perfiles_de_agencia> TO viajapro_app. En el CI el dueno es
-        viajapro y YA es miembro de viajapro_app, asi que el GRANT crea una pertenencia circular y
-        PostgreSQL lo rechaza con 0LP01 (AddRoleMems). Reventaba el arnes entero: ver la bitacora
+      - "M22 muta haciendo GRANT <dueno de perfiles_de_agencia> TO viajapro_app. En el CI el dueno es viajapro
+        y YA es miembro de viajapro_app, asi que el GRANT crea una pertenencia circular y PostgreSQL lo
+        rechaza con 0LP01 (AddRoleMems). Reventaba el arnes entero: ver la bitacora
         docs/_bitacora/2026-11-21-mutaciones-de-aislamiento-en-ci.md"
-      - "T-377 lo dejo declarado NO APLICABLE para que no tumbe la corrida. Consecuencia honesta: en el
-        unico entorno donde el arnes corre, M22 nunca se ejecuta y el riesgo que cubria (que viajapro_app
-        pase por la plataforma) se queda sin mutacion propia"
-      - "Averiguar de donde sale esa pertenencia y si produccion tendra la misma topologia de roles. Si no
-        la tiene, el arnes esta demostrando cosas sobre el CI y no sobre produccion, y eso vale para las
-        23 mutaciones restantes, no solo para M22"
-      - "Un rol intermedio no sirve: app -> X -> dueno -> app sigue cerrando el ciclo. Medir antes de
-        proponer el remedio"
+      - "T-377 lo dejo declarado NO APLICABLE para que no tumbe la corrida. Consecuencia honesta: en el unico
+        entorno donde el arnes corre, M22 nunca se ejecuta y el riesgo que cubria (que viajapro_app pase por
+        la plataforma) se queda sin mutacion propia"
+      - Averiguar de donde sale esa pertenencia y si produccion tendra la misma topologia de roles. Si no la
+        tiene, el arnes esta demostrando cosas sobre el CI y no sobre produccion, y eso vale para las 23
+        mutaciones restantes, no solo para M22
+      - "Un rol intermedio no sirve: app -> X -> dueno -> app sigue cerrando el ciclo. Medir antes de proponer
+        el remedio"
     source: "auditoria de la madre sobre el PR #471, 2026-11-21"
     created_at: 2026-11-21T18:10:00.000Z
     owner: datos
-
   - id: T-580
-    title: "Reportes: la guarda de agencia entera de porAsesor y ventasPorDestino es solo de tipos, sin comprobacion en ejecucion"
+    title: "Reportes: la guarda de agencia entera de porAsesor y ventasPorDestino es solo de tipos, sin
+      comprobacion en ejecucion"
     type: security
     phase: 1
     priority: P2
@@ -12495,21 +12558,24 @@ tasks:
       - T-340
     acceptance:
       - "HOY NO ES UNA FUGA Y ESTA VERIFICADO (madre del lote nocturno, 2026-11-21): esAgenciaEntera y
-        esAgencia de shared/autorizacion/alcance-de-reporte.ts son funciones con logica en EJECUCION
-        (nivel === AGENCIA && asesorId === null), y en obtener-resumen.use-case.ts un alcance PROPIO deja
+        esAgencia de shared/autorizacion/alcance-de-reporte.ts son funciones con logica en EJECUCION (nivel
+        === AGENCIA && asesorId === null), y en obtener-resumen.use-case.ts un alcance PROPIO deja
         agenciaEntera === null, asi que porAsesor NUNCA se invoca. La proteccion es real, no solo de tipos"
       - "Lo que falta es defensa en profundidad: los puertos exigen AlcanceDeAgenciaEntera por TIPO, y los
         tipos se borran al compilar. Un llamador futuro que no pase por el if del caso de uso no encontraria
         ninguna barrera en el puerto"
-      - "Remedio propuesto: que cada adaptador de porAsesor y ventasPorDestino afirme en ejecucion que
-        recibe el alcance que su tipo promete, y falle fuerte si no"
-      - "Prueba: llamar al puerto con un alcance PROPIO saltandose el caso de uso y ver que falla. Debe
-        verse en ROJO antes del arreglo"
-    source: "auditoria de seguridad del ADR-0035 (T-340), 2026-11-21"
+      - "Remedio propuesto: que cada adaptador de porAsesor y ventasPorDestino afirme en ejecucion que recibe
+        el alcance que su tipo promete, y falle fuerte si no"
+      - "Prueba: llamar al puerto con un alcance PROPIO saltandose el caso de uso y ver que falla. Debe verse
+        en ROJO antes del arreglo"
+    source: auditoria de seguridad del ADR-0035 (T-340), 2026-11-21
     owner: backend
-    notes: "Sale de la auditoria de T-340. Es cola, no bloqueante (CLAUDE.md 3.1): empieza por «el dia que
-      otro llamador aparezca». La madre comprobo la cadena completa linea a linea antes de clasificarla asi. || PRECISADO 2026-11-21 con la hija de T-340: los tres adaptadores reciben el parametro como _alcance (guion bajo = deliberadamente sin usar) y la consulta solo filtra por tenantId. Son oportunidades-para-reportes.prisma.ts:74 (crm), cotizaciones-para-reportes.prisma.ts:189 (quoting) y respuesta-para-reportes.prisma.ts:143 (inbox). Ahi es donde iria la asercion en ejecucion."
-
+    notes: "Sale de la auditoria de T-340. Es cola, no bloqueante (CLAUDE.md 3.1): empieza por «el dia que otro
+      llamador aparezca». La madre comprobo la cadena completa linea a linea antes de clasificarla asi. ||
+      PRECISADO 2026-11-21 con la hija de T-340: los tres adaptadores reciben el parametro como _alcance
+      (guion bajo = deliberadamente sin usar) y la consulta solo filtra por tenantId. Son
+      oportunidades-para-reportes.prisma.ts:74 (crm), cotizaciones-para-reportes.prisma.ts:189 (quoting) y
+      respuesta-para-reportes.prisma.ts:143 (inbox). Ahi es donde iria la asercion en ejecucion."
   - id: T-581
     title: "Reportes: ningun e2e cubre un rol con reportes.ver_agencia pero SIN conversaciones.ver_todas"
     type: test
@@ -12520,17 +12586,16 @@ tasks:
     depends_on:
       - T-340
     acceptance:
-      - "El e2e de dos asesores de reportes.e2e-spec.ts cubre asesor frente a administrador, pero los dos
-        casos llevan los permisos juntos. Un rol MIXTO (ve cifras de toda la agencia pero no las
-        conversaciones de los demas) no se prueba en ningun sitio"
-      - "Es justo la combinacion que un administrador de agencia podria armar a mano con el catalogo de
-        roles, y la que mas facil se cuela: dos permisos que casi siempre viajan juntos"
-      - "Anadir el caso al e2e y comprobar que cada permiso manda sobre SU parte de la respuesta, sin que
-        uno arrastre al otro"
-    source: "auditoria de seguridad del ADR-0035 (T-340), 2026-11-21"
+      - El e2e de dos asesores de reportes.e2e-spec.ts cubre asesor frente a administrador, pero los dos casos
+        llevan los permisos juntos. Un rol MIXTO (ve cifras de toda la agencia pero no las conversaciones de
+        los demas) no se prueba en ningun sitio
+      - "Es justo la combinacion que un administrador de agencia podria armar a mano con el catalogo de roles,
+        y la que mas facil se cuela: dos permisos que casi siempre viajan juntos"
+      - Anadir el caso al e2e y comprobar que cada permiso manda sobre SU parte de la respuesta, sin que uno
+        arrastre al otro
+    source: auditoria de seguridad del ADR-0035 (T-340), 2026-11-21
     owner: qa
-    notes: "Sale de la auditoria de T-340. Cola, no bloqueante."
-
+    notes: Sale de la auditoria de T-340. Cola, no bloqueante.
   - id: T-582
     title: "Cobros: la tabla no muestra pasajeros porque FilaDeCobro no los trae; ampliar el contrato y la API"
     type: feature
@@ -12541,22 +12606,21 @@ tasks:
     depends_on:
       - T-332
     acceptance:
-      - "T-332 pedia la lista «con pasajeros» y se entrego sin ellos, DECLARADO por quien la hizo:
-        FilaDeCobro (packages/contracts/src/cobros.ts) lleva archivoId, numero, contactoId, destino,
-        fechaSalida, total, pagado, saldo, situacion, estadoDeCobro y fechaLimite. Ni pasajeros ni
-        nombre del contacto. La pantalla muestra file, destino y salida"
-      - "NO es bloqueante y esta razonado: el criterio de salida del piloto (roadmap JD Tours seccion 3
-        punto 4) pide total, pagado y saldo por archivo, el filtro de saldo pendiente y el CSV. Los
-        pasajeros no estan en ese criterio"
-      - "Ampliar el contrato y el endpoint de cobros (carril a) para traer el numero de pasajeros o sus
-        nombres, y despues la columna en la pantalla y en el CSV (carril b)"
-      - "R10: si se traen NOMBRES de viajeros y no solo el recuento, es dato personal: ni en registros ni
-        en el CSV sin pensar quien puede verlo"
-    source: "entrega de T-332, declarado por la sesion que la construyo (2026-11-21)"
+      - "T-332 pedia la lista «con pasajeros» y se entrego sin ellos, DECLARADO por quien la hizo: FilaDeCobro
+        (packages/contracts/src/cobros.ts) lleva archivoId, numero, contactoId, destino, fechaSalida, total,
+        pagado, saldo, situacion, estadoDeCobro y fechaLimite. Ni pasajeros ni nombre del contacto. La
+        pantalla muestra file, destino y salida"
+      - "NO es bloqueante y esta razonado: el criterio de salida del piloto (roadmap JD Tours seccion 3 punto
+        4) pide total, pagado y saldo por archivo, el filtro de saldo pendiente y el CSV. Los pasajeros no
+        estan en ese criterio"
+      - Ampliar el contrato y el endpoint de cobros (carril a) para traer el numero de pasajeros o sus
+        nombres, y despues la columna en la pantalla y en el CSV (carril b)
+      - "R10: si se traen NOMBRES de viajeros y no solo el recuento, es dato personal: ni en registros ni en
+        el CSV sin pensar quien puede verlo"
+    source: entrega de T-332, declarado por la sesion que la construyo (2026-11-21)
     owner: backend
-    notes: "La sesion de T-332 encontro el limite y NO amplio el contrato por su cuenta porque no era su
-      carril. Era lo correcto: se registra aqui en vez de colarse un cambio de API en un PR de frontend."
-
+    notes: "La sesion de T-332 encontro el limite y NO amplio el contrato por su cuenta porque no era su carril.
+      Era lo correcto: se registra aqui en vez de colarse un cambio de API en un PR de frontend."
   - id: T-584
     title: "Orquestacion: la cadena de sesiones madre se agoto en profundidad de linaje 8 de 8"
     type: infra
@@ -12564,30 +12628,32 @@ tasks:
     priority: P1
     effort: S
     status: blocked
-    blocked_reason: "human_required: solo el propietario puede abrir una sesion orquestadora nueva DESDE LA RAIZ, que es lo unico que devuelve la profundidad de linaje a 1. Ninguna configuracion de usuario ni de organizacion cambia el limite de 8."
+    blocked_reason: "human_required: solo el propietario puede abrir una sesion orquestadora nueva DESDE LA RAIZ,
+      que es lo unico que devuelve la profundidad de linaje a 1. Ninguna configuracion de usuario ni de
+      organizacion cambia el limite de 8."
     acceptance:
-      - "HECHO verificado el 2026-11-21 contra el error literal de la herramienta, no deducido:
-        create_session y create_trigger responden «this session is at lineage depth 8 (limit 8), so it
-        cannot start sessions, or create, fire or re-arm routines and reminders. No user or organization
-        setting changes this limit». get_session lo confirma en su cuerpo: lineage depth 8, limit 8"
-      - "Consecuencia: la madre no puede crear hijas, ni la madre siguiente, ni rearmar su despertar.
-        La tarea programada existente apunta a una sesion ya archivada, asi que el modo desatendido
-        esta parado de hecho"
-      - "La desbloquea SOLO el propietario: abrir una sesion nueva DESDE LA RAIZ (no como relevo de
-        otra), que vuelve a profundidad 1, y apuntar ahi la tarea programada. Es el punto 19 de
+      - "HECHO verificado el 2026-11-21 contra el error literal de la herramienta, no deducido: create_session
+        y create_trigger responden «this session is at lineage depth 8 (limit 8), so it cannot start sessions,
+        or create, fire or re-arm routines and reminders. No user or organization setting changes this limit».
+        get_session lo confirma en su cuerpo: lineage depth 8, limit 8"
+      - "Consecuencia: la madre no puede crear hijas, ni la madre siguiente, ni rearmar su despertar. La tarea
+        programada existente apunta a una sesion ya archivada, asi que el modo desatendido esta parado de
+        hecho"
+      - "La desbloquea SOLO el propietario: abrir una sesion nueva DESDE LA RAIZ (no como relevo de otra), que
+        vuelve a profundidad 1, y apuntar ahi la tarea programada. Es el punto 19 de
         PENDIENTES-DEL-PROPIETARIO.md"
-      - "Para que no se repita: cada relevo por create_session gasta un escalon y nadie lo estaba
-        contando. Mirar lineage.depth en la MISMA llamada en que se mira context_usage.used_tokens, y
-        a partir de 6 hacer nacer la madre siguiente desde la raiz"
+      - "Para que no se repita: cada relevo por create_session gasta un escalon y nadie lo estaba contando.
+        Mirar lineage.depth en la MISMA llamada en que se mira context_usage.used_tokens, y a partir de 6
+        hacer nacer la madre siguiente desde la raiz"
       - "Apano verificado mientras tanto: los subagentes en proceso (herramienta Agent, CLAUDE.md 8) no
-        cuentan contra el linaje y con isolation worktree no se pisan en el unico checkout. Pero no
-        llevan las herramientas de GitHub (no abren PR), consumen contexto de la madre y mueren con la
-        sesion: sirven para un lote, no sustituyen a la cadena"
-    source: "bloqueo encontrado por la 7.a madre al repartir su lote (2026-11-21, 19:12 UTC)"
+        cuentan contra el linaje y con isolation worktree no se pisan en el unico checkout. Pero no llevan las
+        herramientas de GitHub (no abren PR), consumen contexto de la madre y mueren con la sesion: sirven
+        para un lote, no sustituyen a la cadena"
+    source: bloqueo encontrado por la 7.a madre al repartir su lote (2026-11-21, 19:12 UTC)
     owner: propietario
-    notes: "Esta en blocked y no en ready a proposito: ninguna sesion de codigo puede resolverla.
-      Ademas, create_trigger quedo denegado por el clasificador del modo automatico («Destructive or
-      Unwanted Actions») antes incluso de toparse con el limite de linaje."
+    notes: "Esta en blocked y no en ready a proposito: ninguna sesion de codigo puede resolverla. Ademas,
+      create_trigger quedo denegado por el clasificador del modo automatico («Destructive or Unwanted
+      Actions») antes incluso de toparse con el limite de linaje."
   - id: T-592
     title: "QA: la e2e 09-reportes-por-alcance rompe el job navegador al azar y bloquea integraciones ajenas"
     type: test
@@ -12596,62 +12662,63 @@ tasks:
     effort: S
     status: ready
     acceptance:
-      - "MEDIDO, no supuesto (2026-11-21, 20:30 UTC): el job navegador salio rojo a la vez en #480 y
-        #481, dos PR sin nada en comun (uno toca clases de color, el otro anade tres enteros al
-        contrato de cobros). Se relanzo el job SIN CAMBIAR UNA LINEA en los dos y los dos pasaron.
-        Eso es inestabilidad demostrada por experimento, no por argumento"
-      - "El fallo siempre es el mismo: 09-reportes-por-alcance.e2e-spec.ts:164, «No se pudo ingresar
-        con ana@agenciademo.test. La pantalla dijo: Error de autenticacion». La prueba la introdujo
-        #477 (T-346) el mismo dia"
-      - "Es P1 porque no rompe una funcionalidad: rompe LA COMPUERTA. Una prueba que tumba al azar PR
-        que no la tocan obliga a relanzar a mano y, peor, ensena a integrar con rojos"
-      - "T-548 ya cerro una fragilidad identica en otra e2e; mirar como se resolvio alli antes de
-        inventar"
-      - "LO QUE NO SE HACE: desactivar, saltar ni marcar como permitido-que-falle la prueba para ver
-        verde. Si el ingreso de la siembra es lo fragil, se arregla el ingreso"
-    source: "dos relanzamientos limpios medidos por la madre del lote (2026-11-21)"
+      - "MEDIDO, no supuesto (2026-11-21, 20:30 UTC): el job navegador salio rojo a la vez en #480 y #481, dos
+        PR sin nada en comun (uno toca clases de color, el otro anade tres enteros al contrato de cobros). Se
+        relanzo el job SIN CAMBIAR UNA LINEA en los dos y los dos pasaron. Eso es inestabilidad demostrada por
+        experimento, no por argumento"
+      - "El fallo siempre es el mismo: 09-reportes-por-alcance.e2e-spec.ts:164, «No se pudo ingresar con
+        ana@agenciademo.test. La pantalla dijo: Error de autenticacion». La prueba la introdujo #477 (T-346)
+        el mismo dia"
+      - "Es P1 porque no rompe una funcionalidad: rompe LA COMPUERTA. Una prueba que tumba al azar PR que no
+        la tocan obliga a relanzar a mano y, peor, ensena a integrar con rojos"
+      - T-548 ya cerro una fragilidad identica en otra e2e; mirar como se resolvio alli antes de inventar
+      - "LO QUE NO SE HACE: desactivar, saltar ni marcar como permitido-que-falle la prueba para ver verde. Si
+        el ingreso de la siembra es lo fragil, se arregla el ingreso"
+    source: dos relanzamientos limpios medidos por la madre del lote (2026-11-21)
     owner: qa
-
   - id: T-585
     title: "Reportes: el dashboard de administracion esta duplicado (ReportesListo repite reportes-reales)"
     type: refactor
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
-      - "ENCONTRADO al arreglar T-583: app/(app)/reportes/page.tsx define ReportesListo, que es el que
-        sirve la demostracion (?demo=1), y repite components/reportes/reportes-reales.tsx, que es el que
-        sirve los datos reales. El arreglo de contraste hubo que hacerlo DOS VECES, una en cada copia"
-      - "El riesgo no es el contraste, es el siguiente cambio: cualquiera que toque uno de los dos y no
-        sepa del otro deja la demostracion y la pantalla real diciendo cosas distintas. Es justo lo que
-        el propietario ensena a una agencia"
-      - "Unificar en un solo componente que reciba los datos por parametro, con la demostracion y los
-        datos reales como dos llamadores"
-    source: "hallazgo de la sesion de T-583 (2026-11-21)"
+      - "ENCONTRADO al arreglar T-583: app/(app)/reportes/page.tsx define ReportesListo, que es el que sirve
+        la demostracion (?demo=1), y repite components/reportes/reportes-reales.tsx, que es el que sirve los
+        datos reales. El arreglo de contraste hubo que hacerlo DOS VECES, una en cada copia"
+      - "El riesgo no es el contraste, es el siguiente cambio: cualquiera que toque uno de los dos y no sepa
+        del otro deja la demostracion y la pantalla real diciendo cosas distintas. Es justo lo que el
+        propietario ensena a una agencia"
+      - Unificar en un solo componente que reciba los datos por parametro, con la demostracion y los datos
+        reales como dos llamadores
+    source: hallazgo de la sesion de T-583 (2026-11-21)
     owner: frontend
-
+    started_at: 2026-11-21T19:39:09.292Z
+    done_at: 2026-11-21T19:39:09.292Z
+    evidence: "Mergeado en main por el PR #482 (rama i/T-585-cierre-y-bitacoras) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: d96be4e6d2fdb955d7e802346c09d20c3c6320f0
   - id: T-586
-    title: "Web: la clase dark no llega a <html> en el servidor de desarrollo; si no es solo de desarrollo, el modo oscuro esta roto entero"
+    title: "Web: la clase dark no llega a <html> en el servidor de desarrollo; si no es solo de desarrollo, el
+      modo oscuro esta roto entero"
     type: bug
     phase: 1
     priority: P1
     effort: S
     status: ready
     acceptance:
-      - "SINTOMA medido por la sesion de T-583: en next dev la clase dark no aparece en <html>. Ni el
-        script anti-parpadeo con localStorage ni colorScheme dark la activaron, y el medidor de
-        contraste tuvo que anadirla a mano para poder medir el modo oscuro"
-      - "NO esta diagnosticado. La sesion que lo encontro apunto dos sospechas sin confirmar: el nonce
-        de la CSP en desarrollo, o una re-hidratacion que pisa el className. Quien lo tome que mida,
-        no que suponga"
-      - "LA PREGUNTA QUE DECIDE LA PRIORIDAD: ¿pasa tambien en una compilacion de produccion? Si pasa,
-        el modo oscuro no funciona en NINGUNA pantalla y todo el trabajo de T-583 en oscuro es
-        invisible. Si es solo de desarrollo, es molestia de herramienta y baja a P3"
-      - "Responder esa pregunta ANTES de arreglar nada. Es media hora y cambia el tamano de la tarea"
-    source: "limite declarado por la sesion de T-583, sin ampliarlo (2026-11-21)"
+      - "SINTOMA medido por la sesion de T-583: en next dev la clase dark no aparece en <html>. Ni el script
+        anti-parpadeo con localStorage ni colorScheme dark la activaron, y el medidor de contraste tuvo que
+        anadirla a mano para poder medir el modo oscuro"
+      - "NO esta diagnosticado. La sesion que lo encontro apunto dos sospechas sin confirmar: el nonce de la
+        CSP en desarrollo, o una re-hidratacion que pisa el className. Quien lo tome que mida, no que suponga"
+      - "LA PREGUNTA QUE DECIDE LA PRIORIDAD: ¿pasa tambien en una compilacion de produccion? Si pasa, el modo
+        oscuro no funciona en NINGUNA pantalla y todo el trabajo de T-583 en oscuro es invisible. Si es solo
+        de desarrollo, es molestia de herramienta y baja a P3"
+      - Responder esa pregunta ANTES de arreglar nada. Es media hora y cambia el tamano de la tarea
+    source: limite declarado por la sesion de T-583, sin ampliarlo (2026-11-21)
     owner: frontend
-
   - id: T-587
     title: "Diseno: la familia de color aviso solo tiene tres tonos y obliga a usar amber crudo"
     type: refactor
@@ -12660,16 +12727,15 @@ tasks:
     effort: S
     status: backlog
     acceptance:
-      - "VERIFICADO a mano en globals.css: aviso declara 50, 600 y 700 y nada mas, mientras ok y alerta
-        llegan de 50 a 950. Un aviso-300 o aviso-400 no emite CSS"
-      - "Consecuencia real, no teorica: T-583 necesitaba un tono claro de aviso para el modo oscuro y
-        tuvo que escribir dark:text-amber-400, saliendose de la paleta semantica. El proximo que lo
-        necesite hara lo mismo y la paleta dejara de significar algo"
-      - "Completar la escala de aviso como la de ok y alerta, y sustituir el amber crudo de
-        bloques-de-cobros y mis-numeros por el token que corresponda"
-    source: "comprobacion de la madre al auditar T-583 (2026-11-21)"
+      - "VERIFICADO a mano en globals.css: aviso declara 50, 600 y 700 y nada mas, mientras ok y alerta llegan
+        de 50 a 950. Un aviso-300 o aviso-400 no emite CSS"
+      - "Consecuencia real, no teorica: T-583 necesitaba un tono claro de aviso para el modo oscuro y tuvo que
+        escribir dark:text-amber-400, saliendose de la paleta semantica. El proximo que lo necesite hara lo
+        mismo y la paleta dejara de significar algo"
+      - Completar la escala de aviso como la de ok y alerta, y sustituir el amber crudo de bloques-de-cobros y
+        mis-numeros por el token que corresponda
+    source: comprobacion de la madre al auditar T-583 (2026-11-21)
     owner: diseno-ux
-
   - id: T-588
     title: "Web: barrer el patron text-neutral-400 dark:text-neutral-500 en el resto de pantallas"
     type: bug
@@ -12680,16 +12746,15 @@ tasks:
     depends_on:
       - T-583
     acceptance:
-      - "T-583 solo midio /reportes. El patron text-neutral-400 dark:text-neutral-500 da 2,58:1 en claro
-        y 3,78:1 en oscuro, las dos por debajo de AA, y es un patron copiado: lo mas probable es que
-        este en mas pantallas"
-      - "Correr el mismo medidor (canvas, entiende oklch) sobre el resto de pantallas de ?demo=1, en los
-        dos modos y a 390 px, y corregir lo que salga"
+      - "T-583 solo midio /reportes. El patron text-neutral-400 dark:text-neutral-500 da 2,58:1 en claro y
+        3,78:1 en oscuro, las dos por debajo de AA, y es un patron copiado: lo mas probable es que este en mas
+        pantallas"
+      - Correr el mismo medidor (canvas, entiende oklch) sobre el resto de pantallas de ?demo=1, en los dos
+        modos y a 390 px, y corregir lo que salga
       - "EXIGENCIA: ver el medidor fallar antes de creerle un 0 hallazgos. En T-346 dio 0 por un defecto
         propio. Declarar cuantos textos leyo y cuantos colores no entendio"
-    source: "limite declarado por la sesion de T-583 (2026-11-21)"
+    source: limite declarado por la sesion de T-583 (2026-11-21)
     owner: frontend
-
   - id: T-589
     title: "QA: no hay prueba de contraste en CI; contraste-de-tokens.spec.ts vigila tokens, no clases"
     type: test
@@ -12700,17 +12765,15 @@ tasks:
     depends_on:
       - T-583
     acceptance:
-      - "Los defectos de T-583 eran PREEXISTENTES desde T-343 y T-344 y nadie se entero hasta que una
-        tarea pidio mirar. contraste-de-tokens.spec.ts existe pero solo comprueba los tokens de la
-        paleta, no las CLASES con las que se usan: un text-neutral-400 sobre fondo claro pasa su
-        vigilancia sin problema"
-      - "Prueba en CI que recorra las pantallas de ?demo=1 en los dos modos y falle si algun texto baja
-        de 4,5:1 (3:1 para texto grande)"
-      - "La prueba tiene que verse fallar: introducir a proposito un texto por debajo de AA y comprobar
-        que la deja en rojo, antes de darla por buena"
-    source: "limite declarado por la sesion de T-583 (2026-11-21)"
+      - "Los defectos de T-583 eran PREEXISTENTES desde T-343 y T-344 y nadie se entero hasta que una tarea
+        pidio mirar. contraste-de-tokens.spec.ts existe pero solo comprueba los tokens de la paleta, no las
+        CLASES con las que se usan: un text-neutral-400 sobre fondo claro pasa su vigilancia sin problema"
+      - Prueba en CI que recorra las pantallas de ?demo=1 en los dos modos y falle si algun texto baja de
+        4,5:1 (3:1 para texto grande)
+      - "La prueba tiene que verse fallar: introducir a proposito un texto por debajo de AA y comprobar que la
+        deja en rojo, antes de darla por buena"
+    source: limite declarado por la sesion de T-583 (2026-11-21)
     owner: qa
-
   - id: T-590
     title: "Cobros: columna de pasajeros en la pantalla y en el CSV (carril b de T-582)"
     type: feature
@@ -12721,19 +12784,18 @@ tasks:
     depends_on:
       - T-582
     acceptance:
-      - "Pasa a ready en cuanto T-582 este integrada en main y marcada done; hoy no, porque una ready
-        que depende de algo sin terminar es la cola mintiendo"
-      - "El carril a (T-582) ya dejo FilaDeCobro.pasajeros con adultos, ninos, infantes y total. Falta
-        la columna en apps/web/src/app/(app)/cobros/page.tsx y en apps/web/src/lib/exportar-csv.ts"
+      - Pasa a ready en cuanto T-582 este integrada en main y marcada done; hoy no, porque una ready que
+        depende de algo sin terminar es la cola mintiendo
+      - El carril a (T-582) ya dejo FilaDeCobro.pasajeros con adultos, ninos, infantes y total. Falta la
+        columna en apps/web/src/app/(app)/cobros/page.tsx y en apps/web/src/lib/exportar-csv.ts
       - "SON CIFRAS, NO NOMBRES, y asi debe quedarse: la vista la lee quien tenga cobro.ver, tambien
-        OPERACIONES, y se exporta a un CSV que sale de la agencia. Los nombres exigen archivo.ver
-        (ADR-0024 section 3.7) y son dato personal (R10)"
-      - "Decidir si el campo pasa de opcional a obligatorio en el contrato, y actualizar los simulacros
-        y las pruebas de la web"
+        OPERACIONES, y se exporta a un CSV que sale de la agencia. Los nombres exigen archivo.ver (ADR-0024
+        section 3.7) y son dato personal (R10)"
+      - Decidir si el campo pasa de opcional a obligatorio en el contrato, y actualizar los simulacros y las
+        pruebas de la web
       - "Escapado de formulas en el CSV: ya resuelto en T-335, no reinventarlo"
-    source: "limite declarado por la sesion de T-582, que no amplio la web desde un PR de API (2026-11-21)"
+    source: limite declarado por la sesion de T-582, que no amplio la web desde un PR de API (2026-11-21)
     owner: frontend
-
   - id: T-591
     title: "Repositorio: .gitignore no excluye los arboles de trabajo de los subagentes"
     type: infra
@@ -12742,16 +12804,15 @@ tasks:
     effort: S
     status: ready
     acceptance:
-      - "SINTOMA real: con subagentes lanzados con isolation worktree, git add -A desde el arbol
-        principal se traga .claude/worktrees/agent-* como repositorios embebidos. Paso en el lote del
-        2026-11-21 y hubo que deshacer el commit con git rm --cached y enmendar"
-      - "Ademas .claude/** es humanRequired, asi que un commit asi toca una ruta que nadie deberia tocar
-        sin aprobacion"
-      - "Anadir .claude/worktrees/ al .gitignore versionado. Hoy cada sesion lo repite a mano en
-        .git/info/exclude, que no se versiona"
-    source: "tropiezo real de la madre del lote (2026-11-21)"
+      - "SINTOMA real: con subagentes lanzados con isolation worktree, git add -A desde el arbol principal se
+        traga .claude/worktrees/agent-* como repositorios embebidos. Paso en el lote del 2026-11-21 y hubo que
+        deshacer el commit con git rm --cached y enmendar"
+      - Ademas .claude/** es humanRequired, asi que un commit asi toca una ruta que nadie deberia tocar sin
+        aprobacion
+      - Anadir .claude/worktrees/ al .gitignore versionado. Hoy cada sesion lo repite a mano en
+        .git/info/exclude, que no se versiona
+    source: tropiezo real de la madre del lote (2026-11-21)
     owner: devops
-
   - id: T-583
     title: "Reportes: textos por debajo de WCAG AA en los dos dashboards, sobre todo en modo oscuro"
     type: bug
@@ -12762,21 +12823,17 @@ tasks:
     depends_on:
       - T-346
     acceptance:
-      - "MEDIDO en T-346 con el contraste calculado de cada texto visible (AA pide 4,5:1 para texto
-        pequeno). Administracion en modo claro: los pies de las tarjetas de ReportesListo
-        (text-neutral-400, 11 px) dan 2,58:1 — «Variacion contra los...», «Aceptadas / enviadas...»,
-        cohortes, «p90:», «Aun sin datos»"
-      - "Modo oscuro, Ana y administracion: pies en 3,78:1; «COP», «USD» y «o mas» de «Por cobrar hoy»
-        en 2,29:1; «Subio», «Debe», «Por vencer:» y «Vencido:» en 2,77:1, con colores de modo claro
-        SIN variante dark:"
+      - "MEDIDO en T-346 con el contraste calculado de cada texto visible (AA pide 4,5:1 para texto pequeno).
+        Administracion en modo claro: los pies de las tarjetas de ReportesListo (text-neutral-400, 11 px) dan
+        2,58:1 — «Variacion contra los...», «Aceptadas / enviadas...», cohortes, «p90:», «Aun sin datos»"
+      - "Modo oscuro, Ana y administracion: pies en 3,78:1; «COP», «USD» y «o mas» de «Por cobrar hoy» en
+        2,29:1; «Subio», «Debe», «Por vencer:» y «Vencido:» en 2,77:1, con colores de modo claro SIN variante
+        dark:"
       - "En los dos modos: la linea legal «Tratamiento de datos personales...» del marco, 2,45:1 en claro"
-      - "Arreglar y volver a medir con el mismo medidor. El medidor tiene que verse fallar antes: su
-        primer pase dio 0 hallazgos en claro por no entender los colores oklch() de Tailwind"
-    source: "medicion de contraste de T-346 (2026-11-21)"
+      - "Arreglar y volver a medir con el mismo medidor. El medidor tiene que verse fallar antes: su primer
+        pase dio 0 hallazgos en claro por no entender los colores oklch() de Tailwind"
+    source: medicion de contraste de T-346 (2026-11-21)
     owner: frontend
-    notes: "Son defectos PREEXISTENTES de los dashboards de T-343 y T-344, no los introduce T-346: esa
-      tarea pedia MIRAR el contraste y lo miro. Cola y no bloqueante (CLAUDE.md 3.1), pero el propietario
-      quiere ensenar estas pantallas desde el celular, asi que no conviene que duerma mucho."
-
-
-
+    notes: "Son defectos PREEXISTENTES de los dashboards de T-343 y T-344, no los introduce T-346: esa tarea pedia
+      MIRAR el contraste y lo miro. Cola y no bloqueante (CLAUDE.md 3.1), pero el propietario quiere ensenar
+      estas pantallas desde el celular, asi que no conviene que duerma mucho."
