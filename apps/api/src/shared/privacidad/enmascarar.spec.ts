@@ -24,6 +24,15 @@ describe('redactarPII', () => {
     expect(s).not.toContain('AB123456');
     expect(s).not.toContain('1990');
   });
+  it('redacta el valor del DETAIL de unicidad de un apodo (ADR-0031)', () => {
+    const a = redactarPII('duplicate key ... DETAIL: Key (apodo)=(isabel.alvear) already exists.');
+    expect(a).not.toContain('isabel');
+    expect(a).toContain('Key (apodo)=([REDACTADO]) already exists');
+    const b = redactarPII('Key (tenant_id, apodo)=(3f2c1a9e-1111-4222-8333-444455556666, ialvear)');
+    expect(b).not.toContain('ialvear');
+    // Otra restricción no se toca.
+    expect(redactarPII('Key (correo)=(a@b.co) already exists')).toContain('a@b.co');
+  });
   it('no toca ids, fechas comunes ni códigos', () => {
     const t = 'Oportunidad 3f2c1a9e-1111-4222-8333-444455556666 SIN_VIGENCIA 2026-10-27';
     expect(redactarPII(t)).toBe(t);
