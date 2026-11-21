@@ -7477,6 +7477,8 @@ tasks:
       - "La ruta /<agencia>/ingreso resuelve la agencia y el apodo es unico por agencia (UNIQUE (tenant_acceso_id, apodo))"
       - "Se ejecuta ANTES de encender REGISTRO_AUTOSERVICIO_HABILITADO y antes de dar de alta una segunda agencia, tambien por script (ADR-0031 §4)"
       - "No se mueve ningun dato: es una migracion de indices"
+      - "Hoy la proteccion del indice global de apodos es un count en tiempo de ejecucion (guardia-de-apodos.ts:47), no el esquema: tras T-361 la garantia la da el indice"
+      - "Prueba nueva: el PATCH del apodo de un miembro niega con 409 el apodo de otra agencia con la funcion forzada a encendida (hoy falta; auditoria de #358)"
     files:
       - docs/03-adr/0031-ingreso-por-apodo.md
       - packages/contracts/src/identidad.ts
@@ -8457,6 +8459,7 @@ tasks:
     depends_on: [T-340]
     acceptance:
       - "Respuesta del propietario a la pregunta 10 del catálogo de reportes; si cambia lo de hoy, decisión escrita en un ADR que enmiende el 0035 y tareas de implementación con dueño"
+      - "POST /crm/seguimientos/:id/completar (crm.controller.ts:265): con crm.escribir cualquiera completa el seguimiento de otro asesor; hoy solo valida tenantId. Aplicar la misma visibilidad que ya tienen el resumen y la lista (conversaciones.ver_todas)"
     source: "ADR-0035 §4 (fuera de alcance) y cola del PR #395"
     created_at: 2026-11-21T12:00:00.000Z
     owner: arquitecto
@@ -9316,4 +9319,167 @@ tasks:
       - "Lista de lo que se comprobó y de lo que sigue «sin verificar»; hoy solo hay Chromium en el entorno de la sesión de diseño"
     source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
     created_at: 2026-11-21T04:30:00.000Z
+    owner: qa
+  - id: T-494
+    title: "Cobros: lock_timeout de 5 s igual al timeout de la transacción de Prisma; bajo contención sale 500 en vez de 409 COBRO_OCUPADO"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "lock_timeout = '5s' (cobros.prisma.ts:43) coincide con el timeout por defecto de la transacción interactiva (prisma.service.ts:44-57 no fija transactionOptions): bajo contención sale P2028 y 500 FALLO_DE_ESCRITURA, no el 409 COBRO_OCUPADO"
+      - "Prueba de contención que obtiene 409 COBRO_OCUPADO; el comentario de cobros.prisma.ts:137-139 deja de afirmar lo contrario"
+      - "El patrón viene de booking y quoting: revisar si allí pasa lo mismo y registrar el resultado"
+    files:
+      - apps/api/src/modules/payments/infrastructure/cobros.prisma.ts
+      - apps/api/src/shared/prisma/prisma.service.ts
+    source: "auditoría de cobros del PR #393 (T-330), cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-495
+    title: "Cobros: los invariantes de dinero solo viven en reglas-de-registro.ts; la base solo impide reversar un reverso"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "Decidir qué invariantes (piso de penalidad, no devolver de más, no pasarse del total) merecen una restricción o disparador en la base; si ninguno, dejarlo escrito en el ADR-0034 por nota de seguimiento"
+    files:
+      - apps/api/src/modules/payments/domain/reglas-de-registro.ts
+    source: "auditoría de cobros del PR #393 (T-330), cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-496
+    title: "Cobros: la clave de idempotencia es por (tenant, clave) y no por archivo ni ruta; CLAVE_REUTILIZADA tapa el error real"
+    type: bug
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "registrar-movimiento.use-case.ts:92 responde 409 CLAVE_REUTILIZADA cuando la clave ya se usó en otro archivo o ruta; decidir si la clave se ata a (archivo, ruta) o si el error se documenta, y probarlo"
+    files:
+      - apps/api/src/modules/payments/application/registrar-movimiento.use-case.ts
+    source: "auditoría de cobros del PR #393 (T-330), cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-497
+    title: "Cobros: el saldo del 201 se relee en otra transacción tras confirmar; bajo carrera puede traer un saldo ajeno"
+    type: bug
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "registrar-movimiento.use-case.ts:210: calcular el saldo dentro de la misma transacción o documentar que es informativo (cosmético)"
+    files:
+      - apps/api/src/modules/payments/application/registrar-movimiento.use-case.ts
+    source: "auditoría de cobros del PR #393 (T-330), cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-498
+    title: "Cobros: el validador Luhn no quita / _ , ni dígitos Unicode (C3) y un reverso idempotente con otro motivo responde 200 (C4)"
+    type: bug
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "C3: el validador Luhn normaliza / _ , y dígitos Unicode antes de validar, con pruebas"
+      - "C4: reintentar un reverso con la misma clave y otro motivo no responde 200 como si fuera el mismo; decidir 409 o ignorar el motivo y documentarlo"
+    source: "auditoría de cobros del PR #393 (T-330), cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-499
+    title: "Apodo: la aserción de ráfaga de apodo-ingreso.e2e-spec.ts es tautológica (<=20 sobre 20 peticiones)"
+    type: test
+    phase: 2
+    priority: P3
+    effort: XS
+    status: backlog
+    acceptance:
+      - "La aserción de la línea 505 falla si el tope por identificador no corta la ráfaga; se comprueba rompiéndolo a propósito"
+    files:
+      - apps/api/src/modules/identity/apodo-ingreso.e2e-spec.ts
+    source: "auditoría del apodo del PR #358, cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-500
+    title: "Apodo: estaApagada() añade un tenant.count() por intento de ingreso, en ruta pública y sin caché"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "catalogo-de-apodos.prisma.ts:80: cachear el resultado unos segundos o resolverlo sin consulta por intento; no debe abrir un camino que dependa de la caché para negar"
+    files:
+      - apps/api/src/modules/identity/infrastructure/catalogo-de-apodos.prisma.ts
+    source: "auditoría del apodo del PR #358, cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-501
+    title: "Apodo: si Better Auth responde 5xx, la reserva del tope por identificador no se libera"
+    type: bug
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "ingreso-por-identificador.ts:96: liberar la reserva cuando el fallo es del proveedor y no del titular; hoy cierra bien pero le cuesta un intento al titular"
+    files:
+      - apps/api/src/modules/identity/application/ingreso-por-identificador.ts
+    source: "auditoría del apodo del PR #358, cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-502
+    title: "Ingreso: un usuario sin membresía válida crea sesión en Better Auth aunque la cookie no se entregue"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "auth.controller.ts:258: revocar la sesión creada cuando no hay membresía válida, con prueba"
+    files:
+      - apps/api/src/modules/identity/interface/auth.controller.ts
+    source: "auditoría del apodo del PR #358, cola, 2026-11-21"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: backend
+  - id: T-503
+    title: "Pruebas de base y e2e que comparten base sin aislarse: FK de etiquetas, deadlocks 40P01 en la siembra de migraciones e invitaciones"
+    type: test
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - "packages/database/tests/etiquetas-por-agencia.spec.ts falla a veces con etiquetas_tenant_id_fkey (Key (tenant_id)=… is not present in table «tenants») dentro de la siembra de la migración 20261121110000"
+      - "packages/database/tests/historial-de-etapas.spec.ts falla a veces con deadlock 40P01 (migración 20261104150000)"
+      - "apps/api/src/modules/identity/invitaciones.e2e-spec.ts falló con deadlock detected"
+      - "Los tres pasan al relanzar el job: se sospecha una base compartida sin aislamiento entre archivos de prueba. Causa raíz encontrada y arreglada (una base o esquema por archivo, o ejecución serial donde toque), no un reintento"
+      - "Cinco ejecuciones seguidas del CI sin rojo por esto. Bloquea la cola de integración: cada PR puede salir rojo por azar"
+    files:
+      - packages/database/tests/etiquetas-por-agencia.spec.ts
+      - packages/database/tests/historial-de-etapas.spec.ts
+      - apps/api/src/modules/identity/invitaciones.e2e-spec.ts
+    source: "Estabilidad de pruebas, 2026-11-21 (lote nocturno)"
+    created_at: 2026-11-21T17:00:00.000Z
+    owner: qa
+  - id: T-504
+    title: "Web: setState de la bandeja después del teardown de jsdom tumba el job test con todas las pruebas en verde"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/src/app/(app)/bandeja/[id]/page.tsx (~576-591) hace setState tras el teardown y da ReferenceError: window is not defined; cancelar o ignorar la actualización al desmontar"
+      - "El job test queda en verde sin errores no capturados"
+    files:
+      - apps/web/src/app/(app)/bandeja/[id]/page.tsx
+    source: "Estabilidad de pruebas, 2026-11-21 (lote nocturno)"
+    created_at: 2026-11-21T17:00:00.000Z
     owner: qa

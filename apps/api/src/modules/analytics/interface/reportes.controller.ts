@@ -20,7 +20,7 @@ export class ReportesController {
   ) {}
 
   // PROVISIONAL (D3, H1): hoy el resumen es de toda la agencia y no hay «propio»; sin
-  // `conversaciones.ver_todas` es 403. T-341 lo cambia por `reportes.ver_agencia`.
+  // `conversaciones.ver_todas` es 403. T-342 retira este gate (T-341 solo crea el permiso `reportes.ver_agencia`; ADR-0035 §7).
   @RequierePermiso(PERMISO_VER_TODAS)
   @Get('resumen')
   async obtener(
