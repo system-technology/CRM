@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: 2026-11-21 06:05 UTC. `main` en `ea017f7` (PR #358).
+Última actualización: 2026-11-21, cierre del lote de la madrugada (este PR). `main` en `c74b44d` (PR #395) al abrirlo.
 
 ## 1. Quién es quién
 
@@ -34,14 +34,10 @@
 
 | # | PR | Qué | Estado verificado 05:55 UTC | Falta |
 |---|---|---|---|---|
-| 1 | #393 | T-330: dominio y API de cobros | **Auditado por la madre: INTEGRABLE, sin bloqueantes.** Cabeza `d5cc346` (ya con `main`). `test` falló por `packages/database` → `etiquetas-por-agencia.spec.ts` (FK `etiquetas_tenant_id_fkey`); **parece inestabilidad**: con un `main` equivalente iba 14/14. Job relanzado | Que el rerun verdee; integrar con squash |
-| 2 | #397 | ADR-0035, niveles de acceso a reportes (T-340) | 14/14 en verde sobre `5047f06`; `behind`. **Lectura de la madre hecha** (ruta protegida) | Actualizar rama y integrar |
-| 3 | #362 | Ingreso por apodo, web | `override-lane` del propietario. Solo corrió «Carril y tarea» | Después de #358; fusionar #359; probar a 390 px y contra la API real |
-| 4 | #395 | Cierre provisional H1/H2 de reportes | Borrador. `test` fallaba por un **fixture propio** (CHECK `seguimientos_exactamente_un_destino`), ya corregido en `7acae9a`; CI sin verificar | CI verde + **auditoría de permisos de la madre** + sacar de borrador |
-| 5 | docs | #384, #389, #386, #390, #392, #399 | Todos `behind` tras #388; sus checks estaban en verde antes | En ese orden, actualizando rama justo antes de cada merge |
+| 1 | #402 | Ingreso por apodo, web (sustituye a #362) | Falta el check «Carril y tarea» y la etiqueta `override-lane`, que solo pone el propietario. **Sin probar a 390 px contra la API real** | Propietario: `override-lane`. Al integrarlo, **cerrar #362** |
+| 2 | este PR | Cierre del lote (R14): cola de las auditorías, estado, diario, bitácora, trampas | Docs y dos comentarios de código; sin auto-merge | Integrar |
 
-**#399 sustituye a #396** (mismo contenido, asunto de 89 caracteres): el de #396 medía 112 y commitlint corta en 100. **Cerrar #396** al integrar #399.
-**Ids de tarea reservados:** T-425..T-435 (#384, #386, #399), T-440..T-479 (#389, diseño), T-480..T-485 (#399), T-490..T-493 (#397).
+**Ids de tarea ya usados:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 y T-494..T-504 (cola de las auditorías de #393, #358 y #395 y estabilidad de pruebas, este PR). **El siguiente libre es T-505**; `git fetch` antes de numerar.
 
 ### Integrado en este turno (2026-11-21)
 
@@ -50,10 +46,7 @@
 
 ## 4. Pendientes del orquestador (prometido y no hecho)
 
-- **Registrar en `tasks.yaml` la cola de la auditoría de #393** (dueño: cobros): `lock_timeout` igual al timeout de transacción de Prisma, invariantes de dinero solo en el dominio, clave de idempotencia por `(tenant, clave)`, `responder()` relee fuera de transacción, C3 (Luhn) y C4 (reverso con otro motivo).
-- **Estabilizar las pruebas de migración** de `packages/database`: `etiquetas-por-agencia.spec.ts` falla de forma intermitente por una FK a `tenants`; huele a carrera entre pruebas que comparten base.
-- **Flake de `apps/web`:** `bandeja/[id]/page.tsx` hace `setState` después del teardown de jsdom (`ReferenceError: window is not defined`) y tumba el job `test` con 1806/1806 pruebas en verde. Cancelar la promesa al desmontar.
-- Auditar #395 (permisos) antes de integrarlo. Auditar la migración de T-341 cuando llegue (toca el catálogo de autorización).
+- La cola de las auditorías de #393, #358 y #395 y la estabilidad de las pruebas quedaron en `roadmap/tasks.yaml` (T-494..T-504, T-361 y T-490). **T-503 (P1, `qa`) tapona la cola de integración:** cada PR puede salir rojo por azar. Auditar la migración de T-341 cuando llegue (toca el catálogo de autorización).
 - Criterio de salida 9 y principio 7 del roadmap 08 en celular, tablet y escritorio.
 - Verificar el `navegador` de `main` tras los merges; reabrir el PR del `navegador` obligatorio (commit `27412e7`) **solo** cuando el propietario lo aplique en el servidor.
 - Redesplegar con el `main` actual **solo con la confirmación del propietario**.
@@ -82,6 +75,10 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 - Tras traer `main`, recompilar `packages/contracts` y `packages/domain` o el typecheck falla.
 - El hook bloquea comandos git compuestos con el cwd en `main`; el hook `commit-msg` exige tipo conventional también en los merges.
 - `next dev` y `next build` no comparten `.next`. `AP14` se omite en `test` por `npm_lifecycle_event`.
+- commitlint rechaza `merge:` como tipo: en los mensajes de merge hay que usar `chore:`.
+- `gh pr checks` usa GraphQL y está bloqueado aquí: usar `gh api repos/system-technology/CRM/commits/<sha>/check-runs`.
+- Una sesión hija creada sin `source_url` nace sin el repositorio clonado y `add_repo` cae bajo el clasificador: crearla siempre con `source_url` y, si procede, `source_revision`.
+- El clasificador deniega `git push --force-with-lease` (así nació #399): para corregir el asunto de un commit ya empujado, recrear la rama y abrir otro PR. No hay atajo.
 - Un 23505 de un disparador puede llegar como P2002 sin restricción. `issue_write` con `labels` reemplaza etiquetas.
 
 ## 8. Sin verificar (heredado)
