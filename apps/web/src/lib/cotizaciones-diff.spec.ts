@@ -131,6 +131,17 @@ describe('cotizaciones-diff (T-128)', () => {
       expect(formatearDeltaDinero({ unidades: '-120000', moneda: 'COP' })).toBe('- $ 120.000 COP');
       expect(formatearDeltaDinero({ unidades: '0', moneda: 'COP' })).toBe('$ 0 COP');
     });
+
+    // R8: `unidades` son unidades MÍNIMAS. En USD son centavos: 125050 son 1.250,50, no 125.050,00.
+    // Con el código anterior (que pasaba `Number(unidades)` a Intl sin dividir) esto daba
+    // «+ $ 125.050,00 USD», cien veces de más.
+    it('USD: divide las unidades mínimas por los decimales de la moneda (T-543)', () => {
+      expect(formatearDeltaDinero({ unidades: '125050', moneda: 'USD' })).toBe('+ $ 1.250,50 USD');
+      expect(formatearDeltaDinero({ unidades: '-125050', moneda: 'USD' })).toBe('- $ 1.250,50 USD');
+      expect(formatearDeltaDinero({ unidades: '5', moneda: 'USD' })).toBe('+ $ 0,05 USD');
+      expect(formatearDeltaDinero({ unidades: '100', moneda: 'EUR' })).toBe('+ $ 1,00 EUR');
+      expect(formatearDeltaDinero({ unidades: '0', moneda: 'USD' })).toBe('$ 0,00 USD');
+    });
   });
 
   describe('Comparación de parámetros y composición', () => {
