@@ -10048,7 +10048,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    done_at: 2026-11-21T14:16:23.000Z
     acceptance:
       - "El job «Marcar la tarea como hecha» (cerrar-tarea.yml) sale con codigo 1 tras CADA merge: lo verifico la madre en la corrida 44904456823 al integrar #428. No bloquea el PR porque corre despues del merge y no esta entre los 14 checks, por eso llevaba tiempo fallando sin que nadie lo viera"
       - "Causa 1, mecanica: 18 tareas tienen type o effort fuera del enum de tools/roadmap-mcp/roadmap.mjs (TYPES = security|bug|refactor|test|feature|docs|infra|audit; EFFORTS = S|M|L). Se colaron valores como fix, chore, feature-S. Corregir las 18 y validar el archivo entero"
@@ -10058,6 +10059,7 @@ tasks:
     source: "hallazgo de la madre al integrar #428, 2026-11-21"
     created_at: 2026-11-21T13:00:00.000Z
     owner: dueno-de-producto
+    notes: "Cerrada a mano por la madre entrante tras verificarla, no por el cierre automatico, que fallo en su propia rama. Causa 1 (18 tareas con type/effort fuera del enum) la arreglo #437; causa 2 (las 20 in_progress) la aplico #438. VERIFICADO sobre main 898ba390 con un parseo linea a linea: 526 tareas, CERO in_progress, cero claves duplicadas, cero tareas sin status. La evidencia que pedia el criterio: la corrida de cerrar-tarea.yml sobre i/T-554-triaje-aplicado (2026-11-21T14:16:23Z) salio en VERDE, la primera despues de cuatro fallos seguidos (ramas de T-537, T-549, T-548 y T-542)."
   - id: T-543
     title: "Web: formatearDeltaDinero pinta 100 veces de mas en toda moneda con decimales"
     type: bug
@@ -10137,7 +10139,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:56:00.000Z
     acceptance:
       - "apps/web/e2e/08-ingreso-por-usuario.e2e-spec.ts:168 fallo en el job navegador de #429 (corrida 44905127361) y paso en VERDE al relanzar el mismo sha sin tocar nada: es fragil, no un fallo real"
       - "Evidencia: esperaba «Sin usuario (entra con su correo)» y leyo «Usuario: e2e-ad984bf6» durante los 10 s de espera, con 24 resoluciones del locator sobre el MISMO valor viejo. No es que tardara: es que la fila nunca se revalido"
@@ -10148,6 +10151,7 @@ tasks:
     source: "verificado por la madre al integrar #429, 2026-11-21"
     created_at: 2026-11-21T13:40:00.000Z
     owner: qa
+    notes: "Integrada como #436 (209a3a8e). La hipotesis que daba el criterio (la tabla de miembros no revalida, cache de TanStack Query) resulto FALSA y la sesion la descarto yendo al trace.zip: el defecto estaba en useFocoModal, que robaba el foco a quien YA estaba escribiendo, asi que la gente perdia ediciones. No era una prueba fragil que normalizar: tenia razon en fallar. El arreglo fue de la web y no de la espera, como exigia el criterio: no se subio el timeout ni se reintento."
   - id: T-549
     title: "Sin responsable: el filtro se aplica despues del LIMIT, asi que la cifra es un minimo y no un total"
     type: bug
@@ -10220,3 +10224,20 @@ tasks:
     source: "hallazgo de T-542: el validador solo corre tras el merge; sesion carril i, 2026-11-21"
     created_at: 2026-11-21T15:00:00.000Z
     owner: devops
+  - id: T-555
+    title: "Web: dejar de pedir el resumen por asesor y pintar Destinos como ventas del periodo"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-531, T-532]
+    acceptance:
+      - "La web deja de llamar a obtenerResumenesDeAsesoresApi una vez por asesor y de recortar a 12: consume las cifras por asesor que T-531 sirve en una sola respuesta"
+      - "El bloque Destinos del dashboard de administracion pasa de archivos abiertos a ventas del periodo, y cambia su rotulo, con lo que sirve T-532"
+      - "Sin sumar monedas (R8): una fila por destino y moneda, tal como las sirve el servidor"
+      - "El alcance lo impone el servidor (ADR-0035): la web no decide quien ve que, ni reconstruye el margen"
+      - "No se da por buena sin ver fallar la prueba con el codigo viejo"
+    source: "mitad web de T-531 y T-532, que son solo servidor y carril a; esta es carril b. Abierta por la madre, 2026-11-21"
+    created_at: 2026-11-21T14:30:00.000Z
+    owner: frontend
