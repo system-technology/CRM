@@ -11624,36 +11624,39 @@ tasks:
     created_at: 2026-11-21T15:20:00.000Z
     owner: frontend
   - id: T-560
-    title: "Web: falta el conmutador de tema en las pantallas publicas, y el anti-FOUC no tiene pruebas de comportamiento"
+    title: "Web: el tema no se aplica al arrancar ni se puede cambiar fuera de la bandeja"
     type: bug
     phase: 1
     priority: P2
     effort: M
     status: done
     acceptance:
+      - "Los dos modos YA existen: globals.css redefine los tokens en .dark, 144 archivos usan variantes dark:
+        y selector-tema-densidad.tsx ofrece claro / oscuro / seguir al sistema con persistencia en
+        viajapro_tema"
+      - "Lo que falta (1): el tema no se aplica en el arranque. apps/web/src/app/layout.tsx no lee la
+        preferencia ni pone la clase en <html>, asi que la primera pintura siempre es clara y hay parpadeo si
+        el usuario prefiere oscuro. Se resuelve con un script en linea antes de la hidratacion"
+      - "Lo que falta (2): el conmutador solo esta montado en barra-modulos.tsx (la bandeja). Desde el ingreso
+        o cualquier otra pantalla no hay forma de cambiar el tema"
+      - "Lo que falta (3): se respeta prefers-color-scheme del sistema en la PRIMERA visita, sin preferencia
+        guardada"
+      - "Criterio de cierre: con el sistema en oscuro y sin preferencia guardada, la app abre en oscuro sin
+        parpadeo; el conmutador se alcanza desde cualquier pantalla privada; la eleccion sobrevive a recargar"
       - "CORRECCION 2026-11-21: el diagnostico original de esta tarea, escrito por la madre orquestadora, era
-        FALSO en dos de sus tres puntos. Lo desmintio la sesion de carril b, que PARO antes de escribir codigo y
-        lo midio en un navegador con la CSP real y la hidratacion abortada. Queda escrito para que nadie lo
-        vuelva a dar por cierto"
+        FALSO en dos de sus tres puntos, y lo desmintio la sesion de carril b midiendolo en un navegador con la
+        CSP real y la hidratacion abortada. Queda escrito para que nadie lo vuelva a dar por cierto"
       - "FALSO que el tema no se aplique al arrancar: layout.tsx importa SCRIPT_ANTI_FOUC de lib/tema-y-densidad.ts
         y lo inyecta en <head> con el nonce de la CSP, antes de la hidratacion. No hay parpadeo"
-      - "FALSO que no se respete prefers-color-scheme en la primera visita: el tema por defecto es 'system' y el
-        script resuelve con matchMedia. Medido: sistema oscuro sin preferencia abre en oscuro; una preferencia
-        guardada gana sobre la del sistema, en los dos sentidos"
-      - "INEXACTO que el conmutador solo este en la bandeja: BarraModulos la monta MarcoDeTrabajo, que es el
-        layout de TODO el grupo (app), y se llega por el avatar en escritorio y por la hoja «Mas» en movil"
-      - "LO QUE SI FALTA (1): las pantallas PUBLICAS (ingreso, aceptar invitacion, politica de cookies) no tienen
-        conmutador. Quien entra de noche no puede cambiarlo sin haber iniciado sesion"
-      - "LO QUE SI FALTA (2): el SCRIPT_ANTI_FOUC no tiene pruebas de comportamiento; el spec solo comprueba que
-        el texto contenga las claves. Hacen falta pruebas que ejecuten el script y verifiquen la clase en las
-        cuatro combinaciones (sistema oscuro/claro x preferencia ausente/guardada), vistas en rojo mutando el script"
+      - "FALSO que no se respete prefers-color-scheme en la primera visita: el tema por defecto es system y el
+        script resuelve con matchMedia. Medido en las cuatro combinaciones"
+      - "INEXACTO que el conmutador solo estuviera en la bandeja: MarcoDeTrabajo monta BarraModulos en TODO el
+        grupo (app). Lo que si faltaba, y es lo que se hizo, era el conmutador en las pantallas PUBLICAS y unas
+        pruebas de comportamiento del anti-FOUC"
       - "APRENDIZAJE DE METODO: la afirmacion falsa nacio de un grep estrecho (localStorage|classList dentro de
         layout.tsx) que no encontro nada. El script vive en otro archivo y entra como constante importada. NO
         ENCONTRAR ALGO CON UN GREP NO DEMUESTRA QUE NO EXISTA, y menos para escribirlo como un hecho en el roadmap"
-      - "Descubribilidad: el propietario preguntó si se podían manejar ambos modos SIN SABER que el conmutador ya
-        existe. Si no lo encuentra quien conoce el producto, una agencia tampoco. Eso es un problema real, pero es
-        de descubribilidad y no de funcionalidad: se trata aparte, no aqui"
-    source: "revision visual del propietario 2026-11-21; diagnostico corregido por la sesion de carril b el mismo dia"
+    source: "revision visual del propietario, 2026-11-21: «podemos manejar ambos modos oscuro y claro?»"
     created_at: 2026-11-21T15:40:00.000Z
     owner: frontend
     started_at: 2026-11-21T16:17:52.037Z
@@ -11685,16 +11688,14 @@ tasks:
       - "Ojo con los colores fijos que no pasan por tokens (formulario-ingreso.tsx usa #FDE68A y #C9A24B a
         mano): inventariarlos, aunque arreglarlos pueda ir en otra tarea"
       - "CORRECCION 2026-11-21: la premisa de esta tarea era FALSA. Se midieron los 19 pares que la aplicacion
-        usa de verdad, en claro y en oscuro, y NINGUNO incumplia AA por luminancia (el mas justo, 4,75:1). No se
-        ajusto ninguna luminancia ni se toco la identidad"
+        usa de verdad, en claro y en oscuro, y NINGUNO incumplia AA por luminancia (el mas justo, 4,75:1)"
       - "LO QUE SI ESTABA ROTO, y explica el reporte del propietario: 14 tonos de las familias ok y alerta se
-        usaban en 77 sitios de 24 archivos SIN estar declarados en @theme. En Tailwind v4 un tono no declarado
-        NO emite CSS, asi que la clase era inerte y en oscuro sobrevivia el color de claro. El boton de borrar
-        una etiqueta quedaba a 2,34:1 siendo una accion destructiva, y once insignias se pintaban casi blancas
-        dentro del tema oscuro: eso es el «se pierden los textos» que se reporto"
-      - "Se arreglo completando las rampas con tonos de su misma paleta, sin cambiar ningun tono ya declarado
-        (auditado por la madre sobre el diff). La compuerta que lo evita en el futuro no mide solo contraste:
-        comprueba que TODO tono usado en el codigo este declarado, recorriendo lo versionado con git ls-files"
+        usaban en 77 sitios de 24 archivos SIN estar declarados en @theme. En Tailwind v4 un tono no declarado NO
+        emite CSS, asi que la clase era inerte y en oscuro sobrevivia el color de claro. El boton de borrar una
+        etiqueta quedaba a 2,34:1 siendo una accion destructiva, y once insignias se pintaban casi blancas dentro
+        del tema oscuro: eso es el «se pierden los textos» que se reporto"
+      - "La compuerta que lo evita en el futuro no mide solo contraste: comprueba que TODO tono usado en el
+        codigo este declarado, recorriendo lo versionado con git ls-files"
     source: revision visual del propietario, 2026-11-21
     created_at: 2026-11-21T15:42:00.000Z
     owner: frontend
@@ -11709,7 +11710,7 @@ tasks:
     phase: 1
     priority: P2
     effort: L
-    status: backlog
+    status: in_progress
     acceptance:
       - "Dos recorridos completos: el del asesor (entrar, atender la conversacion, cotizar, enviar, aceptar,
         abrir el archivo de viaje, registrar un pago, ver sus numeros) y el del dueno (lo anterior mas
@@ -11730,6 +11731,128 @@ tasks:
       fotos»"
     created_at: 2026-11-21T15:46:00.000Z
     owner: documentador
+  - id: T-563
+    title: "Web: no se puede aceptar una cotizacion desde la pantalla, y sin eso no se abre el archivo de viaje"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - "Hoy, aceptar una cotizacion solo se puede por API: cambiarEstadoCotizacionApi se invoca unicamente con
+        'ENVIADA' desde modal-enviar-cotizacion.tsx; en cotizaciones/page.tsx ACEPTADA solo aparece como filtro y
+        como estado pintado, nunca como accion. Las e2e (07-cobros) aceptan con page.request.post. Hallado al
+        documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre"
+      - "Por que es P1 y no «el dia que...»: aceptar y abrir el archivo de viaje es el corazon del producto. Si el
+        propietario ensena esto a una agencia, no puede cerrar una venta en pantalla. Bloquea la demo aunque no
+        bloquee main"
+      - "El detalle de una cotizacion ENVIADA ofrece una accion para marcarla aceptada (y rechazada), con el permiso
+        que corresponda a POST /api/v1/cotizaciones/:id/estado; al aceptar, la pantalla lleva al archivo de viaje que
+        abrio el evento CotizacionAceptada, o dice que se esta abriendo"
+      - "Una prueba de navegador recorre el paso con un clic en vez de page.request.post"
+      - "Al cerrarla, corregir el paso 7 de docs/01-producto/04-flujos-criticos.md y el paso 7 del manual
+        (docs/06-manual/01-recorrido-del-asesor.md)"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T15:50:00.000Z
+    owner: frontend
+  - id: T-564
+    title: "Web: no hay forma de corregir un pago (devolver, ajustar o reversar) aunque exista el permiso del dueno"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "ADR-0034 reserva cobro.corregir al dueno. panel-de-cobro.tsx solo muestra un aviso a quien no lo tiene
+        (cobro-sin-permiso-corregir) y a quien lo tiene no le ofrece nada: el permiso existe y la pantalla no. Hallado
+        al documentar el recorrido del dueno (T-562)"
+      - "El dueno puede devolver, ajustar o reversar un pago desde el historial del archivo de viaje; la correccion
+        se agrega al libro (un pago nunca se borra) y queda a nombre de quien la hizo"
+      - "Antes de construir la pantalla, confirmar con la API de cobros (T-330) que ofrece la operacion de
+        correccion; si no la ofrece, se abre tarea de backend primero"
+      - "Al cerrarla, quitar la advertencia de docs/06-manual/02-recorrido-del-dueno.md (paso 7) y la fila de
+        docs/06-manual/03-lo-que-no-cubre.md"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T15:50:00.000Z
+    owner: frontend
+  - id: T-565
+    title: "Web: el cartel «Modo de Produccion» del ingreso afirma una conexion que no comprueba y habla en tecnico"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "formulario-ingreso.tsx muestra «Modo de Produccion (API Real) — Conectado a la API y PostgreSQL en vivo»
+        cuando esReal es verdadero, y esReal = authApi.usaAuthReal() es una bandera de configuracion, no una
+        comprobacion de conectividad. En una captura tomada sin ninguna API la pantalla decia «conectado». Hallado
+        al documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre"
+      - "Dos caras, y la tarea recoge las dos: o se comprueba de verdad la conexion, o el texto deja de afirmarla"
+      - "En cualquier caso, el texto se reescribe en lenguaje de agencia, sin nombrar PostgreSQL ni «API»: es la
+        primera pantalla que ve el dueno de una agencia de viajes y un resto de desarrollo le resta confianza"
+      - "Al cerrarla, quitar la nota sobre el recuadro verde del paso 1 de docs/06-manual/01-recorrido-del-asesor.md y
+        volver a tomar asesor-01-ingreso con docs/06-manual/capturas.mjs --ingreso"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T15:55:00.000Z
+    owner: frontend
+  - id: T-566
+    title: "Web: la demostracion solo ensena la vista del dueno; no hay forma de verla con los ojos de un asesor"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "El usuario de muestra del modo demostracion tiene permisos de dueno: «Reportes de la agencia» sale con la
+        comparacion entre asesores y no existe la vista «Mis numeros» de un asesor puro. Hallado al capturar el manual
+        (T-562): asesor-11-mis-numeros hubo que tomarla con el filtro «Míos» de la vista del dueno"
+      - "Por que importa mas que una limitacion de capturas: en una agencia real los asesores son la mayoria de los
+        usuarios, y quien evalua el producto no puede ver lo que vera su equipo"
+      - "Hace falta un segundo usuario de muestra con rol de asesor, o una forma de alternar el rol en la demostracion;
+        la que se elija debe ser visible (la insignia de demostracion lo dice) y no tocar la autenticacion real"
+      - "Al cerrarla, volver a tomar asesor-11-mis-numeros con docs/06-manual/capturas.mjs y quitar la advertencia del
+        paso 11 de docs/06-manual/01-recorrido-del-asesor.md"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T16:00:00.000Z
+    owner: frontend
+  - id: T-567
+    title: "Web: los datos de muestra de la demostracion no cuadran entre pantallas"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "Criterio de aceptacion tomado de un caso real: en «Reportes» con el filtro «Mios» las ventas del periodo
+        (31.450.000 COP) son las mismas que con «Toda la agencia» aunque las cotizaciones aceptadas pasan de 5 a 2
+        (visto en asesor-11-mis-numeros, T-562)"
+      - "Los nombres y montos tampoco coinciden de una pantalla a otra (Hoy, Seguimientos, Oportunidades, Cotizaciones,
+        Archivos de viaje usan datos de muestra independientes)"
+      - "En una demostracion que las cifras no casen se nota y resta confianza: los datos de muestra salen de una sola
+        fuente coherente, y una prueba compara las cifras que se repiten entre pantallas"
+      - "Al cerrarla, quitar de docs/06-manual/README.md la advertencia de que los datos no coinciden"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T16:00:00.000Z
+    owner: frontend
+  - id: T-568
+    title: "Campos personalizados del contacto admiten datos sensibles sin cifrado ni auditoria"
+    type: security
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "Hoy el riesgo es bajo: la pantalla es maqueta y solo guarda en el navegador. Pero ofrece «Numero de pasaporte»
+        y «Fecha de vencimiento de pasaporte», y el manual (docs/06-manual/03-lo-que-no-cubre.md) ya advierte que no se
+        escriba ahi un pasaporte real porque el cifrado de datos sensibles de viajeros aun no cubre estos campos"
+      - "Cuando los campos personalizados se implementen de verdad en servidor, tienen que nacer cifrados y con acceso
+        auditado (R10, ley 1581 de 2012, ADR-0015). Decision de arquitectura antes de escribir codigo: ADR o ampliacion
+        del 0015"
+      - "Enlazar con T-309, que decide el cifrado del NIT: es el mismo criterio de que PII va cifrada"
+      - "Al cerrarla, quitar la advertencia del manual"
+    source: "advertencia de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T16:00:00.000Z
+    owner: arquitecto
   - id: T-569
     title: "Web: 41 clases primary-* que no existen en ninguna paleta, asi que no generan CSS"
     type: bug

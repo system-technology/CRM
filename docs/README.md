@@ -117,6 +117,12 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Uso aceptable de agentes de IA](05-seguridad/12-uso-aceptable-agentes-ia.md) | Uso aceptable para los agentes de IA que desarrollan ViajaPro |
 | [Cookies](05-seguridad/13-inventario-y-politica-de-cookies.md) | Inventario y política |
 
+## 06 · Manual de usuario
+
+| Documento | Qué contiene |
+|---|---|
+| [Manual de usuario](06-manual/README.md) | Recorrido del asesor y del dueño con capturas de la demostración, lo que no cubre y cómo regenerar las fotos |
+
 ## 06 · Operación
 
 | Documento | Qué contiene |
