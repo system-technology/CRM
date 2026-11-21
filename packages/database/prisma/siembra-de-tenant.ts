@@ -1,6 +1,6 @@
 /**
- * Lo que recibe TODA agencia sembrada: roles, formatos de viaje de sistema, embudo por defecto y
- * motivos de pérdida.
+ * Lo que recibe TODA agencia sembrada: roles, formatos de viaje de sistema, embudo por defecto,
+ * motivos de pérdida y etiquetas de conversación.
  *
  * Salió de `seed.ts` sin cambiar de comportamiento para que la agencia demo y las agencias de
  * prospecto (`semilla-agencia-desde-json.ts`) usen exactamente el mismo camino: un solo sitio
@@ -30,6 +30,14 @@ export const ROLES_SEMBRADOS = [
       'cotizacion.escribir',
       'archivo.ver',
       'archivo.operar',
+      // T-324 (HU-inbox-1 §3): solo el dueño gestiona el catálogo de etiquetas; las asesoras
+      // ponen y quitan con `bandeja.operar`. La agencia puede dárselo a ASESOR.
+      'etiquetas.administrar',
+      // T-329 (ADR-0034 §6): los tres de cobro. `cobro.corregir` (devolución, ajuste, penalidad,
+      // reverso y plazos) solo aquí: quien registra un pago no lo compensa.
+      'cobro.ver',
+      'cobro.registrar',
+      'cobro.corregir',
     ],
   },
   {
@@ -37,12 +45,15 @@ export const ROLES_SEMBRADOS = [
     nombre: 'Asesor',
     // T-089: el Asesor atiende la bandeja, escribe en el CRM y cotiza. T-249: y opera los
     // archivos de viaje que nacen de sus cotizaciones (ADR-0024 §3.7).
+    // T-329 (ADR-0034 §6): ve el cobro y registra pagos; no los compensa (sin `cobro.corregir`).
     permisos: [
       'bandeja.operar',
       'crm.escribir',
       'cotizacion.escribir',
       'archivo.ver',
       'archivo.operar',
+      'cobro.ver',
+      'cobro.registrar',
     ],
   },
   {
@@ -50,8 +61,15 @@ export const ROLES_SEMBRADOS = [
     nombre: 'Operaciones',
     // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no. T-089: sin `bandeja.operar`,
     // `crm.escribir` ni `cotizacion.escribir`. T-249 (ADR-0024 §3.7): sí opera los archivos de
-    // viaje, que es confirmar con el proveedor y pagarle.
-    permisos: ['conversaciones.ver_todas', 'catalogo.administrar', 'archivo.ver', 'archivo.operar'],
+    // viaje, que es confirmar con el proveedor y pagarle. T-329 (ADR-0034 §6, supuesto sin
+    // verificar): solo ve el cobro.
+    permisos: [
+      'conversaciones.ver_todas',
+      'catalogo.administrar',
+      'archivo.ver',
+      'archivo.operar',
+      'cobro.ver',
+    ],
   },
 ] as const;
 
@@ -224,4 +242,38 @@ export async function sembrarMotivosDePerdida(
       },
     });
   }
+}
+
+// --- Etiquetas de conversación (T-324, HU-inbox-1) ------------------------------
+// Tabla por agencia, no enum (R12). Mismo contenido que siembra la migración 20261121110000 para
+// las agencias que ya existían. Editables y borrables como cualquier otra. Ojo: volver a sembrar
+// una agencia (`pnpm db:seed` sobre la demo) repone la que la agencia hubiera borrado; las agencias
+// reales no se re-siembran.
+export const ETIQUETAS_SEMBRADAS = [
+  { nombre: 'Pagado', color: 'verde', orden: 0 },
+  { nombre: 'Pago pendiente', color: 'ambar', orden: 1 },
+  { nombre: 'Seguimiento', color: 'azul', orden: 2 },
+] as const satisfies ReadonlyArray<{ nombre: string; color: string; orden: number }>;
+
+/** La clave de la unicidad de la base: `lower(btrim(nombre))`. */
+const nombreNormalizado = (nombre: string): string => nombre.trim().toLowerCase();
+
+/**
+ * Por NOMBRE NORMALIZADO y sin pisar nada: si la agencia ya tiene «pagado» (con otro color u
+ * orden), se le deja la suya. La unicidad es de expresión (`lower(btrim(nombre))`) y Prisma no
+ * sabe hacer `upsert` sobre ella: se filtra lo que ya existe y el resto entra con
+ * `skipDuplicates` (ON CONFLICT DO NOTHING), que además cubre a dos siembras a la vez.
+ */
+export async function sembrarEtiquetas(tx: ClienteDeSiembra, tenantId: string): Promise<void> {
+  const existentes = new Set(
+    (await tx.label.findMany({ where: { tenantId }, select: { nombre: true } })).map((e) =>
+      nombreNormalizado(e.nombre),
+    ),
+  );
+  const faltan = ETIQUETAS_SEMBRADAS.filter((e) => !existentes.has(nombreNormalizado(e.nombre)));
+  if (faltan.length === 0) return;
+  await tx.label.createMany({
+    data: faltan.map((e) => ({ tenantId, nombre: e.nombre, color: e.color, orden: e.orden })),
+    skipDuplicates: true,
+  });
 }

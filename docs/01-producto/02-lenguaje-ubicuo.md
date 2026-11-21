@@ -37,6 +37,7 @@ Término nuevo del dominio → entrada nueva aquí, antes de escribir la primera
 | **Plantilla** | `MessageTemplate` | Mensaje preaprobado por Meta. Tiene categoría, variables y estado de aprobación. |
 | **Nota interna** | `InternalNote` | Comentario del equipo sobre una conversación. **Nunca se envía al cliente.** |
 | **Asignación** | `Assignment` | Qué asesor es responsable de una conversación. |
+| **Etiqueta** | `Label` | Marca con nombre y color que **cada agencia** define (tabla por agencia, R12) y que se pone y se quita en una conversación («Pagado», «Pago pendiente», «Seguimiento»). Es ayuda visual del chat: **ningún saldo ni estado de cobro se calcula con ella**. No es la etiqueta del contacto (`Contacto.etiquetas`, atributo duradero). En pantalla, «Etiqueta», nunca «tag». Tablas `etiquetas` y `conversacion_etiquetas` (T-324, HU-inbox-1). |
 | **Cola común** | `UnassignedQueue` | Las conversaciones sin asignar. Las ve todo miembro de la agencia. Ver `12-visibilidad-de-conversaciones.md`. |
 | **Tomar una conversación** | `ClaimConversation` | Asignársela uno mismo desde la cola común. Responder la primera vez también la toma. |
 | **SLA de primera respuesta** | `FirstResponseSla` | Tiempo máximo comprometido para responder. Si se vence, se ve en la bandeja. |

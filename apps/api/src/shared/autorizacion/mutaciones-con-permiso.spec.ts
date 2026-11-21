@@ -9,14 +9,25 @@ import { RequestMethod } from '@nestjs/common';
 import type { Permiso } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
 import { ArchivosController } from '../../modules/booking/interface/archivos.controller.js';
+import {
+  CobrosController,
+  PagosDeArchivoController,
+} from '../../modules/payments/interface/cobros.controller.js';
 import { AgenciaAjustesController } from '../../modules/identity/interface/agencia-ajustes.controller.js';
 import { CrmController } from '../../modules/crm/interface/crm.controller.js';
+import { EtiquetasController } from '../../modules/inbox/interface/etiquetas.controller.js';
 import { ConversacionesController } from '../../modules/inbox/interface/conversaciones.controller.js';
 import { NotificacionesController } from '../../modules/notifications/interface/notificaciones.controller.js';
 import { CotizacionesController } from '../../modules/quoting/interface/cotizaciones.controller.js';
 import { CLAVE_PERMISOS_REQUERIDOS } from './permiso.decorator.js';
 
-const MUTACIONES = new Set<number>([RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH]);
+const MUTACIONES = new Set<number>([
+  RequestMethod.POST,
+  RequestMethod.PUT,
+  RequestMethod.PATCH,
+  // T-325: quitar una etiqueta es un DELETE; sin esto una ruta de borrado quedaría sin vigilar.
+  RequestMethod.DELETE,
+]);
 
 /**
  * Mutaciones que NO exigen permiso, con su razón. `leida` es el estado de lectura de quien mira:
@@ -27,11 +38,28 @@ const SIN_PERMISO = new Set(['ConversacionesController.leida']);
 const CONTROLADORES: ReadonlyArray<readonly [abstract new (...args: never[]) => object, Permiso]> =
   [
     [ConversacionesController, 'bandeja.operar'],
+    // T-325: las mutaciones del catálogo (la lectura, `GET`, la ve cualquier usuario de la agencia).
+    [EtiquetasController, 'etiquetas.administrar'],
     [CrmController, 'crm.escribir'],
     [CotizacionesController, 'cotizacion.escribir'],
     [AgenciaAjustesController, 'usuarios.administrar'],
     // ADR-0024 §3.7, T-249. El literal, no la constante: cambiarla debe romper esta prueba.
     [ArchivosController, 'archivo.operar'],
+  ];
+
+/**
+ * T-330 (ADR-0034 §6): los controladores de cobro NO caben en la lista de arriba porque no tienen UN
+ * permiso de mutación: cada ruta declara el suyo. Se fija ruta por ruta, con el literal. En
+ * `registrarMovimiento` es `cobro.ver` a propósito: el permiso fino depende del `tipo` del cuerpo
+ * (PAGO → `cobro.registrar`; DEVOLUCION, AJUSTE y PENALIDAD → `cobro.corregir`) y lo comprueba el
+ * caso de uso antes de tocar la base (`registrar-movimiento.use-case.spec.ts`, y las e2e de cobros).
+ */
+const COBROS: ReadonlyArray<readonly [abstract new (...args: never[]) => object, string, Permiso]> =
+  [
+    [PagosDeArchivoController, 'registrarMovimiento', 'cobro.ver'],
+    [PagosDeArchivoController, 'reversar', 'cobro.corregir'],
+    [PagosDeArchivoController, 'fijarPlazo', 'cobro.corregir'],
+    [CobrosController, 'fijarParametros', 'cobro.corregir'],
   ];
 
 describe('mutaciones con permiso (T-089)', () => {
@@ -107,5 +135,49 @@ describe('mutaciones con permiso (T-089)', () => {
     expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, ArchivosController)).toEqual([
       'archivo.ver',
     ]);
+  });
+
+  describe('cobros (T-330, ADR-0034 §6)', () => {
+    for (const [controlador, ruta, permiso] of COBROS) {
+      it(`${controlador.name}.${ruta} exige ${permiso}`, () => {
+        const proto = controlador.prototype as Record<string, unknown>;
+        expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto[ruta] as object)).toEqual([
+          permiso,
+        ]);
+      });
+    }
+
+    it('toda mutación de los controladores de cobro está en la lista de arriba (una nueva rompe esto)', () => {
+      const declaradas = new Set(COBROS.map(([c, r]) => `${c.name}.${r}`));
+      for (const controlador of [PagosDeArchivoController, CobrosController]) {
+        const proto = controlador.prototype as unknown as Record<string, unknown>;
+        const mutaciones = Object.getOwnPropertyNames(proto).filter(
+          (n) =>
+            n !== 'constructor' &&
+            typeof proto[n] === 'function' &&
+            MUTACIONES.has(Reflect.getMetadata('method', proto[n] as object) as number),
+        );
+        expect(mutaciones.length).toBeGreaterThan(0);
+        for (const m of mutaciones)
+          expect(declaradas.has(`${controlador.name}.${m}`), m).toBe(true);
+      }
+    });
+
+    it('toda ruta de cobro exige cobro.ver además (la respuesta lleva el saldo): clase y lecturas', () => {
+      for (const controlador of [PagosDeArchivoController, CobrosController]) {
+        expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, controlador)).toEqual(['cobro.ver']);
+      }
+      const lecturas = [
+        [PagosDeArchivoController, 'leerCobro'],
+        [CobrosController, 'vista'],
+      ] as const;
+      for (const [c, n] of lecturas) {
+        const proto = c.prototype as unknown as Record<string, unknown>;
+        expect(Reflect.getMetadata('method', proto[n] as object)).toBe(RequestMethod.GET);
+        expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto[n] as object)).toEqual([
+          'cobro.ver',
+        ]);
+      }
+    });
   });
 });

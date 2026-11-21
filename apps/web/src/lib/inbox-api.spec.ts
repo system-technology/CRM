@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { inboxApi, InboxErrorApi } from './inbox-api';
 
 describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos simulados (inbox-api)', () => {
@@ -45,6 +45,13 @@ describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos si
       await expect(
         inboxApi.obtenerConversacionDetalle('01932000-0000-7000-8000-000000000001'),
       ).rejects.toThrow(InboxErrorApi);
+    });
+
+    it('obtenerConversacionDetalle de un id que no es UUID devuelve null sin llamar a la API', async () => {
+      const fetchEspia = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')));
+      globalThis.fetch = fetchEspia;
+      await expect(inboxApi.obtenerConversacionDetalle('inexistente')).resolves.toBeNull();
+      expect(fetchEspia).not.toHaveBeenCalled();
     });
 
     it('enviarTexto lanza InboxErrorApi y NO devuelve mock', async () => {

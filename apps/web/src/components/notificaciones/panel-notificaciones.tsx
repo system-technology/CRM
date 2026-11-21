@@ -24,6 +24,7 @@ import {
   type NotificacionWeb,
   type TipoNotificacionWeb,
   adaptarAlertaOperativaANotificacion,
+  resumirNotificaciones,
 } from '../../lib/notificaciones-web';
 import {
   cargarPreferenciasNotificaciones,
@@ -92,7 +93,9 @@ export function PanelNotificaciones({
     return item.tipo === filtro;
   });
 
-  const conteoNoLeidas = listaUnificada.filter((n) => !n.leida).length;
+  // Misma cuenta que la campana: lo pendiente. «Todas» es la suma de las demás pestañas.
+  const resumen = resumirNotificaciones(listaUnificada);
+  const conteoNoLeidas = resumen.total;
 
   const alternarSonido = () => {
     const nuevo = !prefs.sonidoHabilitado;
@@ -351,7 +354,7 @@ export function PanelNotificaciones({
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
-            Todas ({listaUnificada.length})
+            Todas ({resumen.total})
           </button>
           <button
             type="button"
@@ -365,7 +368,7 @@ export function PanelNotificaciones({
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
-            Plazos ({listaUnificada.filter((n) => n.tipo === 'aviso_plazo').length})
+            Plazos ({resumen.porTipo.aviso_plazo})
           </button>
           <button
             type="button"
@@ -379,7 +382,7 @@ export function PanelNotificaciones({
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
-            WhatsApp ({listaUnificada.filter((n) => n.tipo === 'mensaje_nuevo').length})
+            WhatsApp ({resumen.porTipo.mensaje_nuevo})
           </button>
           <button
             type="button"
@@ -393,7 +396,7 @@ export function PanelNotificaciones({
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
-            Seguimientos ({listaUnificada.filter((n) => n.tipo === 'seguimiento_vencido').length})
+            Seguimientos ({resumen.porTipo.seguimiento_vencido})
           </button>
           <button
             type="button"
@@ -407,7 +410,7 @@ export function PanelNotificaciones({
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
-            Cotizaciones ({listaUnificada.filter((n) => n.tipo === 'cotizacion_por_vencer').length})
+            Cotizaciones ({resumen.porTipo.cotizacion_por_vencer})
           </button>
           <button
             type="button"
@@ -421,7 +424,7 @@ export function PanelNotificaciones({
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
-            Operativas ({listaUnificada.filter((n) => n.tipo === 'alerta_operativa').length})
+            Operativas ({resumen.porTipo.alerta_operativa})
           </button>
         </div>
 

@@ -88,17 +88,26 @@ export class IngresoPorIdentificador {
     autenticar: (correo: string) => Promise<ResultadoDeAutenticacion<T>>,
   ): Promise<T> {
     const { correoParaBetterAuth, sujetoDelTope } = await this.resolver(identificador);
-    const bloqueado = await this.tope.estaBloqueado(sujetoDelTope);
+    // Reservar ANTES de autenticar: sin esto, una ráfaga en paralelo leería todas «menos de 10
+    // fallos» y probaría todas la contraseña. La reserva cuenta como fallo hasta que se libere.
+    const { bloqueado, reservaId } = await this.tope.reservar(sujetoDelTope);
 
     // Bloqueado: mismo camino, con el centinela, y el resultado se descarta.
     const resultado = await autenticar(bloqueado ? CORREO_CENTINELA : correoParaBetterAuth);
 
-    if (resultado.tipo === 'limite') throw errorDeAcceso('DEMASIADOS_INTENTOS');
-    if (resultado.tipo === 'origen') throw errorDeAcceso('ORIGEN_NO_CONFIABLE');
+    // 429 y 403 dependen de la IP y del origen: no probaron la contraseña, no consumen cupo.
+    if (resultado.tipo === 'limite' || resultado.tipo === 'origen') {
+      await this.tope.liberar(reservaId);
+      throw errorDeAcceso(
+        resultado.tipo === 'limite' ? 'DEMASIADOS_INTENTOS' : 'ORIGEN_NO_CONFIABLE',
+      );
+    }
     if (resultado.tipo === 'rechazada' || bloqueado) {
-      await this.tope.registrarFallo(sujetoDelTope);
+      // La reserva queda: es el fallo registrado.
       throw errorDeAcceso('CREDENCIALES_INVALIDAS');
     }
+    // El ingreso exitoso no consume cupo.
+    await this.tope.liberar(reservaId);
     return resultado.valor;
   }
 }

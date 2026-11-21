@@ -3,8 +3,9 @@
 import { AvisoSoloLocal } from '../../../components/comun/aviso-solo-local';
 import { useModoDemo } from '../../../lib/modo-demo';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { Suspense, useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
 import { Kanban, Table as TableIcon, Search, Filter, Plus, Download } from 'lucide-react';
 import { exportarOportunidadesCSV, descargarArchivoCSV } from '../../../lib/exportar-csv';
@@ -13,6 +14,7 @@ import { ModalMotivoPerdida } from '../../../components/pipeline/modal-motivo-pe
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
 import { EsqueletoKanban, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
 import { AvisoConfiguracionTenant } from '../../../components/crm/aviso-configuracion-tenant';
+import { leerIdDeUrl } from '../../../lib/parametros-url';
 import { obtenerMockTableroPipeline } from '../../../lib/mock-pipeline';
 import { useCargarIndiceDeViajes, ViajesBandejaProvider } from '../../../lib/viajes-bandeja';
 import { formatearDineroCifra, moverOportunidadEnTablero } from '../../../lib/pipeline-logica';
@@ -36,8 +38,13 @@ import {
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 const CAMPOS_IGNORADOS_PIPELINE: (keyof FiltrosPipelinePersistidos)[] = ['vista'];
 
-export default function PipelinePage() {
+function PipelineContenido() {
   const { esDemo } = useModoDemo();
+  // `?op=` (T-318): la oportunidad que el enlace quiere ver. Solo un UUID se usa; lo demás se avisa.
+  const searchParams = useSearchParams();
+  const parametroOp = leerIdDeUrl(searchParams ?? new URLSearchParams(), 'op');
+  const opEnfocadaId = parametroOp.estado === 'valido' ? parametroOp.id : null;
+  const yaEnfocada = useRef<string | null>(null);
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
   // Pasajeros y plazos de cada tarjeta salen de los archivos de viaje: una sola petición.
   const indiceDeViajes = useCargarIndiceDeViajes({ oportunidades: false });
@@ -231,6 +238,31 @@ export default function PipelinePage() {
     [tableroFiltrado],
   );
 
+  const tableroListo = !cargandoApi && !errorCarga && !errorConfiguracion;
+  const opVisible =
+    opEnfocadaId !== null && todasLasOportunidades.some((op) => op.id === opEnfocadaId);
+  const opExiste =
+    opEnfocadaId !== null &&
+    tablero.columnas.some((c) => c.oportunidades.some((op) => op.id === opEnfocadaId));
+  const avisoDeEnlace: string | null =
+    parametroOp.estado === 'invalido'
+      ? 'El enlace no apunta a una oportunidad válida. Está incompleto o mal copiado.'
+      : opEnfocadaId !== null && tableroListo && !opExiste
+        ? 'No encontramos la oportunidad del enlace. Puede haberse eliminado o ser de otra agencia.'
+        : opEnfocadaId !== null && tableroListo && !opVisible
+          ? 'La oportunidad del enlace está oculta por los filtros activos.'
+          : null;
+
+  // Enfoca la oportunidad pedida una sola vez por enlace (un refresco no debe robar el foco).
+  useEffect(() => {
+    if (!opEnfocadaId || !opVisible || yaEnfocada.current === opEnfocadaId) return;
+    const el = document.getElementById(`op-${opEnfocadaId}`);
+    if (!el) return;
+    yaEnfocada.current = opEnfocadaId;
+    el.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+    el.focus({ preventScroll: true });
+  }, [opEnfocadaId, opVisible, vista]);
+
   const manejarExportarCSV = () => {
     const csv = exportarOportunidadesCSV(todasLasOportunidades);
     descargarArchivoCSV(csv, `oportunidades-viajapro-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -374,6 +406,25 @@ export default function PipelinePage() {
             )}
           </header>
 
+          {avisoDeEnlace && (
+            <div
+              role="status"
+              data-testid="pipeline-aviso-enlace"
+              className="flex flex-wrap items-center gap-3 border-b border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900 sm:px-6 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <span className="min-w-0 flex-1">{avisoDeEnlace}</span>
+              {opEnfocadaId !== null && opExiste && !opVisible && tieneFiltrosActivos && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="focus-visible:ring-acento-600 min-h-[44px] rounded-xl border border-amber-300 px-3 font-semibold focus-visible:ring-2 focus-visible:outline-none dark:border-amber-800"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Cuerpo Principal del Tablero Kanban */}
           {errorConfiguracion && !mostrarDemoForzado ? (
             <div className="flex flex-1 items-center justify-center overflow-y-auto p-6">
@@ -401,6 +452,7 @@ export default function PipelinePage() {
                     etapas={tablero.columnas.map((c) => c.etapa)}
                     onSolicitarMover={manejarSolicitudMover}
                     onDropOportunidad={manejarDropOportunidad}
+                    oportunidadEnfocadaId={opEnfocadaId}
                   />
                 ))}
               </div>
@@ -434,7 +486,10 @@ export default function PipelinePage() {
                         col.oportunidades.map((op) => (
                           <tr
                             key={op.id}
-                            className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40"
+                            id={`op-${op.id}`}
+                            tabIndex={-1}
+                            data-enfocada={op.id === opEnfocadaId ? 'true' : undefined}
+                            className={`hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 ${op.id === opEnfocadaId ? 'bg-acento-50 outline-acento-600 dark:bg-acento-950/30 outline-2 -outline-offset-2' : ''}`}
                           >
                             <td className="px-4 py-3 font-semibold text-neutral-900 dark:text-neutral-100">
                               {op.titulo}
@@ -498,5 +553,13 @@ export default function PipelinePage() {
         )}
       </>
     </ViajesBandejaProvider>
+  );
+}
+
+export default function PipelinePage() {
+  return (
+    <Suspense fallback={<EsqueletoKanban />}>
+      <PipelineContenido />
+    </Suspense>
   );
 }

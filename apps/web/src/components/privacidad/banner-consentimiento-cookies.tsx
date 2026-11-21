@@ -122,7 +122,7 @@ export function BannerConsentimientoCookies() {
                     <Link
                       href="/politica-cookies"
                       data-testid="enlace-politica-cookies"
-                      className="text-acento-700 dark:text-acento-400 inline-flex items-center gap-1 text-[11px] font-semibold hover:underline"
+                      className="text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold hover:underline"
                     >
                       <span>Ver inventario y política de cookies</span>
                       <ExternalLink className="h-2.5 w-2.5" />

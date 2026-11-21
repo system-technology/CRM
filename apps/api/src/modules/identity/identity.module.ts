@@ -40,7 +40,11 @@ import {
 import { ZonaHorariaPrisma } from './infrastructure/zona-horaria.prisma.js';
 import { AgenciasPrisma } from './infrastructure/agencias.prisma.js';
 import { proveedorDeAuth } from './infrastructure/auth.provider.js';
-import { ContadorDeFallosDeCodigo, LimitadorDeEnvios } from './application/limitador-de-envios.js';
+import {
+  ContadorDeFallosDeCodigo,
+  LimitadorDeEnvios,
+  ReservaDeIntentos,
+} from './application/limitador-de-envios.js';
 import { crearLimitadorDeEnvios } from './infrastructure/crear-limitador-de-envios.js';
 import { MembresiasPrisma } from './infrastructure/membresias.prisma.js';
 import { ContadorDeFallosPostgres } from './infrastructure/contador-de-fallos.postgres.js';
@@ -76,6 +80,7 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     proveedorDeAuth,
     { provide: LimitadorDeEnvios, useFactory: crearLimitadorDeEnvios },
     { provide: ContadorDeFallosDeCodigo, useClass: ContadorDeFallosPostgres },
+    { provide: ReservaDeIntentos, useExisting: ContadorDeFallosDeCodigo },
     ResolverAcceso,
     ObtenerSesionActual,
     CambiarAgenciaActiva,
@@ -88,9 +93,9 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     ComprobarApodosAlArrancar,
     {
       provide: TopeDeFallosDeIngreso,
-      useFactory: (contador: ContadorDeFallosDeCodigo) =>
+      useFactory: (contador: ReservaDeIntentos) =>
         new TopeDeFallosDeIngreso(contador, leerSecretoDeAutenticacion(process.env)),
-      inject: [ContadorDeFallosDeCodigo],
+      inject: [ReservaDeIntentos],
     },
     { provide: PuertoApodos, useClass: ApodosPrisma },
     { provide: PuertoCatalogoDeApodos, useClass: CatalogoDeApodosPrisma },

@@ -37,6 +37,7 @@ import {
   obtenerMockCotizaciones,
 } from './mock-cotizaciones';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
+import { construirVersionSimulada } from './cotizaciones-demo';
 
 // Re-exportado de api-base (ADR-0011 §2)
 
@@ -145,73 +146,24 @@ export async function guardarCotizacionApi(cuerpo: GuardarCotizacion): Promise<C
   const idNuevo = `01932000-0000-7000-8000-${sufijoUnico}`;
   const versionId = `01932000-0000-7000-8000-${(Date.now() + 1).toString(16).padStart(12, '0')}`;
 
+  // Mismo cálculo que el cotizador de demostración: el total guardado es el que se vio (R8).
   const paquete =
     MOCK_PAQUETES_CATALOGO.find((p) => p.id === validado.version.paqueteId) ??
     MOCK_PAQUETES_CATALOGO[0]!;
-  const adultos = validado.version.adultos ?? 2;
-  const ninos = validado.version.ninos ?? 0;
-  const infantes = validado.version.infantes ?? 0;
-  const precioUnitarioNum = 2450000;
-  const totalVentaNum = precioUnitarioNum * adultos + Math.round(precioUnitarioNum * 0.7) * ninos;
-
-  const version1: VersionDeCotizacion = {
+  const version1: VersionDeCotizacion = construirVersionSimulada({
     id: versionId,
     numero: 1,
     creadaEn: ahora,
-    paqueteId: paquete.id,
-    paqueteNombre: paquete.nombre,
-    destino: paquete.destino,
-    noches: paquete.dias - 1,
-    fechaSalida: validado.version.fecha,
-    vigenciaId: '01932000-0000-7000-8000-000000000001',
-    vigenciaDesde: '2026-10-01',
-    vigenciaHasta: '2026-10-31',
-    deSalidaProgramada: true,
-    adultos,
-    ninos,
-    infantes,
-    acomodacion: validado.version.acomodacion ?? 'DOBLE',
-    politica: {
-      porcentaje: 15,
-      base: 'SOBRE_EL_NETO',
-      origenDeLaVenta: 'DERIVADA_DEL_NETO',
-      redondeoVenta: 1000,
+    paquete,
+    composicion: {
+      fecha: validado.version.fecha,
+      adultos: validado.version.adultos ?? 2,
+      ninos: validado.version.ninos ?? 0,
+      infantes: validado.version.infantes ?? 0,
+      acomodacion: validado.version.acomodacion,
+      vigenteHasta: validado.version.vigenteHasta,
     },
-    lineas: [
-      {
-        tarifaId: '01932000-0000-7000-8000-000000000011',
-        nombre: `Adulto en acomodación ${validado.version.acomodacion ?? 'DOBLE'}`,
-        unidad: 'POR_PERSONA',
-        cubrePasajeros: 1,
-        veces: adultos,
-        precioUnitario: { unidades: String(precioUnitarioNum), moneda: 'COP' as const },
-        total: { unidades: String(precioUnitarioNum * adultos), moneda: 'COP' as const },
-        masBarata: false,
-      },
-      ...(ninos > 0
-        ? [
-            {
-              tarifaId: '01932000-0000-7000-8000-000000000012',
-              nombre: 'Niño (2-11 años)',
-              unidad: 'POR_PERSONA' as const,
-              cubrePasajeros: 1,
-              veces: ninos,
-              precioUnitario: {
-                unidades: String(Math.round(precioUnitarioNum * 0.7)),
-                moneda: 'COP' as const,
-              },
-              total: {
-                unidades: String(Math.round(precioUnitarioNum * 0.7 * ninos)),
-                moneda: 'COP' as const,
-              },
-              masBarata: false,
-            },
-          ]
-        : []),
-    ],
-    venta: { unidades: String(Math.round(totalVentaNum)), moneda: 'COP' as const },
-    vigenteHasta: validado.version.vigenteHasta ?? null,
-  };
+  });
 
   const nuevaCotizacion: CotizacionGuardada = {
     id: idNuevo,
@@ -267,70 +219,20 @@ export async function anadirVersionCotizacionApi(
 
   const paquete =
     MOCK_PAQUETES_CATALOGO.find((p) => p.id === validado.paqueteId) ?? MOCK_PAQUETES_CATALOGO[0]!;
-  const adultos = validado.adultos ?? 2;
-  const ninos = validado.ninos ?? 0;
-  const infantes = validado.infantes ?? 0;
-  const precioUnitarioNum = 2300000;
-  const totalVentaNum = precioUnitarioNum * adultos + Math.round(precioUnitarioNum * 0.7) * ninos;
-
-  const nuevaVersion: VersionDeCotizacion = {
+  const nuevaVersion: VersionDeCotizacion = construirVersionSimulada({
     id: versionId,
     numero: siguienteNumero,
     creadaEn: ahora,
-    paqueteId: paquete.id,
-    paqueteNombre: paquete.nombre,
-    destino: paquete.destino,
-    noches: paquete.dias - 1,
-    fechaSalida: validado.fecha,
-    vigenciaId: '01932000-0000-7000-8000-000000000001',
-    vigenciaDesde: '2026-10-01',
-    vigenciaHasta: '2026-10-31',
-    deSalidaProgramada: true,
-    adultos,
-    ninos,
-    infantes,
-    acomodacion: validado.acomodacion ?? 'DOBLE',
-    politica: {
-      porcentaje: 15,
-      base: 'SOBRE_EL_NETO',
-      origenDeLaVenta: 'DERIVADA_DEL_NETO',
-      redondeoVenta: 1000,
+    paquete,
+    composicion: {
+      fecha: validado.fecha,
+      adultos: validado.adultos ?? 2,
+      ninos: validado.ninos ?? 0,
+      infantes: validado.infantes ?? 0,
+      acomodacion: validado.acomodacion,
+      vigenteHasta: validado.vigenteHasta,
     },
-    lineas: [
-      {
-        tarifaId: '01932000-0000-7000-8000-000000000011',
-        nombre: `Adulto en acomodación ${validado.acomodacion ?? 'DOBLE'} (v${siguienteNumero})`,
-        unidad: 'POR_PERSONA',
-        cubrePasajeros: 1,
-        veces: adultos,
-        precioUnitario: { unidades: String(precioUnitarioNum), moneda: 'COP' as const },
-        total: { unidades: String(precioUnitarioNum * adultos), moneda: 'COP' as const },
-        masBarata: false,
-      },
-      ...(ninos > 0
-        ? [
-            {
-              tarifaId: '01932000-0000-7000-8000-000000000012',
-              nombre: 'Niño (2-11 años)',
-              unidad: 'POR_PERSONA' as const,
-              cubrePasajeros: 1,
-              veces: ninos,
-              precioUnitario: {
-                unidades: String(Math.round(precioUnitarioNum * 0.7)),
-                moneda: 'COP' as const,
-              },
-              total: {
-                unidades: String(Math.round(precioUnitarioNum * 0.7 * ninos)),
-                moneda: 'COP' as const,
-              },
-              masBarata: false,
-            },
-          ]
-        : []),
-    ],
-    venta: { unidades: String(Math.round(totalVentaNum)), moneda: 'COP' as const },
-    vigenteHasta: validado.vigenteHasta ?? null,
-  };
+  });
 
   const cotizacionActualizada: CotizacionGuardada = {
     ...cotizacion,

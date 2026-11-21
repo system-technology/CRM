@@ -124,7 +124,7 @@ describe('FormularioIngreso (0c.29)', () => {
 
     await waitFor(
       () => {
-        expect(pushMock).toHaveBeenCalledWith('/bandeja');
+        expect(pushMock).toHaveBeenCalledWith('/');
       },
       { timeout: 1000 },
     );
@@ -225,7 +225,7 @@ describe('FormularioIngreso (0c.29)', () => {
 
     await waitFor(
       () => {
-        expect(pushMock).toHaveBeenCalledWith('/bandeja');
+        expect(pushMock).toHaveBeenCalledWith('/');
       },
       { timeout: 1000 },
     );
@@ -260,8 +260,13 @@ describe('FormularioIngreso (0c.29)', () => {
     expect(aviso.textContent).toContain('/cotizador');
   });
 
-  it('redirige al destino conservado en parametro redirigir tras inicio exitoso (T-109)', async () => {
-    mockSearchParams = new URLSearchParams('redirigir=%2Fcotizaciones%2F123');
+  it.each([
+    ['%2Fcotizaciones%2F123', '/cotizaciones/123'],
+    ['%2Fviajes', '/viajes'],
+    ['https%3A%2F%2Fmalo.example%2Frobo', '/'],
+    ['%2F%2Fmalo.example', '/'],
+  ])('redirigir=%s lleva a %s tras inicio exitoso (T-109, T-317)', async (param, destino) => {
+    mockSearchParams = new URLSearchParams(`redirigir=${param}`);
 
     vi.spyOn(authApi, 'iniciarSesionApi').mockResolvedValue({
       identidad: {
@@ -297,7 +302,7 @@ describe('FormularioIngreso (0c.29)', () => {
 
     await waitFor(
       () => {
-        expect(pushMock).toHaveBeenCalledWith('/cotizaciones/123');
+        expect(pushMock).toHaveBeenCalledWith(destino);
       },
       { timeout: 1000 },
     );

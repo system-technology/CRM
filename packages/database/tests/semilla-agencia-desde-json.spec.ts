@@ -16,6 +16,7 @@ import {
 } from '../prisma/semilla-agencia-mapeo.js';
 import {
   decidirSiSePuedeSembrarLaAgencia,
+  elIndiceDeApodosEsGlobal,
   estaDentroDelRepositorio,
   type EntradaGuardiaDeSemillaAgencia,
 } from '../prisma/guardia-de-semilla-agencia.js';
@@ -286,6 +287,8 @@ describe('guardia de la semilla de agencia', () => {
     correoDelDueno: 'dueno-x@agenciademo.test',
     agenciasAjenas: 0,
     identidadesAjenas: 0,
+    otrasAgencias: 0,
+    indiceDeApodosGlobal: true,
   };
   const negado = (e: Partial<EntradaGuardiaDeSemillaAgencia>) =>
     decidirSiSePuedeSembrarLaAgencia({ ...ok, ...e });
@@ -340,6 +343,23 @@ describe('guardia de la semilla de agencia', () => {
     expect(negado({ correoDelDueno: 'dueno@real.com' })).toMatchObject({ permitido: false });
   });
 
+  it('ADR-0031 §4: con el índice de apodos global niega una SEGUNDA agencia, en local y en remoto, citando solo el conteo', () => {
+    const local = negado({ otrasAgencias: 1 });
+    expect(local).toMatchObject({ permitido: false });
+    expect(local.permitido ? '' : local.motivo).toContain('1 agencia(s)');
+    expect(local.permitido ? '' : local.motivo).toContain('ADR-0031');
+    expect(
+      negado({ anfitrion: 'ep.neon.tech', permitirRemoto: 'si', otrasAgencias: 3 }),
+    ).toMatchObject({ permitido: false });
+    // La primera agencia (o volver a sembrar la misma: no cuenta como otra) sigue permitida.
+    expect(negado({ otrasAgencias: 0 })).toEqual({ permitido: true, remoto: false });
+    // Con el índice por agencia (fase 2), la guarda se apaga.
+    expect(negado({ otrasAgencias: 2, indiceDeApodosGlobal: false })).toEqual({
+      permitido: true,
+      remoto: false,
+    });
+  });
+
   it('reconoce rutas dentro y fuera del repositorio', () => {
     const raiz = process.platform === 'win32' ? 'C:\\repo' : '/repo';
     const dentro = process.platform === 'win32' ? 'C:\\repo\\docs\\x.json' : '/repo/docs/x.json';
@@ -348,5 +368,106 @@ describe('guardia de la semilla de agencia', () => {
     expect(estaDentroDelRepositorio(dentro, raiz)).toBe(true);
     expect(estaDentroDelRepositorio(fuera, raiz)).toBe(false);
     expect(estaDentroDelRepositorio(hermana, raiz)).toBe(false);
+  });
+});
+
+describe('ADR-0031 §4 — ¿es global el índice de apodos? (lectura del catálogo, sin base)', () => {
+  const pk = {
+    unico: true,
+    claves: ['identidad_id', 'tenant_acceso_id'],
+    columnas: ['identidad_id', 'tenant_acceso_id'],
+    expresion: null,
+    predicado: null,
+  };
+  const global = {
+    unico: true,
+    claves: ['apodo'],
+    columnas: ['apodo'],
+    expresion: null,
+    predicado: null,
+  };
+  const porAgencia = {
+    unico: true,
+    claves: ['tenant_acceso_id', 'apodo'],
+    columnas: ['tenant_acceso_id', 'apodo'],
+    expresion: null,
+    predicado: null,
+  };
+  const lectura = (...indices: unknown[]) => ({
+    hayApodo: true,
+    hayTenantAcceso: true,
+    indices,
+  });
+
+  it('la fase 1 (UNIQUE (apodo)) es global; la fase 2 (UNIQUE (tenant_acceso_id, apodo)) no', () => {
+    expect(elIndiceDeApodosEsGlobal(lectura(pk, global))).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(lectura(pk, porAgencia))).toBe(false);
+    // En el orden inverso de columnas también es por agencia: se mira qué columnas, no su orden.
+    expect(
+      elIndiceDeApodosEsGlobal(
+        lectura(pk, { ...porAgencia, claves: ['apodo', 'tenant_acceso_id'] }),
+      ),
+    ).toBe(false);
+    // Sin ningún índice sobre apodo no hay unicidad que filtre nada.
+    expect(elIndiceDeApodosEsGlobal(lectura(pk))).toBe(false);
+  });
+
+  it('tenant_acceso_id solo en INCLUDE no lo hace por agencia; un índice no único sobre apodo no cuenta', () => {
+    expect(
+      elIndiceDeApodosEsGlobal(
+        lectura({ ...global, claves: ['apodo'], columnas: ['apodo', 'tenant_acceso_id'] }),
+      ),
+    ).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(lectura({ ...global, unico: false }))).toBe(false);
+  });
+
+  it('un índice de expresión o parcial que toca apodo es global, aunque lleve tenant_acceso_id', () => {
+    expect(
+      elIndiceDeApodosEsGlobal(
+        lectura({
+          unico: true,
+          claves: [],
+          columnas: [],
+          expresion: 'lower(apodo)',
+          predicado: null,
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      elIndiceDeApodosEsGlobal(lectura({ ...porAgencia, predicado: '(apodo IS NOT NULL)' })),
+    ).toBe(true);
+    expect(
+      elIndiceDeApodosEsGlobal(
+        lectura({ ...porAgencia, unico: false, predicado: '(activo IS TRUE)' }),
+      ),
+    ).toBe(true);
+    // Una expresión que no nombra apodo (ni como parte de otra palabra) no cuenta.
+    expect(
+      elIndiceDeApodosEsGlobal(
+        lectura(pk, porAgencia, {
+          unico: true,
+          claves: ['identidad_id'],
+          columnas: ['identidad_id'],
+          expresion: 'lower(apodos_viejos)',
+          predicado: null,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('falla cerrada: sin fila, sin columnas o con una forma inesperada es global', () => {
+    expect(elIndiceDeApodosEsGlobal(undefined)).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(null)).toBe(true);
+    expect(elIndiceDeApodosEsGlobal('x')).toBe(true);
+    expect(elIndiceDeApodosEsGlobal({ ...lectura(pk, porAgencia), hayApodo: false })).toBe(true);
+    expect(elIndiceDeApodosEsGlobal({ ...lectura(pk, porAgencia), hayTenantAcceso: false })).toBe(
+      true,
+    );
+    expect(elIndiceDeApodosEsGlobal({ ...lectura(pk, porAgencia), indices: null })).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(lectura(pk, porAgencia, null))).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(lectura({ ...porAgencia, unico: 'si' }))).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(lectura({ ...porAgencia, claves: 'apodo' }))).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(lectura({ ...porAgencia, expresion: 1 }))).toBe(true);
+    expect(elIndiceDeApodosEsGlobal(lectura({ ...porAgencia, predicado: undefined }))).toBe(true);
   });
 });

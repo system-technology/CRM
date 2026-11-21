@@ -23,6 +23,7 @@ import {
   Ship,
   Tag,
 } from 'lucide-react';
+import { TablaDeLineas } from './tabla-de-lineas';
 import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import { formatearDinero } from '../../lib/api';
 import { formatearFecha } from '../../lib/formato';
@@ -50,15 +51,15 @@ export function DesgloseCotizacionSalida({
           <div>
             <div className="flex items-center gap-2">
               {cotizacion.noches === 0 ? (
-                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-sm font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                   Excursión de 1 día (Pasadía)
                 </span>
               ) : (
-                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase">
+                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-sm font-bold uppercase">
                   {cotizacion.deSalidaProgramada ? 'Salida Confirmada' : 'Vigencia Abierta'}
                 </span>
               )}
-              <span className="text-xs text-neutral-400">
+              <span className="text-sm text-neutral-400">
                 Vigencia: {formatearFecha(cotizacion.vigenciaDesde)} al{' '}
                 {formatearFecha(cotizacion.vigenciaHasta)}
               </span>
@@ -68,7 +69,7 @@ export function DesgloseCotizacionSalida({
               {cotizacion.paqueteNombre}
             </h1>
 
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-neutral-600 dark:text-neutral-400">
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
               <span className="flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5 text-neutral-400" />
                 {cotizacion.destino}
@@ -88,11 +89,11 @@ export function DesgloseCotizacionSalida({
 
           {/* Gran Total Protagonista (0c.16.2) */}
           <div className="flex flex-col items-start sm:items-end">
-            <span className="text-xs font-bold text-neutral-500">Total de venta sugerido</span>
+            <span className="text-sm font-bold text-neutral-500">Total de venta sugerido</span>
             {cotizacion.alternativas.some((a) => a.masBarata || a.unidad === 'POR_GRUPO') && (
               <div
                 data-testid="badge-promo-vigente"
-                className="mb-1 flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                className="mb-1 flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-sm font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
               >
                 <Tag className="h-3 w-3" />
                 <span>Promo vigente disponible</span>
@@ -101,7 +102,7 @@ export function DesgloseCotizacionSalida({
             <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
               {formatearDinero(cotizacion.total)}
             </div>
-            <span className="mt-0.5 text-[10px] text-neutral-500">
+            <span className="mt-0.5 text-sm text-neutral-500">
               El número que el asesor copia y pega en WhatsApp
             </span>
           </div>
@@ -112,7 +113,7 @@ export function DesgloseCotizacionSalida({
           <div
             data-testid="aviso-impuesto-muelle"
             role="note"
-            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-sm text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
           >
             <Ship className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
             <div>
@@ -126,7 +127,7 @@ export function DesgloseCotizacionSalida({
 
         {/* Aviso pedagógico si no es fecha fija (0c.16.4) */}
         {!cotizacion.deSalidaProgramada && (
-          <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+          <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
               <strong>Bajo consulta de cupo:</strong> Esta cotización proviene de una vigencia
@@ -145,83 +146,57 @@ export function DesgloseCotizacionSalida({
             <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
               Cotización Armada por Tipo de Pasajero
             </h2>
-            <p className="text-xs text-neutral-500">
+            <p className="text-sm text-neutral-500">
               Suma exacta de tarifas aplicables a la composición del grupo
             </p>
           </div>
-          <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+          <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-sm font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
             {cotizacion.lineas.length} {cotizacion.lineas.length === 1 ? 'línea' : 'líneas'}
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-neutral-100 dark:border-neutral-800">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
-                <th className="px-4 py-2.5 text-left font-medium">Concepto / Tarifa</th>
-                <th className="px-4 py-2.5 text-left font-medium">Modalidad</th>
-                <th className="px-4 py-2.5 text-right font-medium">Cantidad</th>
-                <th className="px-4 py-2.5 text-right font-medium">Precio Unitario</th>
-                <th className="px-4 py-2.5 text-right font-medium">Subtotal Venta</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-              {cotizacion.lineas.map((linea) => (
-                <tr
-                  key={linea.tarifaId}
-                  className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20"
-                >
-                  <td className="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200">
-                    {linea.nombre}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-500">
-                    {linea.unidad === 'POR_PERSONA' ? 'Por persona' : 'Por grupo'}
-                  </td>
-                  <td className="cifra px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300">
-                    {linea.veces}x
-                  </td>
-                  <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                    {linea.presentacion?.listaTachada && (
-                      <span
-                        data-testid="linea-lista-tachada"
-                        className="mr-1.5 text-[11px] font-semibold text-neutral-400 line-through dark:text-neutral-500"
-                      >
-                        {formatearDinero(linea.presentacion.listaTachada)}
-                      </span>
-                    )}
-                    <span>
-                      {formatearDinero(linea.presentacion?.venta ?? linea.precioUnitario)}
+        <TablaDeLineas
+          testId="desglose-lineas"
+          columnas={[
+            { id: 'concepto', titulo: 'Concepto / Tarifa', esConcepto: true },
+            { id: 'modalidad', titulo: 'Modalidad' },
+            { id: 'cantidad', titulo: 'Cantidad', derecha: true },
+            { id: 'unitario', titulo: 'Precio Unitario', derecha: true },
+            { id: 'subtotal', titulo: 'Subtotal Venta', derecha: true, esSubtotal: true },
+          ]}
+          filas={cotizacion.lineas.map((linea) => ({
+            clave: linea.tarifaId,
+            celdas: {
+              concepto: linea.nombre,
+              modalidad: linea.unidad === 'POR_PERSONA' ? 'Por persona' : 'Por grupo',
+              cantidad: `${linea.veces}x`,
+              unitario: (
+                <>
+                  {linea.presentacion?.listaTachada && (
+                    <span
+                      data-testid="linea-lista-tachada"
+                      className="mr-1.5 text-sm font-semibold text-neutral-500 line-through dark:text-neutral-400"
+                    >
+                      {formatearDinero(linea.presentacion.listaTachada)}
                     </span>
-                    {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
-                      <span
-                        data-testid="linea-promo-vencida"
-                        className="ml-1.5 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
-                      >
-                        Promo vencida
-                      </span>
-                    )}
-                  </td>
-                  <td className="cifra px-4 py-3 text-right text-sm font-black text-neutral-900 dark:text-white">
-                    {formatearDinero(linea.total)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-neutral-200 bg-neutral-50/80 font-bold dark:border-neutral-700 dark:bg-neutral-800/60">
-                <td
-                  colSpan={4}
-                  className="px-4 py-3 text-right text-neutral-800 dark:text-neutral-200"
-                >
-                  Total Cotización Armada:
-                </td>
-                <td className="cifra text-acento-600 dark:text-acento-400 px-4 py-3 text-right text-base">
-                  {formatearDinero(cotizacion.total)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+                  )}
+                  <span>{formatearDinero(linea.presentacion?.venta ?? linea.precioUnitario)}</span>
+                  {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
+                    <span
+                      data-testid="linea-promo-vencida"
+                      className="ml-1.5 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-sm font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                    >
+                      Promo vencida
+                    </span>
+                  )}
+                </>
+              ),
+              subtotal: formatearDinero(linea.total),
+            },
+          }))}
+          etiquetaTotal="Total Cotización Armada:"
+          total={formatearDinero(cotizacion.total)}
+        />
 
         {/* Cargos que el viajero paga en destino: aparte y NUNCA dentro del total */}
         {cotizacion.cargosEnDestino && cotizacion.cargosEnDestino.length > 0 && (
@@ -230,31 +205,31 @@ export function DesgloseCotizacionSalida({
             className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/40"
           >
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+              <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
                 Cargos en destino
               </h3>
-              <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-[10px] font-bold text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100">
+              <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-sm font-bold text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100">
                 No incluido
               </span>
             </div>
-            <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
               Se pagan en destino y no suman al total de la cotización.
             </p>
             <ul className="mt-2 space-y-1.5">
               {cotizacion.cargosEnDestino.map((cargo, i) => (
                 <li
                   key={`${cargo.concepto}-${i}`}
-                  className="flex items-start justify-between gap-3 text-xs"
+                  className="flex items-start justify-between gap-3 text-sm"
                 >
                   <span className="text-neutral-800 dark:text-neutral-200">
                     {cargo.concepto}
                     {cargo.nota && (
-                      <span className="block text-[11px] text-neutral-500">{cargo.nota}</span>
+                      <span className="block text-sm text-neutral-500">{cargo.nota}</span>
                     )}
                   </span>
                   <span className="cifra shrink-0 text-right font-semibold text-neutral-900 dark:text-white">
                     {cargo.monto ? formatearDinero(cargo.monto) : 'Monto por confirmar'}
-                    <span className="block text-[10px] font-normal text-neutral-500">
+                    <span className="block text-sm font-normal text-neutral-500">
                       {cargo.unidad === 'POR_PERSONA' ? 'por persona' : 'por grupo'}
                     </span>
                   </span>
@@ -268,10 +243,10 @@ export function DesgloseCotizacionSalida({
         {alGuardarCotizacion && (
           <div className="border-acento-200 bg-acento-50/60 dark:border-acento-900/40 dark:bg-acento-950/20 mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border p-4 sm:flex-row">
             <div>
-              <h3 className="text-acento-950 dark:text-acento-200 text-xs font-bold">
+              <h3 className="text-acento-950 dark:text-acento-200 text-sm font-bold">
                 ¿Deseas registrar esta cotización para el cliente?
               </h3>
-              <p className="text-acento-700 dark:text-acento-400 mt-0.5 text-[11px]">
+              <p className="text-acento-700 dark:text-acento-400 mt-0.5 text-sm">
                 Guarda la Versión 1 oficial e inmutable. Podrás modificarla después generando nuevas
                 versiones sin alterar el histórico.
               </p>
@@ -280,7 +255,7 @@ export function DesgloseCotizacionSalida({
               type="button"
               onClick={alGuardarCotizacion}
               disabled={guardando}
-              className="boton-primario flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs transition-colors sm:w-auto"
+              className="boton-primario flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-xs transition-colors sm:w-auto"
             >
               <Bookmark className="h-4 w-4" />
               <span>Guardar cotización</span>
@@ -298,7 +273,7 @@ export function DesgloseCotizacionSalida({
                 <Sparkles className="h-4 w-4 text-amber-500" />
                 Tarifas de Grupo Alternativas
               </h2>
-              <p className="text-xs text-neutral-500">
+              <p className="text-sm text-neutral-500">
                 Tarifas que reemplazan al armado. Se enseñan pero{' '}
                 <strong>no se aplican solas</strong> (llevan condiciones comerciales).
               </p>
@@ -313,16 +288,16 @@ export function DesgloseCotizacionSalida({
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-neutral-900 dark:text-white">
+                    <span className="text-sm font-bold text-neutral-900 dark:text-white">
                       {alt.nombre}
                     </span>
                     {alt.masBarata && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-sm font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                         Opción más económica
                       </span>
                     )}
                   </div>
-                  <span className="mt-0.5 block text-[11px] text-neutral-500">
+                  <span className="mt-0.5 block text-sm text-neutral-500">
                     Cubre {alt.cubrePasajeros} persona(s) ({alt.veces}x)
                   </span>
                 </div>
@@ -331,7 +306,7 @@ export function DesgloseCotizacionSalida({
                   <span className="cifra text-base font-extrabold text-neutral-900 dark:text-white">
                     {formatearDinero(alt.total)}
                   </span>
-                  <span className="block text-[10px] text-neutral-400">Total tarifa grupo</span>
+                  <span className="block text-sm text-neutral-400">Total tarifa grupo</span>
                 </div>
               </div>
             ))}
@@ -345,10 +320,10 @@ export function DesgloseCotizacionSalida({
           <div className="flex items-start gap-3">
             <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
             <div className="flex-1">
-              <h3 className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+              <h3 className="text-sm font-bold text-neutral-700 dark:text-neutral-300">
                 Tarifas no aplicables a este grupo ({cotizacion.noAplicables.length}):
               </h3>
-              <ul className="mt-2 space-y-1.5 text-xs text-neutral-600 dark:text-neutral-400">
+              <ul className="mt-2 space-y-1.5 text-sm text-neutral-600 dark:text-neutral-400">
                 {cotizacion.noAplicables.map((na) => (
                   <li key={na.tarifaId} className="flex items-baseline gap-2">
                     <span className="font-semibold text-neutral-800 dark:text-neutral-200">
@@ -358,7 +333,7 @@ export function DesgloseCotizacionSalida({
                   </li>
                 ))}
               </ul>
-              <span className="mt-2 block text-[11px] text-neutral-400">
+              <span className="mt-2 block text-sm text-neutral-400">
                 Transparencia de tarifario: se expone el motivo exacto para evitar cálculos externos
                 que descuadren el informe de margen.
               </span>
@@ -370,10 +345,10 @@ export function DesgloseCotizacionSalida({
       {/* 5. Barra de Acciones de WhatsApp y Exportación */}
       <section className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <div>
-          <h4 className="text-xs font-bold text-neutral-900 dark:text-white">
+          <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
             Compartir con el Viajero
           </h4>
-          <p className="text-[11px] text-neutral-500">
+          <p className="text-sm text-neutral-500">
             Genera el mensaje limpio sin exponer netos ni márgenes internos de la agencia
           </p>
         </div>
@@ -384,7 +359,7 @@ export function DesgloseCotizacionSalida({
               type="button"
               onClick={alGuardarCotizacion}
               disabled={guardando}
-              className="border-acento-300 bg-acento-50 text-acento-800 hover:bg-acento-100 focus-visible:ring-acento-600 dark:border-acento-800 dark:bg-acento-950/40 dark:text-acento-300 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-2xs transition-colors focus-visible:ring-2 focus-visible:outline-hidden sm:w-auto"
+              className="border-acento-300 bg-acento-50 text-acento-800 hover:bg-acento-100 focus-visible:ring-acento-600 dark:border-acento-800 dark:bg-acento-950/40 dark:text-acento-300 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-2xs transition-colors focus-visible:ring-2 focus-visible:outline-hidden sm:w-auto"
             >
               <Bookmark className="h-4 w-4" />
               <span>Guardar Oficial</span>
@@ -394,7 +369,7 @@ export function DesgloseCotizacionSalida({
           <button
             type="button"
             onClick={alCopiarWhatsApp}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-hidden sm:w-auto"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-hidden sm:w-auto"
           >
             {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {copiado ? '¡Copiado al Portapapeles!' : 'Copiar Propuesta para WhatsApp'}

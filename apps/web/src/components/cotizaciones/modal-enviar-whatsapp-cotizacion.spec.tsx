@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { CotizacionGuardada, Contacto } from '@viajapro/contracts';
 import { ModalEnviarWhatsAppCotizacion } from './modal-enviar-whatsapp-cotizacion';
 import * as cotizacionesApi from '../../lib/cotizaciones-api';
@@ -125,7 +125,7 @@ describe('ModalEnviarWhatsAppCotizacion (T-107)', () => {
       />,
     );
 
-    expect(screen.getByText(/Enviar Cotización por WhatsApp/i)).toBeDefined();
+    expect(screen.getByText(/Abrir en la app de WhatsApp/i, { selector: 'h2' })).toBeDefined();
     expect(screen.getByText('Carolina Herrera')).toBeDefined();
     expect(screen.getByDisplayValue('+573105559876')).toBeDefined();
 
@@ -192,48 +192,12 @@ describe('ModalEnviarWhatsAppCotizacion (T-107)', () => {
     expect(textoCopiado).toContain('ESCAPE CARIBEÑO SAN ANDRÉS');
   });
 
-  it('marca como enviada llamando a la API y notifica al padre con alEnviarExitoso', async () => {
-    const alEnviarExitoso = vi.fn();
-    const alCerrar = vi.fn();
-    const actualizadaMock: CotizacionGuardada = {
-      ...cotizacionPrueba,
-      estado: 'ENVIADA',
-      versionEnviada: 2,
-    };
-
-    vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi').mockResolvedValue(actualizadaMock);
-
-    render(
-      <ModalEnviarWhatsAppCotizacion
-        cotizacion={cotizacionPrueba}
-        contacto={contactoPrueba}
-        abierto={true}
-        alCerrar={alCerrar}
-        alEnviarExitoso={alEnviarExitoso}
-      />,
-    );
-
-    const btnSoloMarcar = screen.getByTestId('btn-solo-marcar-enviada');
-    fireEvent.click(btnSoloMarcar);
-
-    await waitFor(() => {
-      expect(cotizacionesApi.cambiarEstadoCotizacionApi).toHaveBeenCalledWith(
-        cotizacionPrueba.id,
-        'ENVIADA',
-      );
-      expect(alEnviarExitoso).toHaveBeenCalledWith(actualizadaMock);
-    });
-  });
-
-  it('abre enlace wa.me y marca como enviada al hacer clic en Abrir y Enviar por WhatsApp', () => {
+  // T-347: «Abrir en la app de WhatsApp» sale por wa.me, FUERA del canal de la agencia. No deja
+  // rastro en el chat, así que NUNCA puede marcar la cotización como ENVIADA.
+  it('abre wa.me con el texto y NO marca la cotización como enviada (T-347)', () => {
     const mockWindowOpen = vi.fn();
     vi.spyOn(window, 'open').mockImplementation(mockWindowOpen);
-
-    const alEnviarExitoso = vi.fn();
-    vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi').mockResolvedValue({
-      ...cotizacionPrueba,
-      estado: 'ENVIADA',
-    });
+    const cambiarEstado = vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi');
 
     render(
       <ModalEnviarWhatsAppCotizacion
@@ -241,15 +205,57 @@ describe('ModalEnviarWhatsAppCotizacion (T-107)', () => {
         contacto={contactoPrueba}
         abierto={true}
         alCerrar={vi.fn()}
-        alEnviarExitoso={alEnviarExitoso}
       />,
     );
 
-    const btnAbrirWhatsApp = screen.getByTestId('btn-abrir-whatsapp-directo');
-    fireEvent.click(btnAbrirWhatsApp);
+    fireEvent.click(screen.getByTestId('btn-abrir-whatsapp-directo'));
 
-    expect(mockWindowOpen).toHaveBeenCalled();
+    expect(mockWindowOpen).toHaveBeenCalledTimes(1);
     const urlLlamada = mockWindowOpen.mock.calls[0]?.[0] as string;
     expect(urlLlamada).toContain('https://wa.me/573105559876?text=');
+    expect(cambiarEstado).not.toHaveBeenCalled();
+  });
+
+  it('no ofrece «Marcar como enviada» ni ninguna acción que cambie el estado (T-347)', () => {
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+    const cambiarEstado = vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi');
+    render(
+      <ModalEnviarWhatsAppCotizacion
+        cotizacion={cotizacionPrueba}
+        contacto={contactoPrueba}
+        abierto={true}
+        alCerrar={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('btn-solo-marcar-enviada')).toBeNull();
+    expect(screen.queryByText(/Marcar como Enviada/i)).toBeNull();
+    // Cada botón del diálogo, uno por uno: ninguno toca el estado.
+    for (const boton of screen.getAllByRole('button')) {
+      fireEvent.click(boton);
+    }
+    expect(cambiarEstado).not.toHaveBeenCalled();
+    expect(screen.getByTestId('aviso-fuera-del-canal').textContent).toContain(
+      'no queda en el chat ni cambia el estado',
+    );
+  });
+
+  it('sin número de WhatsApp no inventa uno: el botón queda deshabilitado', () => {
+    const mockWindowOpen = vi.fn();
+    vi.spyOn(window, 'open').mockImplementation(mockWindowOpen);
+
+    render(
+      <ModalEnviarWhatsAppCotizacion
+        cotizacion={cotizacionPrueba}
+        contacto={{ ...contactoPrueba, telefono: '' }}
+        abierto={true}
+        alCerrar={vi.fn()}
+      />,
+    );
+
+    const boton = screen.getByTestId<HTMLButtonElement>('btn-abrir-whatsapp-directo');
+    expect(boton.disabled).toBe(true);
+    fireEvent.click(boton);
+    expect(mockWindowOpen).not.toHaveBeenCalled();
   });
 });

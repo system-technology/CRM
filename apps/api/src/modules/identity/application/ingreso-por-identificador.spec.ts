@@ -15,7 +15,7 @@ import {
   IngresoPorIdentificador,
   type ResultadoDeAutenticacion,
 } from './ingreso-por-identificador.js';
-import { ContadorDeFallosDeCodigo, PREFIJO_DE_FALLOS_DE_INGRESO } from './limitador-de-envios.js';
+import { PREFIJO_DE_FALLOS_DE_INGRESO, ReservaDeIntentos } from './limitador-de-envios.js';
 import { TOPE_DE_FALLOS_DE_INGRESO, TopeDeFallosDeIngreso } from './tope-de-fallos-de-ingreso.js';
 
 const ISABEL = { identidadId: 'id-isabel', correo: 'isabel@agencia.co' };
@@ -50,22 +50,27 @@ class Catalogo extends PuertoCatalogoDeApodos {
   }
 }
 
-/** Anota cada operación y cuenta los fallos vigentes por clave. */
-class Contador extends ContadorDeFallosDeCodigo {
+/** Anota cada operación y guarda una fila por reserva (como `verificaciones`). */
+class Contador extends ReservaDeIntentos {
   operaciones: string[] = [];
   claves: string[] = [];
-  cuentas = new Map<string, number>();
-  async consumir(clave: string, maximo: number, ventana: number, prefijo: string) {
-    this.operaciones.push(`consumir:${maximo}:${ventana}:${prefijo}`);
-    this.claves.push(clave);
-    const n = (this.cuentas.get(clave) ?? 0) + 1;
-    this.cuentas.set(clave, n);
-    return n <= maximo;
+  filas = new Map<string, string>();
+  private n = 0;
+  get cuentas(): Map<string, number> {
+    const m = new Map<string, number>();
+    for (const clave of this.filas.values()) m.set(clave, (m.get(clave) ?? 0) + 1);
+    return m;
   }
-  async quedaCupo(clave: string, maximo: number) {
-    this.operaciones.push(`quedaCupo:${maximo}`);
+  async reservar(clave: string, maximo: number, ventana: number, prefijo: string) {
+    this.operaciones.push(`reservar:${maximo}:${ventana}:${prefijo}`);
     this.claves.push(clave);
-    return (this.cuentas.get(clave) ?? 0) < maximo;
+    const id = `r${(this.n += 1)}`;
+    this.filas.set(id, clave);
+    return { cabe: (this.cuentas.get(clave) ?? 0) <= maximo, reservaId: id };
+  }
+  async liberar(id: string) {
+    this.operaciones.push('liberar');
+    this.filas.delete(id);
   }
 }
 
@@ -94,7 +99,7 @@ function armar() {
   };
   const entrar = (identificador: string) =>
     ingreso.ejecutar(identificador, (c) => ba.autenticar(c));
-  return { apodos, catalogo, contador, ba, entrar };
+  return { apodos, catalogo, contador, ba, entrar, ingreso };
 }
 
 const codigoDe = async (p: Promise<unknown>): Promise<string> => {
@@ -199,10 +204,7 @@ describe('el tope por identificador (10 en 15 minutos)', () => {
     expect(TOPE_DE_FALLOS_DE_INGRESO).toEqual({ maximo: 10, ventanaSegundos: 900 });
     const { entrar, contador } = armar();
     await codigoDe(entrar('ialvear'));
-    expect(contador.operaciones).toEqual([
-      'quedaCupo:10',
-      `consumir:10:900:${PREFIJO_DE_FALLOS_DE_INGRESO}`,
-    ]);
+    expect(contador.operaciones).toEqual([`reservar:10:900:${PREFIJO_DE_FALLOS_DE_INGRESO}`]);
   });
 
   it('correo y apodo comparten contador; no se guarda el apodo ni el correo en claro', async () => {
@@ -222,9 +224,9 @@ describe('el tope por identificador (10 en 15 minutos)', () => {
     await codigoDe(entrar('Nadie'));
     await codigoDe(entrar(' nadie '));
     await codigoDe(entrar('ialvear'));
-    expect(contador.claves[1]).toBe(contador.claves[3]);
-    expect(contador.claves[1]).toMatch(/identificador:[0-9a-f]{64}$/);
-    expect(contador.claves[1]).not.toBe(contador.claves[5]);
+    expect(contador.claves[0]).toBe(contador.claves[1]);
+    expect(contador.claves[0]).toMatch(/identificador:[0-9a-f]{64}$/);
+    expect(contador.claves[0]).not.toBe(contador.claves[2]);
   });
 
   it('agotado el tope, se llama a Better Auth con el centinela y se responde igual aunque la clave sea la correcta', async () => {
@@ -262,5 +264,57 @@ describe('el tope por identificador (10 en 15 minutos)', () => {
     const libre = await codigoDe(entrar('nadie'));
     expect(bloqueado).toBe('DEMASIADOS_INTENTOS');
     expect(libre).toBe(bloqueado);
+  });
+
+  it('el ingreso exitoso no consume cupo: la reserva se borra', async () => {
+    const { ba, entrar, contador } = armar();
+    ba.respuesta = 'abierta';
+    for (let i = 0; i < 30; i += 1) expect(await entrar('ialvear')).toBe('sesion');
+    expect(contador.filas.size).toBe(0);
+    expect(contador.operaciones.slice(0, 2)).toEqual([
+      `reservar:10:900:${PREFIJO_DE_FALLOS_DE_INGRESO}`,
+      'liberar',
+    ]);
+  });
+
+  it('una ráfaga con la clave correcta y 9 fallos: las sesiones no superan las peticiones correctas', async () => {
+    // La propiedad de seguridad es el tope de comprobaciones efectivas con clave ERRÓNEA (pruebas
+    // siguientes). El éxito libera su reserva a propósito (no consume cupo), así que varias
+    // correctas pueden abrir sesión: quien las envía ya conoce la clave y no adivina nada.
+    const { ba, entrar } = armar();
+    for (let i = 0; i < 9; i += 1) await codigoDe(entrar('ialvear'));
+    ba.respuesta = 'abierta';
+    const r = await Promise.allSettled(Array.from({ length: 20 }, () => entrar('ialvear')));
+    expect(r.filter((x) => x.status === 'fulfilled').length).toBeLessThanOrEqual(20);
+  });
+
+  it.each([0, 15, 30])(
+    'mixta: 1 correcta (posición %i) + 30 erróneas con 9 fallos: ≤10 comprobaciones efectivas y ≤1 sesión',
+    async (posicion) => {
+      const { ba, ingreso } = armar();
+      for (let i = 0; i < 9; i += 1)
+        await codigoDe(ingreso.ejecutar('ialvear', ba.autenticar.bind(ba)));
+      const efectivas: string[] = [];
+      const lanzar = (correcta: boolean) =>
+        ingreso.ejecutar('ialvear', (correo) => {
+          efectivas.push(correo);
+          return Promise.resolve<ResultadoDeAutenticacion<string>>(
+            correcta ? { tipo: 'abierta', valor: 'sesion' } : { tipo: 'rechazada' },
+          );
+        });
+      const r = await Promise.allSettled(
+        Array.from({ length: 31 }, (_, i) => lanzar(i === posicion)),
+      );
+      expect(efectivas.filter((c) => c === ISABEL.correo).length).toBeLessThanOrEqual(10);
+      expect(efectivas).toHaveLength(31);
+      expect(r.filter((x) => x.status === 'fulfilled').length).toBeLessThanOrEqual(1);
+    },
+  );
+
+  it('una ráfaga con la clave errónea: no más de 10 comprobaciones efectivas por ventana', async () => {
+    const { ba, entrar } = armar();
+    await Promise.allSettled(Array.from({ length: 40 }, () => entrar('ialvear')));
+    expect(ba.recibidos.filter((c) => c === ISABEL.correo)).toHaveLength(10);
+    expect(ba.recibidos.filter((c) => c === CORREO_CENTINELA)).toHaveLength(30);
   });
 });

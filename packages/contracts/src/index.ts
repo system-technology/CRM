@@ -10,6 +10,7 @@
 export * from './comunes.js';
 export * from './catalogo.js';
 export * from './crm.js';
+export * from './etiquetas.js';
 export * from './inbox.js';
 export * from './plantillas.js';
 export * from './politica-de-precio.js';
@@ -25,3 +26,4 @@ export * from './reportes.js';
 export * from './eventos.js';
 export * from './archivos.js';
 export * from './notificaciones.js';
+export * from './cobros.js';

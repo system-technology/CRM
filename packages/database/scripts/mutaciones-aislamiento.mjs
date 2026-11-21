@@ -78,6 +78,14 @@ async function reescribirComoAccesos(cliente, definicion) {
   }
 }
 
+/** El rol dueño de `perfiles_de_agencia`: el que el disparador toma por «la plataforma». */
+async function duenoDePerfiles(cliente) {
+  const { rows } = await cliente.query(
+    "SELECT pg_get_userbyid(relowner) AS dueno FROM pg_class WHERE oid = 'public.perfiles_de_agencia'::regclass",
+  );
+  return rows[0].dueno;
+}
+
 /** La definición sana, leída del catálogo una vez, para poder restaurarla tal cual. */
 let definicionSincronizar;
 async function definicionSana(cliente) {
@@ -309,6 +317,29 @@ const MUTACIONES = [
     },
     prueba: 'AP7',
     restaurar: async (cliente) => reescribirComoAccesos(cliente, await definicionSana(cliente)),
+  },
+  // --- perfiles_de_agencia (T-261, T-307): la «plataforma» es el dueño de la tabla ---
+  {
+    // Si un rol de aplicación fuera miembro del dueño, el disparador lo trataría como la
+    // plataforma y `viajapro_app` podría fijar verificado_en.
+    nombre:
+      'M22 — viajapro_app es miembro del dueño de perfiles_de_agencia (pasaría por «la plataforma»)',
+    sql: async (cliente) => {
+      const dueno = await duenoDePerfiles(cliente);
+      await cliente.query(`GRANT ${cliente.escapeIdentifier(dueno)} TO viajapro_app`);
+    },
+    prueba: 'T-261',
+    restaurar: async (cliente) => {
+      const dueno = await duenoDePerfiles(cliente);
+      await cliente.query(`REVOKE ${cliente.escapeIdentifier(dueno)} FROM viajapro_app`);
+    },
+  },
+  {
+    nombre:
+      'M23 — el disparador de perfiles_de_agencia está deshabilitado: la API fija verificado_en',
+    sql: `ALTER TABLE perfiles_de_agencia DISABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,
+    prueba: 'T-261',
+    restaurar: `ALTER TABLE perfiles_de_agencia ENABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,
   },
 ];
 

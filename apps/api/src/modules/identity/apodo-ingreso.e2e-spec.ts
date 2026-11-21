@@ -30,6 +30,8 @@ import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.f
 import { CorreoEnMemoria } from '../notifications/infrastructure/correo.en-memoria.js';
 import { CORREO_CENTINELA } from './application/ingreso-por-identificador.js';
 import { claveDeLimite, PREFIJO_DE_FALLOS_DE_INGRESO } from './application/limitador-de-envios.js';
+import { AUTH } from './infrastructure/auth.provider.js';
+import type { AuthDeViajaPro } from './infrastructure/crear-auth.js';
 import { PuertoCatalogoDeApodos, hayIndiceGlobalDeApodos } from './domain/puertos-de-apodos.js';
 import { CONSULTA_DE_INDICES_DE_ACCESOS } from './infrastructure/catalogo-de-apodos.prisma.js';
 
@@ -41,7 +43,19 @@ const CLAVE = 'una-clave-larga-de-prueba-1';
 const marca = randomBytes(3).toString('hex');
 const DOMINIO = '@fixture-identidad.test';
 
-type Quien = 'ana' | 'ana2' | 'gina' | 'beto' | 'baja' | 'tope' | 'eva' | 'bruno';
+type Quien =
+  | 'ana'
+  | 'ana2'
+  | 'gina'
+  | 'beto'
+  | 'baja'
+  | 'tope'
+  | 'eva'
+  | 'bruno'
+  | 'rafa'
+  | 'rafb'
+  | 'rafc'
+  | 'rafd';
 const correo = (q: Quien): string => `fixture-aislamiento-apodo-${q}-${marca}${DOMINIO}`;
 /** Apodos únicos por corrida: letra inicial, minúsculas y dígitos, sin prefijos reservados. */
 const apodoDe = (q: Quien): string => `fx${marca}${q}`;
@@ -54,6 +68,10 @@ const IDENTIDAD: Record<Quien, string> = {
   tope: '',
   eva: '',
   bruno: '',
+  rafa: '',
+  rafb: '',
+  rafc: '',
+  rafd: '',
 };
 const USUARIO: Record<Quien, string> = {
   ana: '',
@@ -64,6 +82,10 @@ const USUARIO: Record<Quien, string> = {
   tope: '',
   eva: '',
   bruno: '',
+  rafa: '',
+  rafb: '',
+  rafc: '',
+  rafd: '',
 };
 
 let app: INestApplication;
@@ -220,6 +242,10 @@ beforeAll(async () => {
   await persona('beto', TENANT_A, a.asesor);
   await persona('baja', TENANT_A, a.asesor);
   await persona('tope', TENANT_A, a.asesor);
+  await persona('rafa', TENANT_A, a.asesor);
+  await persona('rafb', TENANT_A, a.asesor);
+  await persona('rafc', TENANT_A, a.asesor);
+  await persona('rafd', TENANT_A, a.asesor);
   await persona('eva', TENANT_B, b.asesor);
   await persona('bruno', TENANT_B, b.asesor);
 
@@ -227,6 +253,7 @@ beforeAll(async () => {
   await fijarApodoDirecto('eva', apodoDe('eva'));
   await fijarApodoDirecto('tope', apodoDe('tope'));
   await fijarApodoDirecto('baja', apodoDe('baja'));
+  await fijarApodoDirecto('rafc', apodoDe('rafc'));
   // Desactivada: el disparador retira su par del índice y el apodo deja de resolver.
   await admin.usuario.update({
     where: { id: USUARIO.baja },
@@ -450,6 +477,119 @@ describe('con la función encendida (recuento de agencias = 1; lo demás es real
       expect(libre.estado).toBe(429);
       expect(bloqueada.json).toEqual(libre.json);
       expect(bloqueada.json.error?.code).toBe('DEMASIADOS_INTENTOS');
+    });
+  });
+
+  describe('ráfagas en paralelo (reservar antes de comprobar)', () => {
+    /** Inscribe `n` fallos vigentes para la identidad, como si ya hubieran ocurrido. */
+    async function sembrarFallos(q: Quien, n: number): Promise<string> {
+      const clave = claveDe('identidad', IDENTIDAD[q]);
+      for (let i = 0; i < n; i += 1) {
+        await adminPg.query(
+          `INSERT INTO verificaciones (id, identificador, valor, expira_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, '1', now() + interval '15 minutes', now(), now())`,
+          [clave],
+        );
+      }
+      return clave;
+    }
+
+    it('20 ingresos en paralelo con la clave CORRECTA y 9 fallos: las sesiones no superan las peticiones correctas', async () => {
+      // La propiedad de seguridad es el tope de comprobaciones efectivas con clave ERRÓNEA (pruebas
+      // siguientes). El éxito libera su reserva a propósito (no consume cupo): varias correctas
+      // pueden abrir sesión y no amplían la adivinación, porque quien las envía ya sabe la clave.
+      const clave = await sembrarFallos('rafa', 9);
+      const rs = await Promise.all(
+        Array.from({ length: 20 }, () => new Navegador().entrar(correo('rafa'))),
+      );
+      expect(rs.filter((r) => r.estado === 200).length).toBeLessThanOrEqual(20);
+      for (const r of rs.filter((x) => x.estado !== 200)) {
+        expect(r.estado).toBe(401);
+        expect(r.json.error?.code).toBe('CREDENCIALES_INVALIDAS');
+        expect(r.setCookie).toHaveLength(0);
+      }
+      expect(await fallosDe(clave)).toBeGreaterThanOrEqual(9);
+    });
+
+    it('mixta: 1 correcta + 30 erróneas en paralelo con 9 fallos: ≤10 comprobaciones efectivas y ≤1 sesión', async () => {
+      await sembrarFallos('rafd', 9);
+      const auth = app.get<AuthDeViajaPro>(AUTH);
+      const original = auth.handler.bind(auth);
+      const puente = auth as { handler: (req: Request) => Promise<Response> };
+      const correos: string[] = [];
+      puente.handler = (req) =>
+        req
+          .clone()
+          .json()
+          .then((json: unknown) => {
+            const cuerpo = json as { email?: string };
+            if (req.url.includes('/sign-in/email') && cuerpo.email) correos.push(cuerpo.email);
+            return original(req);
+          });
+      try {
+        const rs = await Promise.all(
+          Array.from({ length: 31 }, (_, i) =>
+            new Navegador().entrar(correo('rafd'), i === 15 ? CLAVE : 'mala-clave-123456'),
+          ),
+        );
+        expect(rs.filter((r) => r.estado === 200).length).toBeLessThanOrEqual(1);
+        for (const r of rs.filter((x) => x.estado !== 200)) {
+          expect(r.estado).toBe(401);
+          expect(r.json.error?.code).toBe('CREDENCIALES_INVALIDAS');
+        }
+        expect(correos.filter((c) => c === correo('rafd')).length).toBeLessThanOrEqual(10);
+        expect(correos).toHaveLength(31);
+      } finally {
+        puente.handler = original;
+      }
+    });
+
+    it('ráfaga en paralelo con la clave ERRÓNEA: no más de 10 comprobaciones efectivas en la ventana', async () => {
+      const auth = app.get<AuthDeViajaPro>(AUTH);
+      const original = auth.handler.bind(auth);
+      const puente = auth as { handler: (req: Request) => Promise<Response> };
+      const correos: string[] = [];
+      // Cuenta cada llamada efectiva a Better Auth y con qué correo (la verificación de la clave).
+      puente.handler = (req) =>
+        req
+          .clone()
+          .json()
+          .then((json: unknown) => {
+            const cuerpo = json as { email?: string };
+            if (req.url.includes('/sign-in/email') && cuerpo.email) correos.push(cuerpo.email);
+            return original(req);
+          });
+      try {
+        const rs = await Promise.all(
+          Array.from({ length: 25 }, () =>
+            new Navegador().entrar(correo('rafb'), 'mala-clave-123456'),
+          ),
+        );
+        for (const r of rs) {
+          expect(r.estado).toBe(401);
+          expect(r.json.error?.code).toBe('CREDENCIALES_INVALIDAS');
+        }
+        // Solo las reservas que contaron <= 10 llegaron a probar la contraseña del correo real.
+        const efectivas = correos.filter((c) => c === correo('rafb')).length;
+        expect(efectivas).toBeLessThanOrEqual(10);
+        // Sin mínimo: cerrar es correcto. Si todas las reservas confirman antes de contar, ninguna
+        // prueba la clave real. La propiedad de seguridad es el tope (<= 10), no que alguna pase.
+        // El resto fue por el mismo camino, con el centinela.
+        expect(correos).toHaveLength(25);
+        expect(correos.filter((c) => c === CORREO_CENTINELA)).toHaveLength(25 - efectivas);
+        expect(await fallosDe(claveDe('identidad', IDENTIDAD.rafb))).toBe(25);
+      } finally {
+        puente.handler = original;
+      }
+    });
+
+    it('el ingreso exitoso (secuencial) no consume cupo: la fila reservada se borra', async () => {
+      const clave = claveDe('identidad', IDENTIDAD.rafc);
+      for (let i = 0; i < 15; i += 1) {
+        const r = await new Navegador().entrar(i % 2 === 0 ? correo('rafc') : apodoDe('rafc'));
+        expect(r.estado, `intento ${i}`).toBe(200);
+        expect(await fallosDe(clave)).toBe(0);
+      }
     });
   });
 

@@ -19,6 +19,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('../../lib/inbox-api', () => ({
+  estaUsandoApiRealInbox: () => false,
   inboxApi: {
     consultarBandeja: vi.fn().mockResolvedValue({
       datos: [

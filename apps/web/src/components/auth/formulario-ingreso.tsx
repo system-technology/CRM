@@ -33,7 +33,7 @@ export function FormularioIngreso() {
   const searchParams = useSearchParams();
   const paramRedirigir = searchParams?.get('redirigir');
   const paramMotivo = searchParams?.get('motivo');
-  const destinoFinal = sanitizarRutaRedireccion(paramRedirigir, '/bandeja');
+  const destinoFinal = sanitizarRutaRedireccion(paramRedirigir, '/');
 
   const [paso, setPaso] = useState<PasoIngreso>('credenciales');
   // Sin valores reales de relleno preestablecidos (T-033)

@@ -14,6 +14,11 @@
 
 import { z } from 'zod';
 import { Id, Instante, TelefonoE164, pagina } from './comunes.js';
+import {
+  EtiquetaDeConversacion,
+  IdsDeEtiquetasEnElFiltro,
+  ModoDeFiltroDeEtiquetas,
+} from './etiquetas.js';
 
 // =============================================================================
 // Mensajes
@@ -157,7 +162,11 @@ export const ConversacionResumen = z.object({
    * de una hora, en ámbar. Nulo cuando ya se respondió o cuando la agencia no fijó SLA.
    */
   slaVenceEn: Instante.nullable(),
-  etiquetas: z.array(z.string().max(40)).default([]),
+  /**
+   * Las etiquetas de la agencia puestas en la conversación (T-325), en el orden del catálogo.
+   * Antes era un `string[]` libre: ahora llevan id, nombre y color (HU-inbox-1).
+   */
+  etiquetas: z.array(EtiquetaDeConversacion).default([]),
 });
 export type ConversacionResumen = z.infer<typeof ConversacionResumen>;
 
@@ -193,6 +202,18 @@ export const ConsultarBandeja = z.object({
    */
   buscar: z.string().max(100).optional(),
   estado: EstadoConversacion.optional(),
+  /**
+   * Solo las conversaciones con estas etiquetas (UUID, separados por coma o repetidos). Se combina
+   * en «y» con la vista, el estado y la búsqueda, y respeta la visibilidad por asesor. Un id que
+   * no existe o es de otra agencia no da error: da cero filas.
+   */
+  etiquetas: IdsDeEtiquetasEnElFiltro.optional(),
+  /**
+   * Con varias etiquetas: `cualquiera` (o) o `todas` (y). Sin `default` en el esquema, a propósito:
+   * un default haría `modo` obligatorio en el tipo de salida y rompería a quien arma la consulta; la
+   * API aplica `cualquiera` cuando falta (HU-inbox-1 §4.3).
+   */
+  modo: ModoDeFiltroDeEtiquetas.optional(),
   cursor: z.string().optional(),
   /** `coerce`: en `GET` llega como cadena de la consulta; con un número sigue valiendo. */
   limite: z.coerce.number().int().min(1).max(100).default(30),

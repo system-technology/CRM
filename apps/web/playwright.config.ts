@@ -58,6 +58,8 @@ export default defineConfig({
         '**/02-flujo-h1-h6.e2e-spec.ts',
         '**/03-paginas.e2e-spec.ts',
         '**/04-nombres.e2e-spec.ts',
+        '**/05-movil.e2e-spec.ts',
+        '**/06-etiquetas.e2e-spec.ts',
       ],
       dependencies: ['ingreso'],
       use: {

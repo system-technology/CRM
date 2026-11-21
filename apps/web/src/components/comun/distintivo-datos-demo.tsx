@@ -33,7 +33,7 @@ export function DistintivoDatosDemo({
       data-testid="distintivo-datos-demo"
       role="status"
       title="Esta pantalla muestra datos de demostración."
-      className={`inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-amber-800 select-none dark:border-amber-700/60 dark:bg-amber-950/60 dark:text-amber-300 ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-sm font-medium whitespace-nowrap text-amber-800 select-none dark:border-amber-700/60 dark:bg-amber-950/60 dark:text-amber-300 ${className}`}
     >
       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
       <span>datos de demostración</span>

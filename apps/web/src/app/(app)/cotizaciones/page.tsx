@@ -745,11 +745,6 @@ export default function CotizacionesPage() {
                 setModalWhatsAppAbierto(false);
                 setCotizacionParaWhatsApp(null);
               }}
-              alEnviarExitoso={(actualizada) => {
-                setFilas((prev) =>
-                  prev.map((f) => (f.id === actualizada.id ? { ...f, estado: 'ENVIADA' } : f)),
-                );
-              }}
             />
           )}
         </div>

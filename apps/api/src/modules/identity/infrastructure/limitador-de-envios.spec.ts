@@ -222,6 +222,37 @@ describe('ContadorDeFallosPostgres', () => {
     expect(await c.consumir('k', 10, 86400, PREFIJO_DE_FALLOS)).toBe(false);
   });
 
+  it('reservar inserta ANTES de contar (el recuento incluye la fila propia) y liberar borra por id', async () => {
+    const orden: string[] = [];
+    let filas = 9;
+    const prisma = {
+      $queryRaw: (t: TemplateStringsArray) => {
+        const sql = t.join('?');
+        if (/INSERT/.test(sql)) {
+          orden.push('insert');
+          filas += 1;
+          return Promise.resolve([{ id: 'r-1' }]);
+        }
+        orden.push('count');
+        return Promise.resolve([{ n: filas }]);
+      },
+      $executeRaw: (t: TemplateStringsArray, ...v: unknown[]) => {
+        orden.push(/DELETE/.test(t.join('?')) ? `delete:${String(v[0])}` : 'otro');
+        return Promise.resolve(1);
+      },
+    } as unknown as PrismaIdentidadService;
+    const c = new ContadorDeFallosPostgres(prisma);
+    // Con 9 previos, la reserva propia hace 10: cabe. La siguiente ve 11: no.
+    expect(await c.reservar('k', 10, 60, PREFIJO_DE_FALLOS_DE_INGRESO)).toEqual({
+      cabe: true,
+      reservaId: 'r-1',
+    });
+    expect((await c.reservar('k', 10, 60, PREFIJO_DE_FALLOS_DE_INGRESO)).cabe).toBe(false);
+    expect(orden.slice(0, 3)).toEqual(['insert', expect.stringMatching(/delete/), 'count']);
+    await c.liberar('r-1');
+    expect(orden.at(-1)).toBe('delete:r-1');
+  });
+
   it('T-370: el barrido purga el prefijo que recibe (también el del ingreso) y solo ese', async () => {
     const barridos: Array<{ sql: string; valores: unknown[] }> = [];
     const prisma = {

@@ -2,8 +2,9 @@
 
 import { useModoDemo } from '../../../lib/modo-demo';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Package,
@@ -104,13 +105,43 @@ import {
   validarFormularioCrearPaquete,
   validarFormularioEditarPaquete,
 } from '../../../lib/catalogo-gestion-logica';
+import { leerIdDeUrl } from '../../../lib/parametros-url';
 import { formatearDinero } from '../../../lib/api';
 import { fechaDeHoy } from '../../../lib/cotizador-logica';
 import { herramientasDevActivas } from '../../../lib/herramientas-dev';
 
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
-export default function CatalogoPage() {
+/** Ficha mínima de un paquete que solo se conoce por su salida publicada (modo real). */
+function paqueteDesdeSalida(sal: SalidaPublicada): PaqueteConDetalle {
+  return {
+    id: sal.paqueteId,
+    nombre: sal.paqueteNombre,
+    destino: sal.destino,
+    paisIso: 'CO',
+    dias: sal.noches + 1,
+    noches: sal.noches,
+    planAlimentacion: 'SIN_ALIMENTACION',
+    inclusiones: [],
+    exclusiones: [],
+    descripcion: `Salida programada para ${sal.fecha} con destino a ${sal.destino}.`,
+    activo: true,
+    mayoristaId: null,
+    mayorista: null,
+    creadoEn: new Date().toISOString(),
+    vigencias: [],
+  };
+}
+
+function CatalogoContenido() {
   const { esDemo } = useModoDemo();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // `?id=` (T-318): el paquete abierto vive en la URL. Abrir es `push` (Atrás cierra la ficha);
+  // recargar o compartir el enlace abre el mismo paquete. Solo un UUID se usa.
+  const parametroId = leerIdDeUrl(searchParams ?? new URLSearchParams(), 'id');
+  const paqueteIdUrl = parametroId.estado === 'valido' ? parametroId.id : null;
+  const abrirPaquete = (id: string) => router.push(`/catalogo?id=${id}`, { scroll: false });
+  const cerrarPaquete = () => router.push('/catalogo', { scroll: false });
   const modoRealActivo = !esDemo && estaUsandoCatalogoReal();
   const [usarReal, setUsarReal] = useState(() => modoRealActivo);
 
@@ -125,7 +156,7 @@ export default function CatalogoPage() {
   const [planFiltro, setPlanFiltro] = useState<PlanAlimentacion | 'TODOS'>('TODOS');
   const [destinoFiltro, setDestinoFiltro] = useState<string>('TODOS');
   const [soloVigentes, setSoloVigentes] = useState<boolean>(true);
-  const [paqueteSeleccionado, setPaqueteSeleccionado] = useState<PaqueteConDetalle | null>(null);
+  const [salidasListas, setSalidasListas] = useState(false);
   const [pestañaActiva, setPestañaActiva] = useState<'EXPLORAR' | 'PLANTILLAS' | 'GESTION'>(
     'EXPLORAR',
   );
@@ -209,6 +240,7 @@ export default function CatalogoPage() {
       })
       .finally(() => {
         setCargando(false);
+        setSalidasListas(true);
       });
   }, [usarReal]);
 
@@ -239,6 +271,22 @@ export default function CatalogoPage() {
       soloVigentes,
     });
   }, [busqueda, planFiltro, destinoFiltro, soloVigentes]);
+
+  // Paquete que pide la URL: del catálogo de muestra o, en modo real, de las salidas publicadas.
+  const paqueteSeleccionado = useMemo<PaqueteConDetalle | null>(() => {
+    if (!paqueteIdUrl) return null;
+    const delCatalogo = MOCK_PAQUETES_CATALOGO.find((p) => p.id === paqueteIdUrl);
+    if (delCatalogo) return delCatalogo;
+    const salida = salidasReales.find((s) => s.paqueteId === paqueteIdUrl);
+    return salida ? paqueteDesdeSalida(salida) : null;
+  }, [paqueteIdUrl, salidasReales]);
+  const buscandoPaquete = usarReal && !errorTenant && !salidasListas;
+  const avisoDeEnlace: string | null =
+    parametroId.estado === 'invalido'
+      ? 'El enlace no apunta a un paquete válido. Está incompleto o mal copiado.'
+      : paqueteIdUrl && !paqueteSeleccionado && !buscandoPaquete
+        ? 'No encontramos el paquete del enlace. Puede haberse desactivado o ser de otra agencia.'
+        : null;
 
   return (
     <>
@@ -456,6 +504,22 @@ export default function CatalogoPage() {
             />
           ) : (
             <>
+              {avisoDeEnlace && (
+                <div
+                  role="status"
+                  data-testid="catalogo-aviso-enlace"
+                  className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+                >
+                  <span className="min-w-0 flex-1">{avisoDeEnlace}</span>
+                  <Link
+                    href="/catalogo"
+                    className="focus-visible:ring-acento-600 inline-flex min-h-[44px] items-center rounded-xl border border-amber-300 px-3 font-semibold focus-visible:ring-2 focus-visible:outline-none dark:border-amber-800"
+                  >
+                    Ver todo el catálogo
+                  </Link>
+                </div>
+              )}
+
               {/* Error de configuración de tenant o red en modo API real */}
               {usarReal && errorTenant && (
                 <div className="mb-6">
@@ -536,31 +600,9 @@ export default function CatalogoPage() {
                         salida={salida}
                         indice={idx}
                         onVerFicha={(sal) => {
-                          const paqEncontrado = MOCK_PAQUETES_CATALOGO.find(
-                            (p) => p.id === sal.paqueteId,
-                          );
-                          if (paqEncontrado) {
-                            setPaqueteSeleccionado(paqEncontrado);
-                            return;
-                          }
-                          const paqGenerado: PaqueteConDetalle = {
-                            id: sal.paqueteId,
-                            nombre: sal.paqueteNombre,
-                            destino: sal.destino,
-                            paisIso: 'CO',
-                            dias: sal.noches + 1,
-                            noches: sal.noches,
-                            planAlimentacion: 'SIN_ALIMENTACION',
-                            inclusiones: [],
-                            exclusiones: [],
-                            descripcion: `Salida programada para ${sal.fecha} con destino a ${sal.destino}.`,
-                            activo: true,
-                            mayoristaId: null,
-                            mayorista: null,
-                            creadoEn: new Date().toISOString(),
-                            vigencias: [],
-                          };
-                          setPaqueteSeleccionado(paqGenerado);
+                          // Si el paquete no está en el catálogo de muestra, se resuelve desde la
+                          // salida con el mismo id: la URL manda.
+                          abrirPaquete(sal.paqueteId);
                         }}
                       />
                     ))}
@@ -703,7 +745,7 @@ export default function CatalogoPage() {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setPaqueteSeleccionado(paquete)}
+                              onClick={() => abrirPaquete(paquete.id)}
                               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-300 bg-white py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -730,10 +772,7 @@ export default function CatalogoPage() {
       </div>
 
       {/* 3. Modal / Drawer Ficha Detalle Paquete (Mock) */}
-      <FichaDetallePaquete
-        paquete={paqueteSeleccionado}
-        alCerrar={() => setPaqueteSeleccionado(null)}
-      />
+      <FichaDetallePaquete paquete={paqueteSeleccionado} alCerrar={cerrarPaquete} />
 
       {/* 4. Asistente de Importación de Catálogo */}
       <AsistenteImportacion
@@ -766,5 +805,13 @@ export default function CatalogoPage() {
         cargando={desactivando}
       />
     </>
+  );
+}
+
+export default function CatalogoPage() {
+  return (
+    <Suspense fallback={<EsqueletoGridTarjetas cantidad={6} />}>
+      <CatalogoContenido />
+    </Suspense>
   );
 }

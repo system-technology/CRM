@@ -9,6 +9,9 @@
  *                        que se lee primero al retomar: estado vivo, cola, trampas del momento.
  *   DIARIO.md            En git. Versión consolidada (decisiones, hitos), entra por lote de la
  *                        carril `i/`. Sobrevive a un clon nuevo o a un Codespace.
+ *   TABLERO-DEL-ORQUESTADOR.md  En git. El estado vivo de la orquestación (sesiones, cola de
+ *                        integración, ids reservados, pendientes). Lo alimenta la sesión madre en cada
+ *                        hito y se empuja a su rama; en un clon nuevo se lee de esa rama si es más nuevo.
  *
  * Modos (primer argumento):
  *   inicio      SessionStart: inyecta checkpoint + últimas entradas del diario.
@@ -36,6 +39,9 @@ import { dirname, join, resolve } from 'node:path';
 
 const MAX_LINEAS_CHECKPOINT = 220;
 const MAX_LINEAS_DIARIO = 70;
+const MAX_LINEAS_TABLERO = 140;
+/** Rama donde la sesión madre empuja el tablero entre PR de docs. */
+const RAMA_DEL_TABLERO = 'origin/claude/repository-status-d4ug6p';
 const HORAS_CHECKPOINT_VIEJO = 2;
 /** Holgura entre el último commit y el checkpoint antes de exigir reescribirlo. */
 const MINUTOS_HOLGURA = 10;
@@ -59,6 +65,7 @@ const raiz = raizPrincipal();
 const dirContexto = join(raiz, 'docs', '_contexto');
 const rutaCheckpoint = join(dirContexto, 'CHECKPOINT.local.md');
 const rutaDiario = join(dirContexto, 'DIARIO.md');
+const rutaTablero = join(dirContexto, 'TABLERO-DEL-ORQUESTADOR.md');
 const rutaMarco = join(dirContexto, 'MARCO.md');
 
 function leer(ruta, maxLineas, desdeElFinal = false) {
@@ -71,6 +78,18 @@ function leer(ruta, maxLineas, desdeElFinal = false) {
   } catch {
     return null;
   }
+}
+
+/** Tablero: el de la rama de la sesión madre si existe (más reciente), si no el del checkout. */
+function leerTablero() {
+  const enRama = git(['show', `${RAMA_DEL_TABLERO}:docs/_contexto/TABLERO-DEL-ORQUESTADOR.md`]);
+  if (enRama) {
+    const lineas = enRama.split('\n');
+    const texto = lineas.length <= MAX_LINEAS_TABLERO ? enRama : lineas.slice(0, MAX_LINEAS_TABLERO).join('\n') + '\n… (recortado)';
+    return { texto, origen: `rama ${RAMA_DEL_TABLERO}` };
+  }
+  const local = leer(rutaTablero, MAX_LINEAS_TABLERO);
+  return local ? { texto: local, origen: 'checkout' } : null;
 }
 
 function horasDesde(ruta) {
@@ -89,6 +108,7 @@ try {
     const checkpoint = leer(rutaCheckpoint, MAX_LINEAS_CHECKPOINT);
     const diario = leer(rutaDiario, MAX_LINEAS_DIARIO);
     const marco = leer(rutaMarco, 120);
+    const tablero = leerTablero();
     if (marco)
       partes.push(`## MARCO DE TRABAJO
 
@@ -106,11 +126,19 @@ ${marco}`);
           '`docs/_contexto/DIARIO.md`, `ESTADO.md` y `gh pr list`.',
       );
     }
+    if (tablero) {
+      partes.push(
+        `## TABLERO DEL ORQUESTADOR (versionado; leído de: ${tablero.origen})\n` +
+          'Estado vivo de la orquestación. Verifícalo contra `gh` y `git` antes de afirmarlo y corrígelo si miente.\n\n' +
+          tablero.texto,
+      );
+    }
     if (diario) {
       partes.push(`## DIARIO (versionado, lo más reciente primero)\n\n${diario}`);
     }
     partes.push(
       'Archivos: `docs/_contexto/CHECKPOINT.local.md` (escribir ahí tras cada hito, sin PR), ' +
+        '`docs/_contexto/TABLERO-DEL-ORQUESTADOR.md` (versionado: la sesión madre lo actualiza y empuja tras cada hito), ' +
         '`docs/_contexto/DIARIO.md` (consolidar por lote de la carril `i/`), `docs/_contexto/CONTEXTO.md` (lo estable).',
     );
     process.stdout.write(
@@ -125,7 +153,7 @@ ${marco}`);
     // En PreCompact, la salida estándar se añade a las instrucciones de compactación.
     process.stdout.write(
       'Al resumir: el estado persistente NO vive en este resumen sino en `docs/_contexto/CHECKPOINT.local.md` ' +
-        '(local) y `docs/_contexto/DIARIO.md` (git). Incluye en el resumen: (1) la orden "al retomar, lee ambos ' +
+        '(local), `docs/_contexto/TABLERO-DEL-ORQUESTADOR.md` y `docs/_contexto/DIARIO.md` (git). Incluye en el resumen: (1) la orden "al retomar, lee ambos ' +
         'archivos y verifica con gh/git antes de afirmar nada"; (2) la última petición literal del usuario y si ' +
         'quedó sin responder; (3) lo que se prometió hacer y aún no se hizo, sin darlo por hecho; (4) qué es ' +
         'verificado y qué es supuesto.\n',
@@ -170,7 +198,8 @@ ${marco}`);
             hookEventName: 'PostToolUse',
             additionalContext:
               'Hito (PR, merge o push): actualiza ahora `docs/_contexto/CHECKPOINT.local.md` con el estado ' +
-              'verificado, antes de seguir con lo siguiente.',
+              'verificado y, si eres la sesión madre, `docs/_contexto/TABLERO-DEL-ORQUESTADOR.md` (versionado: ' +
+              'cola, ventanas, ids, pendientes) y empújalo a tu rama, antes de seguir con lo siguiente.',
           },
         }),
       );

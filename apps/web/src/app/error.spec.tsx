@@ -36,6 +36,13 @@ describe('ErrorPage (T-109)', () => {
     );
   });
 
+  it('un fallo inesperado ofrece «Ir a ingresar» hacia la ruta actual (T-322)', () => {
+    render(<ErrorPage error={new Error('boom')} reset={vi.fn()} />);
+    const enlace = screen.getByTestId('btn-ir-a-ingresar');
+    expect(enlace.textContent).toBe('Ir a ingresar');
+    expect(enlace.getAttribute('href')).toBe('/ingresar?redirigir=%2Fcotizador');
+  });
+
   it('clasifica error de red y permite reintentar invocando reset()', () => {
     const errorRed = new TypeError('Failed to fetch');
     const mockReset = vi.fn();

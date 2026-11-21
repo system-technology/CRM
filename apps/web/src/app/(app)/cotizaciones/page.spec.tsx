@@ -114,7 +114,7 @@ describe('CotizacionesPage (Listado T-107)', () => {
         '01932000-0000-7000-8000-000000000001',
       );
       expect(screen.getByRole('dialog')).toBeDefined();
-      expect(screen.getByText(/Enviar Cotización por WhatsApp/i)).toBeDefined();
+      expect(screen.getByRole('heading', { name: /Abrir en la app de WhatsApp/i })).toBeDefined();
     });
   });
 

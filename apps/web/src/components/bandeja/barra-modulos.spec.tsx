@@ -1,8 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import React from 'react';
 import { BarraModulos, calcularIniciales } from './barra-modulos';
 import * as authApi from '../../lib/auth-api';
+import * as crmApi from '../../lib/crm-api';
+import * as avisosApi from '../../lib/avisos-plazo-api';
+import * as archivosApi from '../../lib/archivos-api';
+import { pedirAperturaDeBusquedaGlobal } from '../../lib/busqueda-global-evento';
 import type { SesionActual } from '@viajapro/contracts';
 
 const mockPush = vi.fn();
@@ -91,6 +95,61 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
     });
   });
 
+  describe('Hoy y Seguimientos con contador (T-317)', () => {
+    const pendiente = (id: string) => ({
+      id,
+      descripcion: 'x',
+      venceEn: '2026-10-27T16:00:00.000Z',
+      completadoEn: null,
+      asesorId: null,
+      asesorNombre: null,
+      contactoId: null,
+      contactoNombre: null,
+      oportunidadId: null,
+      oportunidadTitulo: null,
+      conversacionId: null,
+    });
+
+    it('muestra Hoy primero y Seguimientos, con la cifra en el nombre accesible', async () => {
+      vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+        fecha: '2026-10-27',
+        vencidos: [pendiente('01932000-0000-7000-8000-000000000071')],
+        deHoy: [
+          pendiente('01932000-0000-7000-8000-000000000072'),
+          pendiente('01932000-0000-7000-8000-000000000073'),
+        ],
+      } as never);
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      const sidebar = screen.getByTestId('sidebar-escritorio');
+      expect(await within(sidebar).findByRole('link', { name: 'Hoy, 3 pendientes' })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Seguimientos, 1 vencido' })).toBeDefined();
+      const nombres = within(sidebar)
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('aria-label'))
+        .filter(Boolean);
+      expect(nombres[0]).toBe('Hoy, 3 pendientes');
+      expect(nombres[1]).toBe('Conversaciones');
+      expect(nombres.indexOf('Seguimientos, 1 vencido')).toBeGreaterThan(
+        nombres.indexOf('Archivos de viaje'),
+      );
+      expect(nombres.indexOf('Seguimientos, 1 vencido')).toBeLessThan(nombres.indexOf('Contactos'));
+    });
+
+    it('con cero pendientes no pinta contador y el nombre es solo la etiqueta', () => {
+      vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+        fecha: '2026-10-27',
+        vencidos: [],
+        deHoy: [],
+      });
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      const sidebar = screen.getByTestId('sidebar-escritorio');
+      expect(within(sidebar).getByRole('link', { name: 'Hoy' })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Seguimientos' })).toBeDefined();
+      expect(within(sidebar).queryByTestId('contador-menu-hoy')).toBeNull();
+      expect(within(sidebar).queryByTestId('contador-menu-seguimientos')).toBeNull();
+    });
+  });
+
   describe('Renderizado y Navegación de Módulos', () => {
     it('renderiza la barra lateral con enlaces a los módulos principales', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);
@@ -103,16 +162,62 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(within(sidebar).getByRole('link', { name: 'Archivos de viaje' })).toBeDefined();
     });
 
-    it('renderiza la barra de navegación inferior móvil con touch targets >= 44px', () => {
+    it('la barra inferior móvil es Hoy · Conversaciones · Cotizar · Archivos · Más (T-320)', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);
 
       const navMovil = screen.getByRole('navigation', { name: /Navegación móvil inferior/i });
-      expect(navMovil).toBeDefined();
+      const nombres = [
+        ...within(navMovil).getAllByRole('link'),
+        ...within(navMovil).getAllByRole('button'),
+      ].map((e) => e.getAttribute('aria-label'));
+      expect(nombres).toEqual(['Hoy', 'Conversaciones', 'Cotizar', 'Archivos de viaje', 'Más']);
+      // Buscar ya no ocupa pestaña (la lupa vive en la cabecera del marco).
+      expect(within(navMovil).queryByText('Buscar')).toBeNull();
+      expect(within(navMovil).queryByText('Perfil')).toBeNull();
+    });
 
-      const botonPerfilMovil = screen.getByTestId('boton-perfil-movil');
-      expect(botonPerfilMovil).toBeDefined();
-      expect(botonPerfilMovil.className).toContain('min-h-[44px]');
-      expect(botonPerfilMovil.className).toContain('min-w-[44px]');
+    it('«Más» abre la hoja con el resto de módulos, y esta se cierra con Esc', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
+
+      fireEvent.click(screen.getByTestId('barra-boton-mas'));
+      const hoja = screen.getByRole('dialog', { name: 'Más opciones' });
+      // Esta sesión no tiene permisos de administración: Configuración se oculta (solo oculta).
+      expect(
+        within(hoja)
+          .getAllByRole('link')
+          .map((e) => e.getAttribute('aria-label') ?? e.textContent?.trim()),
+      ).toEqual([
+        'Oportunidades',
+        'Cotizaciones',
+        'Seguimientos',
+        'Contactos',
+        'Catálogo',
+        'Reportes',
+        'Privacidad',
+        'Términos',
+        'Cookies',
+      ]);
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
+    });
+
+    it('la campana de la hoja «Más» abre el panel de notificaciones', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      fireEvent.click(screen.getByTestId('barra-boton-mas'));
+      fireEvent.click(screen.getByTestId('mas-notificaciones'));
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
+      expect(screen.getByRole('dialog', { name: /notificaciones/i })).toBeDefined();
+    });
+
+    it('el evento de la lupa móvil abre la misma paleta de búsqueda', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      expect(screen.queryByRole('dialog', { name: /búsqueda|buscar/i })).toBeNull();
+      act(() => {
+        pedirAperturaDeBusquedaGlobal();
+      });
+      expect(screen.getByRole('dialog', { name: /búsqueda|buscar/i })).toBeDefined();
     });
 
     it('permite expandir y contraer la barra lateral de escritorio con botón toggle (T-034)', () => {
@@ -149,6 +254,59 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
 
       localStorage.removeItem('viajapro_sidebar_expandida');
     });
+
+    describe('Modos por tamaño de pantalla (T-440)', () => {
+      const simularAncho = (esEscritorio: boolean) => {
+        vi.stubGlobal(
+          'matchMedia',
+          vi.fn((consulta: string) => ({
+            matches: consulta.includes('min-width: 1280px') ? esEscritorio : false,
+            media: consulta,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            onchange: null,
+            dispatchEvent: vi.fn(),
+          })),
+        );
+      };
+
+      afterEach(() => {
+        vi.unstubAllGlobals();
+        localStorage.removeItem('viajapro_sidebar_expandida');
+      });
+
+      it('en escritorio (>= 1280 px) y sin preferencia guardada parte expandida', async () => {
+        simularAncho(true);
+        localStorage.removeItem('viajapro_sidebar_expandida');
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const sidebar = screen.getByTestId('sidebar-escritorio');
+        await waitFor(() => expect(sidebar.getAttribute('data-expandida')).toBe('true'));
+      });
+
+      it('en tablet (< 1280 px) y sin preferencia guardada parte como riel con etiquetas', () => {
+        simularAncho(false);
+        localStorage.removeItem('viajapro_sidebar_expandida');
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const sidebar = screen.getByTestId('sidebar-escritorio');
+        expect(sidebar.getAttribute('data-expandida')).toBe('false');
+        expect(within(sidebar).getByTestId('etiqueta-riel-conversaciones').textContent).toBe(
+          'Conversaciones',
+        );
+        // Con etiqueta corta de la tabla única de navegación, igual que la barra móvil.
+        expect(within(sidebar).getByTestId('etiqueta-riel-archivos').textContent).toBe('Archivos');
+      });
+
+      it('la preferencia guardada manda sobre el ancho: «contraída» se respeta en escritorio', () => {
+        simularAncho(true);
+        localStorage.setItem('viajapro_sidebar_expandida', 'false');
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        expect(screen.getByTestId('sidebar-escritorio').getAttribute('data-expandida')).toBe(
+          'false',
+        );
+      });
+    });
   });
 
   describe('Interacción con Menú de Sesión y Perfil', () => {
@@ -175,12 +333,15 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(screen.getByTestId('indicador-agencia-unica').textContent).toContain('Viajes El Sol');
     });
 
-    it('abre el diálogo de sesión al pulsar el botón de perfil móvil', () => {
+    it('abre el diálogo de sesión desde la entrada de perfil de la hoja «Más»', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      fireEvent.click(screen.getByTestId('barra-boton-mas'));
       const perfilMovilBtn = screen.getByTestId('boton-perfil-movil');
+      expect(perfilMovilBtn.className).toContain('min-h-[48px]');
 
       fireEvent.click(perfilMovilBtn);
 
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
       expect(screen.getByTestId('dialogo-perfil-sesion')).toBeDefined();
     });
 
@@ -269,6 +430,146 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       fireEvent.click(botonCampana);
 
       expect(screen.getByRole('dialog', { name: /Panel de Notificaciones/i })).toBeDefined();
+    });
+
+    it('la campana cuenta lo que suman sus pestañas y no avisa de archivos que no existen (T-322)', async () => {
+      const aviso = (n: number, archivoId: string) => ({
+        id: `01932000-0000-7000-8000-0000000a000${n}`,
+        tipo: 'TIME_LIMIT_PROXIMO' as const,
+        archivoId,
+        reservaId: `01932000-0000-7000-8000-0000000c000${n}`,
+        archivoNumero: 1040 + n,
+        venceEn: new Date(Date.now() + 3_600_000).toISOString(),
+        leidaEn: null,
+        creadaEn: new Date().toISOString(),
+      });
+      vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+        fecha: '2026-10-27',
+        vencidos: [],
+        deHoy: [],
+      });
+      vi.spyOn(avisosApi, 'listarAvisos').mockResolvedValue({
+        datos: [aviso(1, 'archivo-existe'), aviso(2, 'archivo-fantasma')],
+        noLeidas: 2,
+      });
+      vi.spyOn(archivosApi, 'listarArchivos').mockResolvedValue([
+        { id: 'archivo-existe' } as never,
+      ]);
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const contador = await screen.findByTestId('contador-campana');
+      // La campana ya espera a que la lista de archivos descarte el aviso fantasma.
+      await waitFor(() => expect(archivosApi.listarArchivos).toHaveBeenCalled());
+      fireEvent.click(screen.getByRole('button', { name: /Alertas operativas/i }));
+      await waitFor(() => expect(screen.queryByTestId(/^notificacion-aviso-.*a0002$/)).toBeNull());
+
+      const n = (id: string) =>
+        Number(/\((\d+)\)/.exec(screen.getByTestId(id).textContent ?? '')?.[1]);
+      const suma = ['plazos', 'mensajes', 'seguimientos', 'cotizaciones', 'operativas']
+        .map((t) => n(`filtro-${t}`))
+        .reduce((x, y) => x + y, 0);
+      expect(n('filtro-plazos')).toBe(1);
+      expect(n('filtro-todas')).toBe(suma);
+      expect(Number(contador.textContent)).toBe(suma);
+      expect(
+        screen.getByTestId('notificacion-aviso-01932000-0000-7000-8000-0000000a0001'),
+      ).toBeTruthy();
+    });
+
+    describe('el filtro de archivos no esconde avisos reales (T-322)', () => {
+      const avisoDe = (n: number, archivoId: string) => ({
+        id: `01932000-0000-7000-8000-0000000a000${n}`,
+        tipo: 'TIME_LIMIT_PROXIMO' as const,
+        archivoId,
+        reservaId: `01932000-0000-7000-8000-0000000c000${n}`,
+        archivoNumero: 1040 + n,
+        venceEn: new Date(Date.now() + 3_600_000).toISOString(),
+        leidaEn: null,
+        creadaEn: new Date().toISOString(),
+      });
+      const archivo = (id: string) => ({ id }) as never;
+      const preparar = (avisos: ReturnType<typeof avisoDe>[]) => {
+        vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+          fecha: '2026-10-27',
+          vencidos: [],
+          deHoy: [],
+        });
+        vi.spyOn(avisosApi, 'listarAvisos').mockResolvedValue({
+          datos: avisos,
+          noLeidas: avisos.length,
+        });
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+      };
+      const abrirYLeer = async () => {
+        const contador = await screen.findByTestId('contador-campana');
+        fireEvent.click(screen.getByRole('button', { name: /Alertas operativas/i }));
+        await act(async () => {
+          await new Promise((r) => setTimeout(r, 50));
+        });
+        const n = (id: string) =>
+          Number(/\((\d+)\)/.exec(screen.getByTestId(id).textContent ?? '')?.[1]);
+        const suma = ['plazos', 'mensajes', 'seguimientos', 'cotizaciones', 'operativas']
+          .map((t) => n(`filtro-${t}`))
+          .reduce((x, y) => x + y, 0);
+        expect(n('filtro-todas')).toBe(suma);
+        expect(
+          Number(screen.getByTestId('contador-campana').textContent ?? contador.textContent),
+        ).toBe(suma);
+        return (id: string) => screen.queryByTestId(`notificacion-aviso-${id}`) !== null;
+      };
+      const ID1 = '01932000-0000-7000-8000-0000000a0001';
+      const ID2 = '01932000-0000-7000-8000-0000000a0002';
+
+      it('un archivo creado después de la carga inicial se muestra tras recargar la lista', async () => {
+        preparar([avisoDe(1, 'viejo'), avisoDe(2, 'nuevo')]);
+        const espia = vi
+          .spyOn(archivosApi, 'listarArchivos')
+          .mockResolvedValueOnce([archivo('viejo')])
+          .mockResolvedValue([archivo('viejo'), archivo('nuevo')]);
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(true);
+        expect(espia).toHaveBeenCalledTimes(2);
+      });
+
+      it('un archivo que sigue sin existir tras recargar se oculta, con una sola recarga', async () => {
+        preparar([avisoDe(1, 'existe'), avisoDe(2, 'fantasma')]);
+        const espia = vi
+          .spyOn(archivosApi, 'listarArchivos')
+          .mockResolvedValue([archivo('existe')]);
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(false);
+        expect(espia).toHaveBeenCalledTimes(2);
+      });
+
+      it('con la lista truncada (tantas filas como el tope) no se oculta nada ni se recarga', async () => {
+        preparar([avisoDe(1, 'existe'), avisoDe(2, 'fuera-del-tope')]);
+        const llena = Array.from({ length: archivosApi.LIMITE_LISTA_ARCHIVOS }, (_, i) =>
+          archivo(`f-${i}`),
+        );
+        const espia = vi.spyOn(archivosApi, 'listarArchivos').mockResolvedValue(llena);
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(true);
+        expect(espia).toHaveBeenCalledTimes(1);
+      });
+
+      it('si la recarga falla se muestran los avisos y no se reintenta en bucle', async () => {
+        preparar([avisoDe(1, 'existe'), avisoDe(2, 'dudoso')]);
+        const espia = vi
+          .spyOn(archivosApi, 'listarArchivos')
+          .mockResolvedValueOnce([archivo('existe')])
+          .mockRejectedValue(new Error('sin red'));
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(true);
+        expect(espia).toHaveBeenCalledTimes(2);
+      });
     });
 
     it('abre el panel de notificaciones desde el diálogo de perfil', () => {

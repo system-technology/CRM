@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Calculator,
@@ -99,10 +100,17 @@ const BloqueZonaHoraria = dynamic(
   { ssr: false },
 );
 
+const BloqueEtiquetas = dynamic(
+  () => import('../../../components/configuracion/bloque-etiquetas').then((m) => m.BloqueEtiquetas),
+  { ssr: false },
+);
+
 const BloqueRnt = dynamic(
   () => import('../../../components/configuracion/bloque-rnt').then((m) => m.BloqueRnt),
   { ssr: false },
 );
+
+import { hrefDePestana, leerPestanaDeUrl } from '../../../lib/parametros-url';
 
 type TabConfig =
   | 'equipo'
@@ -113,11 +121,42 @@ type TabConfig =
   | 'precios'
   | 'catalogo'
   | 'campos'
-  | 'respuestas';
+  | 'respuestas'
+  | 'etiquetas';
 
-export default function ConfiguracionPage() {
-  const { puedeVerNetoYMargen, sesion } = usePermisos();
-  const [tabActiva, setTabActiva] = useState<TabConfig>('equipo');
+/** Lista cerrada de `?pestana=`; la primera es la de por defecto (T-318). */
+const PESTANAS_CONFIG = [
+  'equipo',
+  'whatsapp',
+  'sla',
+  'pipeline',
+  'agencia',
+  'precios',
+  'catalogo',
+  'campos',
+  'respuestas',
+  'etiquetas',
+] as const satisfies readonly [TabConfig, ...TabConfig[]];
+
+function ConfiguracionContenido() {
+  const { puedeVerNetoYMargen, puedeAdministrarEtiquetas, sesion } = usePermisos();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const parametros = searchParams ?? new URLSearchParams();
+  const pestanaUrl = leerPestanaDeUrl<TabConfig>(parametros, PESTANAS_CONFIG);
+  // «Formación del precio» exige permiso: sin él, un enlace a esa pestaña cae a la primera.
+  // «Etiquetas» exige `etiquetas.administrar` y se oculta sin él (T-326), igual que la de precios.
+  const tabActiva: TabConfig =
+    (pestanaUrl === 'precios' && !puedeVerNetoYMargen) ||
+    (pestanaUrl === 'etiquetas' && !puedeAdministrarEtiquetas)
+      ? 'equipo'
+      : pestanaUrl;
+  // `replace`: las pestañas son vistas de una misma pantalla; Atrás sale de Configuración, no
+  // recorre las pestañas que se visitaron.
+  const setTabActiva = (tab: TabConfig) =>
+    router.replace(hrefDePestana('/configuracion', tab, PESTANAS_CONFIG, parametros), {
+      scroll: false,
+    });
   const [sla, setSla] = useState<ConfiguracionSla>(MOCK_CONFIGURACION_SLA);
   const [agencia, setAgencia] = useState<ConfiguracionAgencia>(MOCK_CONFIGURACION_AGENCIA);
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
@@ -200,7 +239,7 @@ export default function ConfiguracionPage() {
           )}
 
           {/* Pestañas de Navegación */}
-          <nav className="mt-4 flex space-x-1 border-b border-neutral-200 dark:border-neutral-800">
+          <nav className="mt-4 flex space-x-1 overflow-x-auto border-b border-neutral-200 dark:border-neutral-800 [&>button]:shrink-0">
             <button
               onClick={() => setTabActiva('equipo')}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
@@ -308,6 +347,22 @@ export default function ConfiguracionPage() {
               <FormInput className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>Campos Personalizados</span>
             </button>
+
+            {puedeAdministrarEtiquetas && (
+              <button
+                id="tab-btn-etiquetas"
+                data-testid="tab-btn-etiquetas"
+                onClick={() => setTabActiva('etiquetas')}
+                className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+                  tabActiva === 'etiquetas'
+                    ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
+                    : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+                }`}
+              >
+                <Tag className="text-acento-600 dark:text-acento-400 h-4 w-4" />
+                <span>Etiquetas</span>
+              </button>
+            )}
 
             <button
               id="tab-btn-respuestas"
@@ -460,6 +515,17 @@ export default function ConfiguracionPage() {
           {tabActiva === 'catalogo' && (
             <div id="tab-contenido-catalogo" data-testid="tab-contenido-catalogo">
               <BloqueAjustesCatalogo />
+            </div>
+          )}
+
+          {/* TAB 10: ETIQUETAS DE CONVERSACIÓN (T-326, HU-inbox-1 §4.6) */}
+          {tabActiva === 'etiquetas' && (
+            <div
+              id="tab-contenido-etiquetas"
+              data-testid="tab-contenido-etiquetas"
+              className="max-w-4xl space-y-6"
+            >
+              <BloqueEtiquetas />
             </div>
           )}
 
@@ -621,5 +687,13 @@ export default function ConfiguracionPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function ConfiguracionPage() {
+  return (
+    <Suspense fallback={<div aria-busy="true" className="min-h-64 flex-1" />}>
+      <ConfiguracionContenido />
+    </Suspense>
   );
 }
