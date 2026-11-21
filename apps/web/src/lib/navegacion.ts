@@ -5,7 +5,7 @@
  */
 
 import type { ComponentType } from 'react';
-import { CalendarCheck, ListChecks } from 'lucide-react';
+import { CalendarCheck, FilePlus, ListChecks } from 'lucide-react';
 import type { Permiso } from '@viajapro/contracts';
 import { CONFIGURACION_MODULOS } from '../components/comun/iconos-modulos';
 
@@ -30,7 +30,7 @@ export interface EntradaDeNavegacion {
   id: IdDeModulo;
   /** = ítem del menú = comando de la paleta = H1 = título del documento. */
   etiqueta: string;
-  /** Solo barra móvil; debe estar contenida en `etiqueta`. */
+  /** Solo barra móvil (11–12 px, ~78 px por sitio); debe estar contenida en `etiqueta`. */
   etiquetaCorta?: string;
   /** Una línea para la paleta de comandos. */
   descripcion: string;
@@ -174,11 +174,58 @@ export interface AccionDeNavegacion {
   id: string;
   etiqueta: string;
   ruta: `/${string}`;
+  icono: Icono;
+  /**
+   * `'barra'`: la acción ocupa un sitio fijo de la barra inferior móvil (variante B de D4), justo
+   * después del módulo `despuesDe`. Sin `movil`, solo vive en la paleta.
+   */
+  movil?: 'barra';
+  despuesDe?: IdDeModulo;
 }
 
 export const ACCIONES: readonly AccionDeNavegacion[] = [
-  { id: 'cotizar', etiqueta: 'Cotizar', ruta: '/cotizador' },
+  {
+    id: 'cotizar',
+    etiqueta: 'Cotizar',
+    ruta: '/cotizador',
+    icono: FilePlus,
+    movil: 'barra',
+    despuesDe: 'conversaciones',
+  },
 ];
+
+/** Un sitio de la barra inferior móvil: un módulo o una acción (siempre «Más» va después). */
+export type ElementoDeBarraMovil =
+  { tipo: 'modulo'; entrada: EntradaDeNavegacion } | { tipo: 'accion'; accion: AccionDeNavegacion };
+
+/**
+ * Composición de la barra inferior móvil, en orden: los módulos `movil: 'barra'` en el orden de la
+ * tabla, con cada acción `movil: 'barra'` tras su `despuesDe`. «Más» no es un elemento de la
+ * tabla: lo añade la barra al final. Sin filtrar por permiso (los ítems de la barra no lo exigen).
+ */
+export function elementosDeBarraMovil(): readonly ElementoDeBarraMovil[] {
+  const resultado: ElementoDeBarraMovil[] = [];
+  for (const entrada of NAVEGACION) {
+    if (entrada.movil !== 'barra') continue;
+    resultado.push({ tipo: 'modulo', entrada });
+    for (const accion of ACCIONES) {
+      if (accion.movil === 'barra' && accion.despuesDe === entrada.id) {
+        resultado.push({ tipo: 'accion', accion });
+      }
+    }
+  }
+  return resultado;
+}
+
+/** Módulos de la hoja «Más»: el resto del menú (`movil: 'mas'`), en el orden de la tabla. */
+export function entradasDeHojaMas(): readonly EntradaDeNavegacion[] {
+  return NAVEGACION.filter((e) => e.enMenu && e.movil === 'mas');
+}
+
+/** Etiqueta con la que sale una entrada en la barra móvil. */
+export function etiquetaDeBarra(entrada: EntradaDeNavegacion): string {
+  return entrada.etiquetaCorta ?? entrada.etiqueta;
+}
 
 const MARCA = 'ViajaPro';
 
