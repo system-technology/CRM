@@ -139,4 +139,99 @@ describe('Módulo de Modo Oscuro y Preferencia de Densidad Visual (tema-y-densid
       expect(SCRIPT_ANTI_FOUC).toContain('classList.add');
     });
   });
+
+  describe('SCRIPT_ANTI_FOUC ejecutado: la clase que deja antes de la primera pintura (T-560)', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+
+    /**
+     * Ejecuta el script TAL COMO lo inyecta el layout en el <head>: es lo único que decide la clase
+     * de la primera pintura, así que se prueba su comportamiento y no solo que contenga ciertas
+     * cadenas. Evaluar un texto es justo el objeto de esta prueba.
+     */
+    function ejecutarScript(): void {
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      const ejecutar = new Function(SCRIPT_ANTI_FOUC) as () => void;
+      ejecutar();
+    }
+
+    function ejecutar(sistemaOscuro: boolean, guardada: string | null, densidad?: string) {
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: (consulta: string) => ({
+          matches: consulta.includes('prefers-color-scheme: dark') ? sistemaOscuro : false,
+        }),
+      });
+      localStorage.clear();
+      if (guardada !== null) localStorage.setItem(CLAVE_LOCALSTORAGE_TEMA, guardada);
+      if (densidad) localStorage.setItem(CLAVE_LOCALSTORAGE_DENSIDAD, densidad);
+      ejecutarScript();
+      const r = document.documentElement;
+      return {
+        oscuro: r.classList.contains('dark'),
+        efectivo: r.getAttribute('data-tema-efectivo'),
+        tema: r.getAttribute('data-tema'),
+        densidad: r.getAttribute('data-densidad'),
+      };
+    }
+
+    afterEach(() => {
+      if (original) Object.defineProperty(window, 'matchMedia', original);
+      else Reflect.deleteProperty(window, 'matchMedia');
+    });
+
+    it('sistema en oscuro y sin preferencia guardada: abre en oscuro', () => {
+      expect(ejecutar(true, null)).toMatchObject({
+        oscuro: true,
+        efectivo: 'dark',
+        tema: 'system',
+      });
+    });
+
+    it('sistema en claro y sin preferencia guardada: abre en claro', () => {
+      expect(ejecutar(false, null)).toMatchObject({
+        oscuro: false,
+        efectivo: 'light',
+        tema: 'system',
+      });
+    });
+
+    it('la preferencia guardada «claro» gana al sistema oscuro', () => {
+      expect(ejecutar(true, 'light')).toMatchObject({
+        oscuro: false,
+        efectivo: 'light',
+        tema: 'light',
+      });
+    });
+
+    it('la preferencia guardada «oscuro» gana al sistema claro', () => {
+      expect(ejecutar(false, 'dark')).toMatchObject({
+        oscuro: true,
+        efectivo: 'dark',
+        tema: 'dark',
+      });
+    });
+
+    it('«sistema» guardado explícitamente sigue al sistema', () => {
+      expect(ejecutar(true, 'system').oscuro).toBe(true);
+      expect(ejecutar(false, 'system').oscuro).toBe(false);
+    });
+
+    it('quita la clase dark si la preferencia resulta clara (no se queda pegada)', () => {
+      document.documentElement.classList.add('dark');
+      expect(ejecutar(false, 'light').oscuro).toBe(false);
+    });
+
+    it('fija la densidad guardada, y «cómoda» si no hay', () => {
+      expect(ejecutar(false, null, 'compacta').densidad).toBe('compacta');
+      expect(ejecutar(false, null).densidad).toBe('comoda');
+    });
+
+    it('si el almacenamiento falla no lanza ni rompe la página', () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('almacenamiento bloqueado');
+      });
+      expect(() => ejecutarScript()).not.toThrow();
+    });
+  });
 });
