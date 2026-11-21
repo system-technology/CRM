@@ -11542,7 +11542,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     acceptance:
       - mock-reportes-resumen.ts no incluye cotizacionesAbiertas ni porCobrar, asi que en demo Hoy pinta 'No
         pudimos leer las cotizaciones abiertas' y no hay tarjeta de cobro
@@ -11557,6 +11557,12 @@ tasks:
     source: "aviso de la sesion de T-546/T-538 al entregar #440, 2026-11-21"
     created_at: 2026-11-21T14:50:00.000Z
     owner: frontend
+    started_at: 2026-11-21T15:41:13.702Z
+    done_at: 2026-11-21T15:41:13.703Z
+    evidence: "Mergeado en main por el PR #450 (rama b/T-556-demo-con-datos-de-muestra) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 84e0b8dc88df7ac36799b86e8b4d6cbf2c54c50f
   - id: T-557
     title: "Reportes: ventas por destino no tiene tope de filas"
     type: refactor
@@ -11598,11 +11604,16 @@ tasks:
     priority: P3
     effort: S
     status: backlog
-    depends_on: [T-555]
+    depends_on:
+      - T-555
     acceptance:
-      - "VentasPorDestino pinta el margen con `m.margen ? ... : ''`: la web NO decide permisos, solo pinta lo que viene, y eso es correcto"
-      - "La compuerta real esta en el servidor y SI esta probada (obtener-resumen.use-case.spec.ts: sin cotizacion.ver_neto_y_margen el incluirMargen es false en porAsesor y en destinos, true con el permiso)"
-      - "Falta la mutacion del lado web: pintar el margen siempre, o derivarlo, y ver en ROJO una prueba sin la clave. Es defensa en profundidad, no una fuga de hoy: por eso es cola y no bloquea"
+      - "VentasPorDestino pinta el margen con `m.margen ? ... : ''`: la web NO decide permisos, solo pinta lo
+        que viene, y eso es correcto"
+      - "La compuerta real esta en el servidor y SI esta probada (obtener-resumen.use-case.spec.ts: sin
+        cotizacion.ver_neto_y_margen el incluirMargen es false en porAsesor y en destinos, true con el
+        permiso)"
+      - "Falta la mutacion del lado web: pintar el margen siempre, o derivarlo, y ver en ROJO una prueba sin
+        la clave. Es defensa en profundidad, no una fuga de hoy: por eso es cola y no bloquea"
     source: "lo declaro la propia sesion de T-555 como limite de su evidencia al entregar #446, 2026-11-21"
     created_at: 2026-11-21T15:20:00.000Z
     owner: frontend
@@ -11614,16 +11625,18 @@ tasks:
     effort: M
     status: backlog
     acceptance:
-      - "Los dos modos YA existen: globals.css redefine los tokens en .dark, 144 archivos usan variantes dark: y
-        selector-tema-densidad.tsx ofrece claro / oscuro / seguir al sistema con persistencia en viajapro_tema"
-      - "Lo que falta (1): el tema no se aplica en el arranque. apps/web/src/app/layout.tsx no lee la preferencia
-        ni pone la clase en <html>, asi que la primera pintura siempre es clara y hay parpadeo si el usuario
-        prefiere oscuro. Se resuelve con un script en linea antes de la hidratacion"
-      - "Lo que falta (2): el conmutador solo esta montado en barra-modulos.tsx (la bandeja). Desde el ingreso o
-        cualquier otra pantalla no hay forma de cambiar el tema"
-      - "Lo que falta (3): se respeta prefers-color-scheme del sistema en la PRIMERA visita, sin preferencia guardada"
-      - "Criterio de cierre: con el sistema en oscuro y sin preferencia guardada, la app abre en oscuro sin parpadeo;
-        el conmutador se alcanza desde cualquier pantalla privada; la eleccion sobrevive a recargar"
+      - "Los dos modos YA existen: globals.css redefine los tokens en .dark, 144 archivos usan variantes dark:
+        y selector-tema-densidad.tsx ofrece claro / oscuro / seguir al sistema con persistencia en
+        viajapro_tema"
+      - "Lo que falta (1): el tema no se aplica en el arranque. apps/web/src/app/layout.tsx no lee la
+        preferencia ni pone la clase en <html>, asi que la primera pintura siempre es clara y hay parpadeo si
+        el usuario prefiere oscuro. Se resuelve con un script en linea antes de la hidratacion"
+      - "Lo que falta (2): el conmutador solo esta montado en barra-modulos.tsx (la bandeja). Desde el ingreso
+        o cualquier otra pantalla no hay forma de cambiar el tema"
+      - "Lo que falta (3): se respeta prefers-color-scheme del sistema en la PRIMERA visita, sin preferencia
+        guardada"
+      - "Criterio de cierre: con el sistema en oscuro y sin preferencia guardada, la app abre en oscuro sin
+        parpadeo; el conmutador se alcanza desde cualquier pantalla privada; la eleccion sobrevive a recargar"
     source: "revision visual del propietario, 2026-11-21: «podemos manejar ambos modos oscuro y claro?»"
     created_at: 2026-11-21T15:40:00.000Z
     owner: frontend
@@ -11635,43 +11648,49 @@ tasks:
     effort: M
     status: backlog
     acceptance:
-      - "El propietario lo reporto mirando la app el 2026-11-21: «el toque de contraste negro hace que se pierdan
-        un poco los textos», y al preguntarle senalo la barra lateral, las pantallas de trabajo y el conjunto. No es
-        una pantalla suelta: es sistematico, asi que se arregla en los tokens, no parche por parche"
+      - "El propietario lo reporto mirando la app el 2026-11-21: «el toque de contraste negro hace que se
+        pierdan un poco los textos», y al preguntarle senalo la barra lateral, las pantallas de trabajo y el
+        conjunto. No es una pantalla suelta: es sistematico, asi que se arregla en los tokens, no parche por
+        parche"
       - "NO se arregla a ojo: se MIDE. Calcular el ratio de contraste de cada par texto/fondo de los tokens de
         globals.css, en claro Y en oscuro, y entregar la tabla de los que no llegan"
-      - "Umbral WCAG 2.1 AA: 4.5:1 para texto normal, 3:1 para texto grande (>=24px, o >=18.66px en negrita) y para
-        los bordes de controles. Lo que no llegue, se corrige subiendo o bajando el token"
-      - "La identidad no se toca: el acento sigue siendo azul y los estados siguen siendo ok/aviso/alerta. Se ajusta
-        la luminancia, no la familia de color"
-      - "Lo que cierra la tarea y evita que vuelva a degradarse: una prueba automatizada que recorra los pares de
-        tokens y FALLE si alguno baja del umbral. Hay que verla en rojo con los valores de hoy antes de corregir"
-      - "Ojo con los colores fijos que no pasan por tokens (formulario-ingreso.tsx usa #FDE68A y #C9A24B a mano):
-        inventariarlos, aunque arreglarlos pueda ir en otra tarea"
-    source: "revision visual del propietario, 2026-11-21"
+      - "Umbral WCAG 2.1 AA: 4.5:1 para texto normal, 3:1 para texto grande (>=24px, o >=18.66px en negrita) y
+        para los bordes de controles. Lo que no llegue, se corrige subiendo o bajando el token"
+      - "La identidad no se toca: el acento sigue siendo azul y los estados siguen siendo ok/aviso/alerta. Se
+        ajusta la luminancia, no la familia de color"
+      - "Lo que cierra la tarea y evita que vuelva a degradarse: una prueba automatizada que recorra los pares
+        de tokens y FALLE si alguno baja del umbral. Hay que verla en rojo con los valores de hoy antes de
+        corregir"
+      - "Ojo con los colores fijos que no pasan por tokens (formulario-ingreso.tsx usa #FDE68A y #C9A24B a
+        mano): inventariarlos, aunque arreglarlos pueda ir en otra tarea"
+    source: revision visual del propietario, 2026-11-21
     created_at: 2026-11-21T15:42:00.000Z
     owner: frontend
   - id: T-562
-    title: "Manual de usuario funcional de lo que ya existe, con capturas, para ensenarlo a una agencia"
+    title: Manual de usuario funcional de lo que ya existe, con capturas, para ensenarlo a una agencia
     type: docs
     phase: 1
     priority: P2
     effort: L
     status: in_progress
     acceptance:
-      - "Dos recorridos completos: el del asesor (entrar, atender la conversacion, cotizar, enviar, aceptar, abrir
-        el archivo de viaje, registrar un pago, ver sus numeros) y el del dueno (lo anterior mas configuracion de
-        equipo, etapas, catalogo y moneda, y los reportes de toda la agencia)"
-      - "El alcance sale de la seccion «Es real (en main)» de ESTADO.md. Lo que sea maqueta o no se haya probado
-        contra la API real, o no entra, o entra diciendolo: el propietario va a ensenar esto a una agencia y un
-        manual que explica una maqueta como si funcionara es peor que no tener manual"
-      - "Lenguaje de agencia de viajes, no de programador: manda el lenguaje ubicuo (docs/01-producto/02-lenguaje-ubicuo.md)"
-      - "Capturas en docs/06-manual/imagenes/, a deviceScaleFactor 2 porque las lee una persona"
-      - "LIMITE CONOCIDO Y DECLARADO: no se puede levantar Postgres en este entorno, asi que TODAS las capturas
-        son de modo demostracion, ninguna contra la API real desplegada. Tiene que decirlo el propio manual"
-      - "SECUENCIA: el texto primero y las capturas al final, porque T-556 (el modo demo ensena un error en «Hoy»)
-        y T-561 (ajuste de contrastes) cambian lo que saldria en las fotos. Capturar antes seria tirar el trabajo"
-    source: "lo pidio el propietario el 2026-11-21: «un manual de usuario funcional de lo que tenemos que tenga fotos»"
+      - "Dos recorridos completos: el del asesor (entrar, atender la conversacion, cotizar, enviar, aceptar,
+        abrir el archivo de viaje, registrar un pago, ver sus numeros) y el del dueno (lo anterior mas
+        configuracion de equipo, etapas, catalogo y moneda, y los reportes de toda la agencia)"
+      - "El alcance sale de la seccion «Es real (en main)» de ESTADO.md. Lo que sea maqueta o no se haya
+        probado contra la API real, o no entra, o entra diciendolo: el propietario va a ensenar esto a una
+        agencia y un manual que explica una maqueta como si funcionara es peor que no tener manual"
+      - "Lenguaje de agencia de viajes, no de programador: manda el lenguaje ubicuo
+        (docs/01-producto/02-lenguaje-ubicuo.md)"
+      - Capturas en docs/06-manual/imagenes/, a deviceScaleFactor 2 porque las lee una persona
+      - "LIMITE CONOCIDO Y DECLARADO: no se puede levantar Postgres en este entorno, asi que TODAS las
+        capturas son de modo demostracion, ninguna contra la API real desplegada. Tiene que decirlo el propio
+        manual"
+      - "SECUENCIA: el texto primero y las capturas al final, porque T-556 (el modo demo ensena un error en
+        «Hoy») y T-561 (ajuste de contrastes) cambian lo que saldria en las fotos. Capturar antes seria tirar
+        el trabajo"
+    source: "lo pidio el propietario el 2026-11-21: «un manual de usuario funcional de lo que tenemos que tenga
+      fotos»"
     created_at: 2026-11-21T15:46:00.000Z
     owner: documentador
   - id: T-563
