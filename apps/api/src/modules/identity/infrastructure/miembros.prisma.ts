@@ -17,7 +17,9 @@ import {
   PuertoMiembros,
   type ResultadoDeAlta,
   type ResultadoDeBaja,
+  type ResultadoDeCambioDeApodo,
 } from '../domain/puertos-de-miembros.js';
+import { esColisionDeApodo } from './colision-de-apodo.js';
 
 @Injectable()
 export class MiembrosPrisma extends PuertoMiembros {
@@ -147,6 +149,52 @@ export class MiembrosPrisma extends PuertoMiembros {
           return 'reactivado' as const;
         }),
     );
+  }
+
+  async cambiarApodo(
+    usuarioId: string,
+    apodo: string | null,
+    permisosDeQuienLoCambia: ReadonlySet<string>,
+  ): Promise<ResultadoDeCambioDeApodo> {
+    const { tenantId, usuarioId: actorId } = ContextoTenant.obtener();
+    try {
+      return await this.prisma.conTenant(async (tx) => {
+        // Bajo RLS y con el tenant en el predicado: un miembro de otra agencia no existe (404).
+        const u = await tx.usuario.findFirst({
+          where: { id: usuarioId, tenantId, activo: true, eliminadoEn: null },
+          select: { id: true, rol: { select: { permisos: true } } },
+        });
+        if (!u) return 'no_encontrado' as const;
+
+        // La MISMA guarda que la baja: nadie edita el apodo de quien tiene más permisos que él.
+        // Un dueño sí puede cambiar el de otro dueño (tiene todos sus permisos).
+        const falta = permisoQueFalta(u.rol.permisos, permisosDeQuienLoCambia);
+        if (falta !== undefined) return { faltaPermiso: falta };
+
+        // El disparador copia el apodo a `accesos_identidad`; si ya es de otra persona, su
+        // `23505` revierte esta transacción entera (no queda una pertenencia sin su fila en el índice).
+        await tx.usuario.update({ where: { id: u.id }, data: { apodo } });
+
+        // Quién y qué, nunca el apodo: se deriva del nombre de la persona (R10).
+        await tx.registroAuditoria.create({
+          data: {
+            tenantId,
+            usuarioId: actorId,
+            tipoDeActor: 'USUARIO',
+            accion: apodo === null ? 'identity.apodo_quitado' : 'identity.apodo_fijado',
+            entidad: 'usuario',
+            entidadId: u.id,
+            detalle: {},
+          },
+        });
+        return 'cambiado' as const;
+      });
+    } catch (error) {
+      // La colisión se traduce por el nombre de la restricción y el error original se descarta:
+      // su mensaje trae `Key (apodo)=(...)`.
+      if (esColisionDeApodo(error)) return 'apodo_ocupado';
+      throw error;
+    }
   }
 
   async darDeBaja(

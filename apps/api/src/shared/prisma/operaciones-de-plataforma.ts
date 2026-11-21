@@ -35,6 +35,11 @@ export const OPERACIONES_DE_PLATAFORMA = {
     'corre ANTES de elegir una: no hay tenant que fijar. Lee `tenants` (global, solo SELECT) por ' +
     'los ids que da el índice accesos_identidad. Es informativo: lo que autoriza es la lectura ' +
     'de `usuarios` bajo RLS. ADR-0011.',
+  'identity/contar-agencias-para-apodos':
+    'La función de apodos se apaga si hay más de una agencia y el índice de apodos es global ' +
+    '(ADR-0031 §4, B3). Cuenta las filas de `tenants` (global, en `excepciones_rls`, solo ' +
+    'SELECT) antes de resolver un apodo en el ingreso: no hay tenant que fijar. No lee ' +
+    'ninguna columna: solo el recuento.',
 } as const;
 
 /** El nombre de una operación declarada arriba. Cualquier otra cosa es un error de tipos. */
