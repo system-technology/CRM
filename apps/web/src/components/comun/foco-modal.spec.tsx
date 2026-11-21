@@ -73,6 +73,22 @@ function ArnesModalPrueba({
 
 describe('0c.32: Gestión Accesible de Teclado y Foco en Modales (WCAG AA)', () => {
   describe('Hook useFocoModal (Aislamiento)', () => {
+    it('1b. No roba el foco si ya esta dentro del modal al vencer el temporizador (T-548)', async () => {
+      render(<ArnesModalPrueba />);
+      const btnAbrir = screen.getByRole('button', { name: 'Abrir Modal Prueba' });
+      btnAbrir.focus();
+      fireEvent.click(btnAbrir);
+
+      // La persona (o Playwright) llega antes que el temporizador de 30 ms y escribe en el 2.º campo.
+      const segundo = screen.getByTestId('input-dos');
+      segundo.focus();
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 60));
+      });
+
+      expect(document.activeElement).toBe(segundo);
+    });
+
     it('1. Foco dentro: posiciona el foco en el elemento inicial configurado al abrir', async () => {
       render(<ArnesModalPrueba />);
       const btnAbrir = screen.getByRole('button', { name: 'Abrir Modal Prueba' });

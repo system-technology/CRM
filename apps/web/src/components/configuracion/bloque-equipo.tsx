@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
   Send,
@@ -59,9 +59,12 @@ export function BloqueEquipo() {
   const [errorApodo, setErrorApodo] = useState<string | null>(null);
   const [exitoApodo, setExitoApodo] = useState<string | null>(null);
 
+  const inputApodoRef = useRef<HTMLInputElement>(null);
   const modalApodoRef = useFocoModal<HTMLDivElement>({
     abierto: editandoApodo !== null,
     alCerrar: () => setEditandoApodo(null),
+    // El foco inicial va al campo, no al boton «Cerrar» (T-548).
+    elementoInicialRef: inputApodoRef,
   });
 
   const abrirEdicionApodo = (m: MiembroEquipo) => {
@@ -536,6 +539,7 @@ export function BloqueEquipo() {
                 </label>
                 <input
                   id="input-usuario-de-ingreso"
+                  ref={inputApodoRef}
                   type="text"
                   autoComplete="off"
                   autoCapitalize="none"

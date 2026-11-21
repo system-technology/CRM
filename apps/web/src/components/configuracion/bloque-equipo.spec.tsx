@@ -232,6 +232,12 @@ describe('BloqueEquipo (T-027)', () => {
       await waitFor(() => expect(espia).toHaveBeenCalledWith(expect.any(String), null));
     });
 
+    it('al abrir, el foco va al campo del usuario y no al boton «Cerrar» (T-548)', async () => {
+      await abrir();
+      const campo = screen.getByLabelText('Usuario');
+      await waitFor(() => expect(document.activeElement).toBe(campo));
+    });
+
     it('un 409 muestra un mensaje claro y deja el dialogo abierto', async () => {
       vi.spyOn(equipoApi, 'cambiarApodoMiembroApi').mockRejectedValueOnce(
         new equipoApi.ErrorMiembrosApi(
