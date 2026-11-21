@@ -56,6 +56,8 @@ import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { zonaOPorDefecto } from '../../lib/archivos-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
+import { useContadoresDeMenu } from '../../lib/use-contadores-de-menu';
+import { nombreAccesibleConContador } from '../../lib/inicio-logica';
 import { tienePermiso, usePermisos } from '../../lib/permisos';
 import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
@@ -143,6 +145,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
   const esDetalleMovil = esDetalleMovilDeBandeja(pathname);
   const idActivo = moduloActivo(pathname)?.id ?? null;
+  const contadoresMenu = useContadoresDeMenu(pathname);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -349,7 +352,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           {barraExpandida ? (
             <div className="flex w-full items-center justify-between px-1">
               <Link
-                href="/bandeja"
+                href="/"
                 title="ViajaPro — CRM Turístico"
                 className="focus-visible:ring-acento-600 flex items-center gap-2.5 overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:outline-none"
               >
@@ -380,7 +383,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           ) : (
             <div className="flex w-full flex-col items-center space-y-2">
               <Link
-                href="/bandeja"
+                href="/"
                 title="ViajaPro — CRM Turístico"
                 className="bg-acento-700 focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
               >
@@ -494,15 +497,37 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               const Icon = m.icono;
               const claveColor = CLAVE_DE_COLOR[m.id];
               const config = claveColor ? CONFIGURACION_MODULOS[claveColor] : undefined;
+              const nombre =
+                m.id === 'hoy'
+                  ? nombreAccesibleConContador(
+                      m.etiqueta,
+                      contadoresMenu?.hoy ?? 0,
+                      'pendiente',
+                      'pendientes',
+                    )
+                  : m.id === 'seguimientos'
+                    ? nombreAccesibleConContador(
+                        m.etiqueta,
+                        contadoresMenu?.seguimientosVencidos ?? 0,
+                        'vencido',
+                        'vencidos',
+                      )
+                    : m.etiqueta;
+              const cifra =
+                m.id === 'hoy'
+                  ? (contadoresMenu?.hoy ?? 0)
+                  : m.id === 'seguimientos'
+                    ? (contadoresMenu?.seguimientosVencidos ?? 0)
+                    : 0;
 
               return (
                 <Link
                   key={m.id}
                   href={m.ruta}
-                  title={m.etiqueta}
-                  aria-label={m.etiqueta}
+                  title={nombre}
+                  aria-label={nombre}
                   aria-current={m.id === idActivo ? 'page' : undefined}
-                  className={`focus-visible:ring-acento-600 flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+                  className={`focus-visible:ring-acento-600 relative flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
                     barraExpandida
                       ? `h-10 w-full gap-2.5 px-2.5 ${
                           m.id === idActivo
@@ -518,14 +543,29 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 >
                   <div
                     className={
-                      barraExpandida && config
-                        ? `flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${config.claseBgSuave} ${config.claseTexto}`
+                      barraExpandida
+                        ? `flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                            config
+                              ? `${config.claseBgSuave} ${config.claseTexto}`
+                              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
+                          }`
                         : 'shrink-0'
                     }
                   >
                     <Icon className="h-4.5 w-4.5" />
                   </div>
                   {barraExpandida && <span className="truncate text-xs">{m.etiqueta}</span>}
+                  {cifra > 0 && (
+                    <span
+                      aria-hidden="true"
+                      data-testid={`contador-menu-${m.id}`}
+                      className={`flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] leading-none font-bold text-white ${
+                        barraExpandida ? 'ml-auto' : 'absolute -top-0.5 -right-0.5'
+                      }`}
+                    >
+                      {cifra > 99 ? '99+' : cifra}
+                    </span>
+                  )}
                 </Link>
               );
             })}
