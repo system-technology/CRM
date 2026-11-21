@@ -30,3 +30,26 @@ sin credencial. El único canal con acceso a Neon es el CI (`DIRECT_URL` del Env
   lanzar el workflow. Solo funciona tras integrar el PR en `main` (ruta protegida: espera al propietario).
 - El resumen muestra la contraseña en claro y el repositorio es público: rotarla (relanzar con otra).
 - Cola: endpoint de alta protegido o cambio de contraseña propio, para no depender de un script.
+
+## Corrección: el CI paró esto por aislamiento (R1), y tenía razón
+
+El primer empuje rompía `src/shared/tenant/consultas-sin-filtro.spec.ts` («ninguna lectura de
+producción sobre una tabla con tenant carece de `where`»). **No era inestabilidad**: se relanzó y
+volvió a fallar igual.
+
+La consulta era `prisma.usuario.count()` en el diagnóstico —«cuántos usuarios hay»—, sobre una tabla
+que lleva `tenant_id`. **El diagnóstico contaba usuarios de toda la base.**
+
+**Hallazgo útil para quien venga:** esa prueba recorre el AST de todo `apps/api/src`, scripts
+incluidos, y **no tiene mecanismo de excepción**: no hay lista ni comentario que permita saltársela.
+O se filtra, o no pasa.
+
+**Arreglo:** el recuento cuenta solo dentro de la agencia demo (`where: { tenantId: demo.id }`), y da
+0 si la demo no existe. No se pierde el diagnóstico: la guarda ya se niega si hay agencias ajenas a
+`agencia-demo`, así que cuando el script continúa todos los usuarios de la base son de la demo. La
+tabla del resumen ahora dice «Usuarios de la agencia demo».
+
+**Lo que NO se hizo, y es la parte importante:** no se tocó la prueba, ni se usó `$queryRaw` para
+esquivar el detector, ni se movió la consulta de sitio. Con un cliente esperando, la tentación de
+apagar la alarma es justo la que `CLAUDE.md` §3.1 prohíbe: el aislamiento entre agencias es el único
+sitio donde no se recorta.
