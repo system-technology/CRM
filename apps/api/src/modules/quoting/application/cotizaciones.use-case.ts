@@ -125,7 +125,7 @@ export class CotizacionesUseCase {
   ) {}
 
   async guardar(entrada: GuardarCotizacion, incluirMargen: boolean): Promise<CotizacionGuardada> {
-    const { tenantId } = ContextoTenant.obtener();
+    const { tenantId, usuarioId } = ContextoTenant.obtener();
 
     return this.prisma.conTenant(async (tx) => {
       // Contacto y oportunidad son de `crm`: se comprueban por su puerto, en esta transacción.
@@ -155,6 +155,12 @@ export class CotizacionesUseCase {
           contactoId: entrada.contactoId,
           oportunidadId: entrada.oportunidadId ?? null,
           titulo: entrada.titulo,
+          // Quién cotizó. Es la atribución de «mis cotizaciones» y «mis ventas» en los reportes
+          // propios (ADR-0035 §2) y no cambia al reasignar la oportunidad. Hasta T-342 la columna
+          // existía y nadie la escribía: sin esto, el resumen propio de cualquier asesor saldría
+          // en cero. Las cotizaciones anteriores quedan sin autor: no son «propias» de nadie y
+          // solo entran en los reportes de agencia.
+          creadoPorId: usuarioId,
         },
       });
       await tx.versionCotizacion.create({

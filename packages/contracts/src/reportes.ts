@@ -1,7 +1,12 @@
 /**
  * Reportes: el resumen de un periodo, agregado en el servidor.
  *
- * `GET /api/v1/reportes/resumen?desde=<instante>&hasta=<instante>`
+ * `GET /api/v1/reportes/resumen?desde=<instante>&hasta=<instante>[&asesorId=<id>|yo]`
+ *
+ * **El alcance lo impone el servidor (ADR-0035).** Sin `reportes.ver_agencia` la respuesta es
+ * `alcance: 'PROPIO'` y sus filas son las del usuario de la sesión; el parámetro `asesorId` no
+ * amplía nada y, si nombra a otro asesor, la respuesta es 403. Con el permiso, `alcance:
+ * 'AGENCIA'` y `asesorId` filtra por un asesor o es `null` (toda la agencia).
  *
  * **El rango son instantes, no días.** `desde` inclusivo y `hasta` exclusivo, en UTC (R9). La web
  * convierte «este mes» a esos dos instantes con la zona horaria de la agencia; el servidor no
@@ -40,8 +45,16 @@ import { Dinero, Id, Instante } from './comunes.js';
 const DIA_MS = 24 * 60 * 60 * 1000;
 export const MAXIMO_DIAS_DE_REPORTE = 366;
 
+/**
+ * `yo` es el atajo del propio usuario de la sesión: la web no necesita saber su id para pedir
+ * «lo mío». Un `asesorId` ajeno sin `reportes.ver_agencia` responde 403, nunca un recorte en
+ * silencio (ADR-0035 §4).
+ */
+export const AsesorDeReporte = z.union([Id, z.literal('yo')]);
+export type AsesorDeReporte = z.infer<typeof AsesorDeReporte>;
+
 export const ConsultarResumenDeReportes = z
-  .object({ desde: Instante, hasta: Instante })
+  .object({ desde: Instante, hasta: Instante, asesorId: AsesorDeReporte.optional() })
   .strict()
   .superRefine((q, ctx) => {
     const d = Date.parse(q.desde);
@@ -125,11 +138,61 @@ export const ResumenDeRespuesta = z.object({
 });
 export type ResumenDeRespuesta = z.infer<typeof ResumenDeRespuesta>;
 
-export const ResumenDeReportes = z.object({
+/** Las cifras, iguales en los dos alcances. Lo que cambia es QUÉ FILAS las componen. */
+const CIFRAS_DEL_RESUMEN = {
   periodo: z.object({ desde: Instante, hasta: Instante }),
   cotizaciones: ResumenDeCotizaciones,
   ventasPorMoneda: z.array(VentasDeUnaMoneda),
   oportunidades: ResumenDeOportunidades,
   respuesta: ResumenDeRespuesta,
+} as const;
+
+export const AlcanceDelResumen = z.enum(['PROPIO', 'AGENCIA']);
+export type AlcanceDelResumen = z.infer<typeof AlcanceDelResumen>;
+
+/**
+ * Lo que ve quien NO tiene `reportes.ver_agencia`: solo lo suyo, y `asesorId` es SIEMPRE el
+ * usuario de la sesión (el servidor no acepta otro, ADR-0035 §1).
+ *
+ * `strict()` no es decoración: las métricas que son solo de administración (embudo por cohorte,
+ * comparación entre asesores, cobros de la agencia) irán únicamente en `ResumenDeAgencia`, y aquí
+ * una clave de más no se recorta en silencio: falla la validación de salida del servidor.
+ */
+export const ResumenPropio = z
+  .object({ ...CIFRAS_DEL_RESUMEN, alcance: z.literal('PROPIO'), asesorId: Id })
+  .strict();
+export type ResumenPropio = z.infer<typeof ResumenPropio>;
+
+/** Lo que ve quien SÍ lo tiene. `asesorId` es el filtro aplicado, o `null` si es toda la agencia. */
+export const ResumenDeAgencia = z
+  .object({ ...CIFRAS_DEL_RESUMEN, alcance: z.literal('AGENCIA'), asesorId: Id.nullable() })
+  .strict();
+export type ResumenDeAgencia = z.infer<typeof ResumenDeAgencia>;
+
+/**
+ * **El contrato del endpoint** (ADR-0035 §4): una unión discriminada por `alcance`. El servidor
+ * valida su propia salida con ella, así que una clave de agencia en una respuesta propia falla en
+ * la prueba y no en producción (§9.3). La respuesta dice el `alcance` y el `asesorId` efectivos
+ * para que la web titule con la verdad y no deduzca nada de los permisos.
+ */
+export const ResumenDeReportesPorAlcance = z.discriminatedUnion('alcance', [
+  ResumenPropio,
+  ResumenDeAgencia,
+]);
+export type ResumenDeReportesPorAlcance = z.infer<typeof ResumenDeReportesPorAlcance>;
+
+/**
+ * TRANSITORIO (T-342 → T-343, cola T-513). La web todavía construye y consume el resumen sin
+ * `alcance`, y el carril de API no toca `apps/web`: hasta el PR del carril `b` las dos claves
+ * nuevas viajan como opcionales en el tipo que la web importa.
+ *
+ * **El servidor no valida con este esquema**: declara y valida `ResumenDeReportesPorAlcance`.
+ * Cuando la web lea `alcance`, este alias se borra y `ResumenDeReportes` vuelve a ser el nombre de
+ * la unión.
+ */
+export const ResumenDeReportes = z.object({
+  ...CIFRAS_DEL_RESUMEN,
+  alcance: AlcanceDelResumen.optional(),
+  asesorId: Id.nullable().optional(),
 });
 export type ResumenDeReportes = z.infer<typeof ResumenDeReportes>;

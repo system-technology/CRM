@@ -10,10 +10,21 @@
  * queda fuera del grupo entero, en vez de contar un tiempo negativo o contarse como «sin
  * responder».
  *
+ * **Atribución del alcance propio (M9, ADR-0035 §2).** «Mía» es la conversación que respondí YO:
+ * el autor del primer saliente humano (`mensajes.autor_id`; los automáticos no tienen autor, y un
+ * CHECK impide que un entrante lo tenga). `primera_respuesta_en` no guarda autor, por eso hace
+ * falta mirar el mensaje. A ese grupo se suman las que están SIN responder y asignadas a mí
+ * (`conversaciones.asignado_a_id`, la misma columna con la que se reparte el trabajo vivo): sin
+ * ellas, `sinResponder` sería siempre cero y la tasa de respuesta propia, siempre 100 %. Una
+ * conversación que respondió otro no es mía aunque esté asignada a mí: el crédito es de quien
+ * respondió.
+ *
  * Todo se agrega en la base (tenant_id explícito además de RLS); no se leen mensajes a la app.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   PuertoRespuestaParaReportes,
   type RangoDeReporte,
@@ -37,8 +48,34 @@ export class RespuestaParaReportesPrisma extends PuertoRespuestaParaReportes {
     super();
   }
 
-  async resumir(tenantId: string, rango: RangoDeReporte): Promise<RespuestaAgregada> {
+  async resumir(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+  ): Promise<RespuestaAgregada> {
     const { desde, hasta } = rango;
+    // El autor de la primera respuesta solo se busca cuando hay a quién atribuir: el reporte de
+    // agencia ejecuta exactamente la misma consulta de antes, sin el lateral de más.
+    const autorDeLaPrimera =
+      alcance.asesorId === null
+        ? Prisma.empty
+        : Prisma.sql`
+            LEFT JOIN LATERAL (
+              SELECT m.autor_id
+                FROM mensajes m
+               WHERE m.tenant_id = ${tenantId}::uuid
+                 AND m.conversacion_id = c.id
+                 AND m.direccion = 'SALIENTE'
+                 AND m.autor_id IS NOT NULL
+               ORDER BY m.ocurrido_en ASC
+               LIMIT 1
+            ) r ON true`;
+    const delAsesor =
+      alcance.asesorId === null
+        ? Prisma.empty
+        : Prisma.sql`AND (r.autor_id = ${alcance.asesorId}::uuid
+                       OR (c.primera_respuesta_en IS NULL
+                           AND c.asignado_a_id = ${alcance.asesorId}::uuid))`;
     return this.prisma.conTenant(async (tx) => {
       const [t] = await tx.$queryRaw<FilaDeTiempos[]>`
         WITH grupo AS (
@@ -54,8 +91,10 @@ export class RespuestaParaReportesPrisma extends PuertoRespuestaParaReportes {
                  AND m.conversacion_id = c.id
                  AND m.direccion = 'ENTRANTE'
             ) p
+            ${autorDeLaPrimera}
            WHERE c.tenant_id = ${tenantId}::uuid
              AND c.eliminado_en IS NULL
+             ${delAsesor}
              AND c.creado_en >= ${desde} AND c.creado_en < ${hasta}
              AND (
                c.primera_respuesta_en IS NULL

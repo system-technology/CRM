@@ -9646,14 +9646,15 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: review
+    status: done
+    done_at: 2026-11-21T10:20:00.000Z
     acceptance:
       - "Un reintento con la misma clave pero la nota editada devuelve 200 con la fila original: la asesora cree que corrigio la nota y no corrigio nada"
       - "O el servidor rechaza el reintento con datos distintos, o lo dice en la respuesta; en silencio no"
     source: "auditoria independiente de #410 (T-331), 2026-11-21"
     created_at: 2026-11-21T09:10:00.000Z
     owner: backend
-    notes: "EN REVISION en #420 (carril a) y su PR de rastro (carril i); SIN INTEGRAR. Decision: RECHAZAR, no aceptar-y-avisar. mismoContenido compara ahora todo el cuerpo (referencia, nota y motivo ademas del dinero); si algo difiere, 409 CLAVE_DE_IDEMPOTENCIA_REUTILIZADA y no se escribe nada. El reintento identico sigue devolviendo 200 con la misma fila. El reverso compara tambien su motivo. Excepcion: en una fila tachada (ADR-0034 2.4) nota y referencia no cuentan, porque las vacio la base. Razonado en ADR-0036, que enmienda ADR-0034 4 paso 2. Verificado en local: typecheck, lint y las unitarias de apps/api. SIN VERIFICAR: las e2e y el build (esta sesion no levanta Postgres) y la auditoria independiente que el propietario exige antes de integrar por ser dinero."
+    notes: "Integrada como #420 (38c2ee47). Decision: RECHAZAR con 409, no aceptar-y-avisar. mismoContenido compara ahora todo el cuerpo (referencia, nota y motivo ademas del dinero); si algo difiere, 409 CLAVE_DE_IDEMPOTENCIA_REUTILIZADA y no se escribe nada. El reintento IDENTICO sigue devolviendo 200 con la misma fila y sin segunda fila: eso es lo que impide cobrar dos veces y no se toco. Razonado en ADR-0036, que enmienda solo el paso 2 del ADR-0034 4. Auditoria independiente hecha por la madre (es dinero, R13): SIN BLOQUEANTES; verifico que no hay ambiguedad null/undefined/vacio, que el monto sigue en bigint, que la carrera la cierra el indice unico (tenant_id, clave_idempotencia) con ON CONFLICT DO NOTHING mas relectura, y que la clave se compara dentro de la agencia. Las e2e las corrio el CI, no la sesion. Cola que deja: T-522 a T-525."
   - id: T-517
     title: "Web: cobro.avisos no se pinta en ningun sitio"
     type: feature
