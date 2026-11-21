@@ -12550,4 +12550,31 @@ tasks:
     notes: "La sesion de T-332 encontro el limite y NO amplio el contrato por su cuenta porque no era su
       carril. Era lo correcto: se registra aqui en vez de colarse un cambio de API en un PR de frontend."
 
+  - id: T-583
+    title: "Reportes: textos por debajo de WCAG AA en los dos dashboards, sobre todo en modo oscuro"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on:
+      - T-346
+    acceptance:
+      - "MEDIDO en T-346 con el contraste calculado de cada texto visible (AA pide 4,5:1 para texto
+        pequeno). Administracion en modo claro: los pies de las tarjetas de ReportesListo
+        (text-neutral-400, 11 px) dan 2,58:1 — «Variacion contra los...», «Aceptadas / enviadas...»,
+        cohortes, «p90:», «Aun sin datos»"
+      - "Modo oscuro, Ana y administracion: pies en 3,78:1; «COP», «USD» y «o mas» de «Por cobrar hoy»
+        en 2,29:1; «Subio», «Debe», «Por vencer:» y «Vencido:» en 2,77:1, con colores de modo claro
+        SIN variante dark:"
+      - "En los dos modos: la linea legal «Tratamiento de datos personales...» del marco, 2,45:1 en claro"
+      - "Arreglar y volver a medir con el mismo medidor. El medidor tiene que verse fallar antes: su
+        primer pase dio 0 hallazgos en claro por no entender los colores oklch() de Tailwind"
+    source: "medicion de contraste de T-346 (2026-11-21)"
+    owner: frontend
+    notes: "Son defectos PREEXISTENTES de los dashboards de T-343 y T-344, no los introduce T-346: esa
+      tarea pedia MIRAR el contraste y lo miro. Cola y no bloqueante (CLAUDE.md 3.1), pero el propietario
+      quiere ensenar estas pantallas desde el celular, asi que no conviene que duerma mucho."
+
+
 
