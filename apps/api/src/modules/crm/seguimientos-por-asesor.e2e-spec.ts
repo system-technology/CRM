@@ -6,6 +6,10 @@
  * Agencia A: `dueno` (con `conversaciones.ver_todas`), `ana` y `beto` (asesores, sin él).
  * Agencia B: `bruno` (con `ver_todas`), para comprobar que el aislamiento entre agencias sigue.
  * Cada asesor de A tiene un seguimiento vencido; B tiene uno propio.
+ *
+ * **T-342 cambió el cierre provisional de #395**: sin `conversaciones.ver_todas`, pedir el
+ * `asesorId` de OTRO ya no se ignora en silencio, responde 403 (ADR-0035 §4). Lo que no cambia es
+ * que el asesor nunca ve lo ajeno, ni dentro de su agencia ni fuera.
  */
 import 'reflect-metadata';
 
@@ -213,26 +217,40 @@ afterAll(async () => {
   await admin?.$disconnect();
 });
 
-describe('GET /crm/seguimientos?asesorId= (H2)', () => {
-  it('un asesor sin ver_todas pasando el asesorId de otro ve SOLO los suyos', async () => {
+describe('GET /crm/seguimientos?asesorId= (H2, T-342)', () => {
+  it('un asesor sin ver_todas pidiendo el asesorId de otro recibe 403, no sus seguimientos', async () => {
     const r = await get('ana', `/api/v1/crm/seguimientos?asesorId=${U.beto}`);
-    expect(r.status).toBe(200);
-    expect(ids(r)).toEqual([seguimientoDe.ana]);
+    expect(r.status).toBe(403);
+    expect((r.json as { error: { code: string } }).error.code).toBe('PERMISO_DENEGADO');
+    expect(JSON.stringify(r.json)).not.toContain(seguimientoDe.beto);
   });
 
-  it('la respuesta con el asesorId ajeno es idéntica a la que no lleva parámetro', async () => {
-    const con = await get('ana', `/api/v1/crm/seguimientos?asesorId=${U.beto}`);
+  it('sin parámetro, con «yo» o con su propio id ve los suyos', async () => {
     const sin = await get('ana', '/api/v1/crm/seguimientos');
     const yo = await get('ana', '/api/v1/crm/seguimientos?asesorId=yo');
-    expect(con.status).toBe(200);
-    expect(con.json).toEqual(sin.json);
-    expect(yo.json).toEqual(sin.json);
+    const propio = await get('ana', `/api/v1/crm/seguimientos?asesorId=${U.ana}`);
     expect(ids(sin)).toEqual([seguimientoDe.ana]);
+    expect(yo.json).toEqual(sin.json);
+    expect(propio.json).toEqual(sin.json);
   });
 
-  it('un asesor sin ver_todas no ve los de otro ni con su id de seguimiento por otros filtros', async () => {
+  it('el 403 no revela si el asesor existe: el mismo con un id ajeno, inexistente o de otra agencia', async () => {
+    const ajeno = await get('ana', `/api/v1/crm/seguimientos?asesorId=${U.beto}`);
+    const inexistente = await get(
+      'ana',
+      '/api/v1/crm/seguimientos?asesorId=01932000-0000-7000-8000-0000000fffff',
+    );
+    const deOtraAgencia = await get('ana', `/api/v1/crm/seguimientos?asesorId=${U.bruno}`);
+    expect(inexistente.status).toBe(403);
+    expect(deOtraAgencia.status).toBe(403);
+    expect(inexistente.json).toEqual(ajeno.json);
+    expect(deOtraAgencia.json).toEqual(ajeno.json);
+  });
+
+  it('otros filtros tampoco abren los de otro asesor', async () => {
     const r = await get('ana', `/api/v1/crm/seguimientos?estado=TODOS&asesorId=${U.beto}`);
-    expect(ids(r)).not.toContain(seguimientoDe.beto);
+    expect(r.status).toBe(403);
+    expect(JSON.stringify(r.json)).not.toContain(seguimientoDe.beto);
   });
 
   it('el dueño ve toda la agencia sin parámetro, y el filtro asesorId funciona', async () => {
@@ -247,31 +265,36 @@ describe('GET /crm/seguimientos?asesorId= (H2)', () => {
   it('aislamiento: nadie ve los de la otra agencia, ni con el asesorId de allá', async () => {
     const dueno = await get('dueno', `/api/v1/crm/seguimientos?asesorId=${U.bruno}`);
     expect(ids(dueno)).toEqual([]);
-    const ana = await get('ana', `/api/v1/crm/seguimientos?asesorId=${U.bruno}`);
-    expect(ids(ana)).not.toContain(seguimientoDe.bruno);
     const bruno = await get('bruno', '/api/v1/crm/seguimientos');
     expect(ids(bruno)).toEqual([seguimientoDe.bruno]);
   });
 });
 
-describe('GET /crm/seguimientos/pendientes-del-dia?asesorId= (H2)', () => {
-  it('un asesor sin ver_todas con el asesorId de otro recibe SOLO lo suyo', async () => {
+describe('GET /crm/seguimientos/pendientes-del-dia?asesorId= (H2, T-342)', () => {
+  it('un asesor sin ver_todas con el asesorId de otro recibe 403', async () => {
     const r = await get('ana', `/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=${U.beto}`);
-    expect(r.status).toBe(200);
-    expect(idsDelDia(r)).toEqual([seguimientoDe.ana]);
+    expect(r.status).toBe(403);
+    expect(JSON.stringify(r.json)).not.toContain(seguimientoDe.beto);
   });
 
-  it('misma forma de respuesta que sin parámetro, también con un valor basura', async () => {
+  it('sin parámetro, con «yo» o con su propio id recibe lo suyo', async () => {
     const sin = await get('ana', '/api/v1/crm/seguimientos/pendientes-del-dia');
-    const ajeno = await get(
+    const yo = await get('ana', '/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=yo');
+    const propio = await get(
       'ana',
-      `/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=${U.beto}`,
+      `/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=${U.ana}`,
     );
-    const basura = await get('ana', '/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=zzz');
     expect(sin.status).toBe(200);
-    expect(ajeno.json).toEqual(sin.json);
-    expect(basura.status).toBe(200);
-    expect(basura.json).toEqual(sin.json);
+    expect(idsDelDia(sin)).toEqual([seguimientoDe.ana]);
+    expect(yo.json).toEqual(sin.json);
+    expect(propio.json).toEqual(sin.json);
+  });
+
+  it('un asesorId mal formado es 400 para todos, antes de mirar permisos', async () => {
+    const asesor = await get('ana', '/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=zzz');
+    const dueno = await get('dueno', '/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=zzz');
+    expect(asesor.status).toBe(400);
+    expect(dueno.status).toBe(400);
   });
 
   it('el dueño con el asesorId de Beto ve lo de Beto; sin parámetro, lo suyo (nada)', async () => {
@@ -282,11 +305,6 @@ describe('GET /crm/seguimientos/pendientes-del-dia?asesorId= (H2)', () => {
     expect(idsDelDia(deBeto)).toEqual([seguimientoDe.beto]);
     const propios = await get('dueno', '/api/v1/crm/seguimientos/pendientes-del-dia');
     expect(idsDelDia(propios)).toEqual([]);
-  });
-
-  it('el dueño con un asesorId mal formado sigue recibiendo 400', async () => {
-    const r = await get('dueno', '/api/v1/crm/seguimientos/pendientes-del-dia?asesorId=zzz');
-    expect(r.status).toBe(400);
   });
 
   it('aislamiento: el dueño de A con el asesorId de B no recibe nada de B', async () => {

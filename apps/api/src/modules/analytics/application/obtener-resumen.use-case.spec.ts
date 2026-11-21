@@ -1,5 +1,6 @@
 import type { Permiso } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
+import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   type CotizacionesAgregadas,
   PuertoCotizacionesParaReportes,
@@ -11,15 +12,23 @@ import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ObtenerResumenDeReportes } from './obtener-resumen.use-case.js';
 
 const TENANT = '01932000-0000-7000-8000-000000000001';
+const YO = '01932000-0000-7000-8000-00000000aaaa';
+const OTRO = '01932000-0000-7000-8000-00000000bbbb';
 
 class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
-  llamadas: Array<{ tenantId: string; rango: RangoDeReporte; incluirMargen: boolean }> = [];
+  llamadas: Array<{
+    tenantId: string;
+    rango: RangoDeReporte;
+    alcance: AlcanceDeReporte;
+    incluirMargen: boolean;
+  }> = [];
   resumir(
     tenantId: string,
     rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
     incluirMargen: boolean,
   ): Promise<CotizacionesAgregadas> {
-    this.llamadas.push({ tenantId, rango, incluirMargen });
+    this.llamadas.push({ tenantId, rango, alcance, incluirMargen });
     return Promise.resolve({
       creadas: 1,
       enviadas: 1,
@@ -48,14 +57,18 @@ class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
 
 class OportunidadesFalsas extends PuertoOportunidadesParaReportes {
   tenants: string[] = [];
-  porEtapa(tenantId: string) {
+  alcances: AlcanceDeReporte[] = [];
+  porEtapa(tenantId: string, _rango: RangoDeReporte, alcance: AlcanceDeReporte) {
     this.tenants.push(tenantId);
+    this.alcances.push(alcance);
     return Promise.resolve([]);
   }
 }
 
 class RespuestaFalsa extends PuertoRespuestaParaReportes {
-  resumir() {
+  alcances: AlcanceDeReporte[] = [];
+  resumir(_tenantId: string, _rango: RangoDeReporte, alcance: AlcanceDeReporte) {
+    this.alcances.push(alcance);
     return Promise.resolve({
       conversacionesNuevas: 0,
       conversacionesRespondidas: 0,
@@ -67,21 +80,27 @@ class RespuestaFalsa extends PuertoRespuestaParaReportes {
   }
 }
 
-function ejecutar(permisos: Permiso[]) {
+function ejecutar(permisos: Permiso[], asesorId?: string, usuarioId: string | null = YO) {
   const cotizaciones = new CotizacionesFalsas();
   const oportunidades = new OportunidadesFalsas();
-  const caso = new ObtenerResumenDeReportes(cotizaciones, oportunidades, new RespuestaFalsa());
+  const respuesta = new RespuestaFalsa();
+  const caso = new ObtenerResumenDeReportes(cotizaciones, oportunidades, respuesta);
   const resultado = ContextoTenant.ejecutarCon(
     {
       tenantId: TENANT,
-      usuarioId: null,
+      usuarioId,
       identidadId: null,
       permisos: new Set(permisos),
       trazaId: 't',
     },
-    () => caso.ejecutar({ desde: '2026-10-01T05:00:00.000Z', hasta: '2026-11-01T05:00:00.000Z' }),
+    () =>
+      caso.ejecutar({
+        desde: '2026-10-01T05:00:00.000Z',
+        hasta: '2026-11-01T05:00:00.000Z',
+        ...(asesorId === undefined ? {} : { asesorId }),
+      }),
   );
-  return { resultado, cotizaciones, oportunidades };
+  return { resultado, cotizaciones, oportunidades, respuesta };
 }
 
 describe('ObtenerResumenDeReportes', () => {
@@ -116,5 +135,60 @@ describe('ObtenerResumenDeReportes', () => {
     ]);
     await resultado;
     expect(cotizaciones.llamadas[0]?.incluirMargen).toBe(false);
+  });
+
+  // --- alcance (T-342, ADR-0035 §1 y §4) -------------------------------------------------------
+
+  it('sin reportes.ver_agencia el alcance es PROPIO y LOS TRES puertos lo reciben', async () => {
+    const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar([]);
+    const r = await resultado;
+    const propio = { nivel: 'PROPIO', asesorId: YO };
+    expect(cotizaciones.llamadas[0]?.alcance).toEqual(propio);
+    expect(oportunidades.alcances).toEqual([propio]);
+    expect(respuesta.alcances).toEqual([propio]);
+    expect(r.alcance).toBe('PROPIO');
+    expect(r.asesorId).toBe(YO);
+  });
+
+  it('sin el permiso, el asesorId del cliente NO amplia: el servidor impone el de la sesion', async () => {
+    for (const pedido of [undefined, 'yo', YO]) {
+      const { resultado, cotizaciones } = ejecutar(['conversaciones.ver_todas'], pedido);
+      await resultado;
+      expect(cotizaciones.llamadas[0]?.alcance).toEqual({ nivel: 'PROPIO', asesorId: YO });
+    }
+  });
+
+  it('sin el permiso, un asesorId ajeno es 403 y no llega a ningun puerto', async () => {
+    const { resultado, cotizaciones } = ejecutar([], OTRO);
+    await expect(resultado).rejects.toMatchObject({
+      response: { error: { code: 'PERMISO_DENEGADO' } },
+    });
+    expect(cotizaciones.llamadas).toHaveLength(0);
+  });
+
+  it('con reportes.ver_agencia: sin asesor es toda la agencia, con asesor filtra', async () => {
+    const todos = ejecutar(['reportes.ver_agencia']);
+    const r = await todos.resultado;
+    expect(todos.cotizaciones.llamadas[0]?.alcance).toEqual({ nivel: 'AGENCIA', asesorId: null });
+    expect(r.alcance).toBe('AGENCIA');
+    expect(r.asesorId).toBeNull();
+
+    const filtrado = ejecutar(['reportes.ver_agencia'], OTRO);
+    const f = await filtrado.resultado;
+    expect(filtrado.cotizaciones.llamadas[0]?.alcance).toEqual({
+      nivel: 'AGENCIA',
+      asesorId: OTRO,
+    });
+    expect(f.asesorId).toBe(OTRO);
+
+    const mios = ejecutar(['reportes.ver_agencia'], 'yo');
+    expect((await mios.resultado).asesorId).toBe(YO);
+  });
+
+  it('sin usuario de sesion no hay «lo propio»: 403 en vez de devolverlo todo', async () => {
+    const { resultado } = ejecutar([], undefined, null);
+    await expect(resultado).rejects.toMatchObject({
+      response: { error: { code: 'PERMISO_DENEGADO' } },
+    });
   });
 });

@@ -66,7 +66,6 @@ import {
 } from '@viajapro/contracts';
 import { asesorDeConsulta } from '../../../shared/autorizacion/asesor-de-consulta.js';
 import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
-import { PERMISO_VER_TODAS } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CrearOportunidadUseCase } from '../application/crear-oportunidad.js';
@@ -222,14 +221,16 @@ export class CrmController {
 
   /**
    * Lo pendiente de HOY (zona de la agencia) y lo vencido, del asesor en sesión por defecto.
-   * `?asesorId=` solo se respeta con `conversaciones.ver_todas`; sin él el servidor impone al
-   * usuario de la sesión y lo ignora (D3, H2).
+   * `?asesorId=` solo se respeta con `conversaciones.ver_todas`; sin él, pedir OTRO asesor es 403
+   * (T-342, ADR-0035 §4), no el silencio de #395.
+   *
+   * La forma del parámetro se valida para todo el mundo y ANTES del permiso: un 400 por un id mal
+   * escrito no dice nada de quién existe, y así el 403 queda para una sola causa.
    */
   @Get('seguimientos/pendientes-del-dia')
   async pendientesDelDia(@Query('asesorId') asesorId?: string): Promise<PendientesDelDia> {
     const contexto = ContextoTenant.obtener();
-    const puedeElegir = contexto.permisos.has(PERMISO_VER_TODAS);
-    if (puedeElegir && asesorId !== undefined && asesorId !== 'yo' && !UUID.test(asesorId)) {
+    if (asesorId !== undefined && asesorId !== 'yo' && !UUID.test(asesorId)) {
       throw new BadRequestException({
         error: { code: 'ENTRADA_INVALIDA', message: 'asesorId debe ser un UUID o «yo».' },
       });
@@ -243,7 +244,8 @@ export class CrmController {
     @Query(new ZodValidationPipe(FiltroSeguimientosContrato)) filtro: FiltroSeguimientos,
   ): Promise<PaginaSeguimientos> {
     const contexto = ContextoTenant.obtener();
-    // `asesorId: undefined` con permiso = toda la agencia; sin permiso = solo los de la sesión.
+    // `asesorId: undefined` con permiso = toda la agencia; sin permiso = solo los de la sesión, y
+    // pedir los de otro asesor es 403 (T-342).
     const asesor = asesorDeConsulta(contexto, filtro.asesorId, 'TODOS');
     const datos = await this.seguimientos.listar(
       { ...filtro, asesorId: asesor ?? undefined },
