@@ -255,24 +255,32 @@ describe('migración 20261104150000 — historial de etapas de la oportunidad', 
     }
   }, 60_000);
 
-  it('la línea de vida usa el índice (tenant_id, oportunidad_id, ocurrido_en, id)', async () => {
-    await admin.query('BEGIN');
-    try {
-      const a = await sembrar();
-      const op = await oportunidad(a, a.viva);
-      await admin.query('SET LOCAL enable_seqscan = off');
-      const plan = await comoApi(a.tenant, async () => {
-        // Literales: EXPLAIN con parámetros enlazados depende del protocolo.
-        const { rows } = await admin.query<{ 'QUERY PLAN': string }>(
-          `EXPLAIN ${LINEA_DE_VIDA.replace('$1', `'${a.tenant}'::uuid`).replace('$2', `'${op}'::uuid`)}`,
-        );
-        return rows.map((r) => r['QUERY PLAN']).join('\n');
-      });
-      expect(plan).toMatch(/idx_oportunidad_cambios_etapa_por_oportunidad/);
-    } finally {
-      await admin.query('ROLLBACK');
-    }
-  }, 60_000);
+  it('existe el índice (tenant_id, oportunidad_id, ocurrido_en, id) que cubre el WHERE y el ORDER BY de la línea de vida', async () => {
+    // No se afirma sobre el plan: el planificador elige entre índices según las estadísticas de la
+    // base (ensuciada por otras corridas fallaba, limpia pasaba; ANALYZE no lo arregló). Lo que esta
+    // prueba puede garantizar sin depender de ese estado es que el índice existe, es btree, es
+    // ordinario (no parcial) y sus columnas clave, en orden, son las que usa la consulta.
+    const { rows } = await admin.query<{ columnas: string[]; metodo: string; parcial: boolean }>(
+      `SELECT array_agg(a.attname::text ORDER BY k.ord) AS columnas,
+              am.amname::text AS metodo,
+              (i.indpred IS NOT NULL) AS parcial
+         FROM pg_class c
+         JOIN pg_index i ON i.indexrelid = c.oid
+         JOIN pg_class t ON t.oid = i.indrelid
+         JOIN pg_am am ON am.oid = c.relam
+         CROSS JOIN LATERAL unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord)
+         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+        WHERE c.relname = 'idx_oportunidad_cambios_etapa_por_oportunidad'
+          AND t.relname = 'oportunidad_cambios_etapa'
+        GROUP BY am.amname, i.indpred`,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.metodo).toBe('btree');
+    expect(rows[0]?.parcial).toBe(false);
+    expect(rows[0]?.columnas).toEqual(['tenant_id', 'oportunidad_id', 'ocurrido_en', 'id']);
+    // La consulta sigue pidiendo exactamente ese prefijo y ese orden.
+    expect(LINEA_DE_VIDA).toMatch(/WHERE tenant_id = \$1 AND oportunidad_id = \$2\s+ORDER BY ocurrido_en, id/);
+  });
 
   it('el relleno de la migración deja una foto MIGRACION por oportunidad sin historial, y nada más', async () => {
     await admin.query('BEGIN');

@@ -12,6 +12,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Todas las e2e comparten UNA base (agencias que crean y borran, bloqueos de migración): los archivos
+    // corren de uno en uno, igual que en packages/database (T-510). Dentro de cada archivo ya era secuencial.
+    fileParallelism: false,
     include: ['src/**/*.spec.ts', 'src/**/*.e2e-spec.ts'],
     setupFiles: ['./src/vitest.setup.ts'],
     // Sin Redis en las pruebas: la cola se declara inerte. El encolado se prueba con un doble.
