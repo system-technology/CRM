@@ -140,7 +140,6 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
             ON v.tenant_id = c.tenant_id AND v.cotizacion_id = c.id AND v.numero = c.version_enviada
          WHERE c.tenant_id = ${tenantId}::uuid
            AND c.eliminado_en IS NULL
-           ${delAsesor}
            AND c.estado = 'ACEPTADA'
            AND EXISTS (
                  SELECT 1 FROM cotizacion_cambios_estado h
