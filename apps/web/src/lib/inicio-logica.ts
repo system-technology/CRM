@@ -157,6 +157,28 @@ export function calcularMetricasSeguimientos(
   };
 }
 
+/** Cifras del menú lateral (T-317): lo que requiere acción hoy y lo vencido. Mismas reglas que Inicio. */
+export interface ContadoresDeMenu {
+  hoy: number;
+  seguimientosVencidos: number;
+}
+
+export function calcularContadoresDeMenu(pendientes: PendientesDelDia | null): ContadoresDeMenu {
+  const m = calcularMetricasSeguimientos(pendientes);
+  return { hoy: m.totalPendientes, seguimientosVencidos: m.totalVencidos };
+}
+
+/** Nombre accesible de un enlace con contador: «Hoy, 3 pendientes». Sin cifra (0), solo la etiqueta. */
+export function nombreAccesibleConContador(
+  etiqueta: string,
+  cantidad: number,
+  singular: string,
+  plural: string,
+): string {
+  if (cantidad <= 0) return etiqueta;
+  return `${etiqueta}, ${cantidad} ${cantidad === 1 ? singular : plural}`;
+}
+
 export type UrgenciaSeguimiento = 'VENCIDO' | 'HOY_URGENTE' | 'HOY_PROGRAMADO';
 
 /**

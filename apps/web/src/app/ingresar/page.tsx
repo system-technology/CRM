@@ -11,12 +11,12 @@ export const metadata = {
 /**
  * Ruta de acceso — ADR-0011 (0c.29).
  *
- * Si el interruptor está apagado, el servidor redirige directamente a /bandeja
+ * Si el interruptor está apagado, el servidor redirige directamente a / («Hoy»)
  * sin enviar ningún elemento de la pantalla al cliente.
  */
 export default function IngresarPage() {
   if (!estaAuthHabilitada()) {
-    redirect('/bandeja');
+    redirect('/');
   }
 
   return (

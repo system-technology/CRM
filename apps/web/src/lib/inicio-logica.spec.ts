@@ -8,6 +8,8 @@ import {
   clasificarUrgenciaSeguimiento,
   calcularRetrasoSeguimiento,
   formatearHoraSeguimiento,
+  calcularContadoresDeMenu,
+  nombreAccesibleConContador,
 } from './inicio-logica';
 import type { PendientesDelDia } from '@viajapro/contracts';
 
@@ -290,6 +292,21 @@ describe('Inicio Lógica (T-020) - Seguimientos pendientes del día', () => {
     const nulo = calcularMetricasSeguimientos(null);
     expect(nulo.totalPendientes).toBe(0);
     expect(nulo.estaAlDia).toBe(true);
+  });
+
+  it('1b. contadores del menú: Hoy = vencidos + de hoy; Seguimientos = vencidos', () => {
+    expect(calcularContadoresDeMenu(pendientesMock)).toEqual({ hoy: 3, seguimientosVencidos: 1 });
+    expect(calcularContadoresDeMenu(null)).toEqual({ hoy: 0, seguimientosVencidos: 0 });
+  });
+
+  it('1c. nombreAccesibleConContador incluye la cifra y calla el cero', () => {
+    expect(nombreAccesibleConContador('Hoy', 3, 'pendiente', 'pendientes')).toBe(
+      'Hoy, 3 pendientes',
+    );
+    expect(nombreAccesibleConContador('Hoy', 1, 'pendiente', 'pendientes')).toBe(
+      'Hoy, 1 pendiente',
+    );
+    expect(nombreAccesibleConContador('Hoy', 0, 'pendiente', 'pendientes')).toBe('Hoy');
   });
 
   it('2. clasificarUrgenciaSeguimiento distingue entre vencido, urgente y programado', () => {

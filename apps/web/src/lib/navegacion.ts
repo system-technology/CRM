@@ -46,8 +46,7 @@ export interface EntradaDeNavegacion {
   prefijosActivos: readonly string[];
   movil: 'barra' | 'mas';
   /**
-   * Si aparece en el menú lateral. Hoy y Seguimientos van en `false` hasta T-317
-   * (decisiones D1–D4 de docs/01-producto/04-flujos-criticos.md).
+   * Si aparece en el menú lateral (decisiones D1–D4 de docs/01-producto/04-flujos-criticos.md).
    */
   enMenu: boolean;
   detalleAPantallaCompletaEnMovil?: boolean;
@@ -64,7 +63,7 @@ export const NAVEGACION: readonly EntradaDeNavegacion[] = [
     grupo: 'hoy',
     prefijosActivos: ['/'],
     movil: 'barra',
-    enMenu: false,
+    enMenu: true,
   },
   {
     id: 'conversaciones',
@@ -122,7 +121,7 @@ export const NAVEGACION: readonly EntradaDeNavegacion[] = [
     grupo: 'atender',
     prefijosActivos: ['/seguimientos'],
     movil: 'mas',
-    enMenu: false,
+    enMenu: true,
   },
   {
     id: 'contactos',
