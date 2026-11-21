@@ -19,6 +19,10 @@ import {
   Building2,
 } from 'lucide-react';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
+import {
+  CotizacionesAbiertasPorAntiguedad,
+  SaldoPorCobrarPorMoneda,
+} from '../../components/reportes/cifras-de-hoy';
 import { BloqueSeguimientosDia } from '../../components/inicio/bloque-seguimientos-dia';
 import { obtenerSesionActualApi } from '../../lib/auth-api';
 import {
@@ -370,29 +374,49 @@ export default function InicioPage() {
                       <h3 className="mt-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">
                         Cotizaciones abiertas
                       </h3>
-                      <p className="cifra mt-1 text-2xl font-black text-amber-950 dark:text-amber-100">
-                        {resumen.cotizacionesAbiertas}
-                        {resumen.cotizacionesAbiertasTruncado && (
-                          <span className="ml-1 text-xs font-semibold text-neutral-600">o más</span>
-                        )}
-                      </p>
                     </div>
                     <div className="mt-3 border-t border-amber-100 pt-2.5 dark:border-amber-900/40">
-                      <p
-                        data-testid="cotizaciones-por-antiguedad"
-                        className="text-xs text-neutral-600 dark:text-neutral-400"
-                      >
-                        Enviadas sin respuesta: {resumen.enviadasPorAntiguedad.hastaTresDias} de 0 a
-                        3 días · {resumen.enviadasPorAntiguedad.deCuatroASiete} de 4 a 7 ·{' '}
-                        <strong className="text-alerta-700 font-semibold">
-                          {resumen.enviadasPorAntiguedad.masDeSiete} de más de 7
-                        </strong>
-                      </p>
-                      <p className="mt-1 text-[11px] text-neutral-500">
-                        Incluye las cotizaciones de toda la agencia.
-                      </p>
+                      {resumen.cotizacionesAbiertas ? (
+                        <>
+                          <CotizacionesAbiertasPorAntiguedad datos={resumen.cotizacionesAbiertas} />
+                          <p
+                            data-testid="cotizaciones-abiertas-alcance"
+                            className="mt-1 text-[11px] text-neutral-500"
+                          >
+                            {resumen.alcanceDeCifras === 'AGENCIA'
+                              ? 'Cotizaciones de toda la agencia.'
+                              : 'Solo tus cotizaciones.'}
+                          </p>
+                        </>
+                      ) : (
+                        <p
+                          data-testid="cotizaciones-abiertas-no-disponible"
+                          className="text-xs text-neutral-600 dark:text-neutral-400"
+                        >
+                          No pudimos leer las cotizaciones abiertas ahora.
+                        </p>
+                      )}
                     </div>
                   </Link>
+
+                  {/* TARJETA: por cobrar (solo si el servidor la envió: exige cobro.ver, T-537) */}
+                  {resumen.porCobrar && (
+                    <Link
+                      href="/viajes"
+                      data-testid="tarjeta-por-cobrar"
+                      className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 shadow-xs transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none dark:border-neutral-800 dark:bg-neutral-900"
+                    >
+                      <h3 className="mb-2 text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                        Por cobrar
+                      </h3>
+                      <SaldoPorCobrarPorMoneda datos={resumen.porCobrar} />
+                      <p className="mt-2 text-[11px] text-neutral-500">
+                        {resumen.alcanceDeCifras === 'AGENCIA'
+                          ? 'Archivos abiertos de toda la agencia.'
+                          : 'Solo tus archivos abiertos.'}
+                      </p>
+                    </Link>
+                  )}
 
                   {/* TARJETA 4: Atardecer Tropical (#F97316) con Aro Dorado (#C9A24B) */}
                   <Link

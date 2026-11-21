@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TableroPipeline, PaginaDeCotizaciones, ContadoresBandeja } from '@viajapro/contracts';
+import type { TableroPipeline, ContadoresBandeja, ResumenDeReportes } from '@viajapro/contracts';
 import {
   obtenerSaludoSegunHora,
   obtenerMensajeBienvenida,
@@ -43,7 +43,7 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
     expect(resumen.estaVacio).toBe(true);
     expect(resumen.conversacionesPendientes).toBe(0);
     expect(resumen.oportunidadesActivas).toBe(0);
-    expect(resumen.cotizacionesAbiertas).toBe(0);
+    expect(resumen.cotizacionesAbiertas).toBeNull();
     expect(resumen.totalVentasEstimadasCop).toBe('0');
   });
 
@@ -170,43 +170,18 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
       ],
     };
 
-    const cotizacionesMock: PaginaDeCotizaciones = {
-      datos: [
-        {
-          id: '00000000-0030-4000-8000-000000000001',
-          contactoId: '00000000-0002-4000-8000-000000000001',
-          oportunidadId: null,
-          titulo: 'Cotización Barú VIP',
-          estado: 'ENVIADA',
-          versionEnviada: 1,
-          enviadaEn: '2026-10-20T12:00:00Z',
-          creadaEn: '2026-10-20T10:00:00Z',
-          ultimaVersionEn: '2026-10-20T10:00:00Z',
-          numeroDeVersiones: 1,
-          paqueteNombre: 'Excursión Barú',
-          fechaSalida: '2026-11-20',
-          venta: { unidades: '3000000', moneda: 'COP' },
-        },
-        {
-          id: '00000000-0030-4000-8000-000000000002',
-          contactoId: '00000000-0002-4000-8000-000000000002',
-          oportunidadId: null,
-          titulo: 'Cotización San Andrés',
-          estado: 'ACEPTADA',
-          versionEnviada: 2,
-          enviadaEn: '2026-10-21T12:00:00Z',
-          creadaEn: '2026-10-21T10:00:00Z',
-          ultimaVersionEn: '2026-10-21T10:00:00Z',
-          numeroDeVersiones: 2,
-          paqueteNombre: 'Plan San Andrés',
-          fechaSalida: '2026-11-25',
-          venta: { unidades: '5000000', moneda: 'COP' },
-        },
-      ],
-      pageInfo: { nextCursor: null, hasMore: false },
-    };
+    // Las cifras de cotizaciones y cobros las cuenta el servidor (T-528): aquí solo se pasan.
+    const reportesMock = {
+      alcance: 'PROPIO',
+      cotizacionesAbiertas: {
+        total: 1,
+        borradores: 0,
+        enviadas: 1,
+        porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 0, masDeSiete: 0 },
+      },
+    } as unknown as ResumenDeReportes;
 
-    const resumen = calcularResumenTrabajo(contadoresInbox, tablero, cotizacionesMock);
+    const resumen = calcularResumenTrabajo(contadoresInbox, tablero, reportesMock);
 
     expect(resumen.estaVacio).toBe(false);
     expect(resumen.conversacionesSinAsignar).toBe(4);
@@ -219,7 +194,9 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
     expect(resumen.oportunidadesPorEtapa.ganadas).toBe(1);
 
     // Cotizaciones por vencer/enviadas: 1
-    expect(resumen.cotizacionesAbiertas).toBe(1);
+    expect(resumen.cotizacionesAbiertas?.total).toBe(1);
+    expect(resumen.alcanceDeCifras).toBe('PROPIO');
+    expect(resumen.porCobrar).toBeNull();
 
     // Suma estimada: 3M + 5M + 8M = 16.000.000 COP
     expect(resumen.totalVentasEstimadasCop).toBe('16000000');
@@ -345,30 +322,44 @@ describe('Inicio Lógica (T-020) - Seguimientos pendientes del día', () => {
   });
 });
 
-describe('cotizaciones abiertas por antigüedad (T-343)', () => {
-  const ahora = new Date('2026-11-21T15:00:00.000Z');
-  const fila = (estado: string, enviadaEn: string | null) =>
-    ({ id: `c-${estado}-${enviadaEn}`, estado, enviadaEn }) as never;
+describe('cotizaciones abiertas y por cobrar: se pasan, no se cuentan en la web (T-546)', () => {
+  const resumenDelServidor = {
+    alcance: 'AGENCIA',
+    cotizacionesAbiertas: {
+      total: 4,
+      borradores: 1,
+      enviadas: 3,
+      porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 1 },
+    },
+    porCobrar: {
+      porMoneda: [{ moneda: 'COP', archivos: 2, saldo: { unidades: '1500000', moneda: 'COP' } }],
+      truncado: true,
+    },
+  } as unknown as ResumenDeReportes;
 
-  it('cuenta borradores y enviadas, y reparte las enviadas por días de espera', () => {
-    const r = calcularResumenTrabajo(
-      null,
-      null,
-      {
-        datos: [
-          fila('ENVIADA', '2026-11-20T10:00:00.000Z'), // 1 día
-          fila('ENVIADA', '2026-11-16T10:00:00.000Z'), // 5 días
-          fila('ENVIADA', '2026-11-01T10:00:00.000Z'), // 20 días
-          fila('BORRADOR', null),
-          fila('ACEPTADA', '2026-11-02T10:00:00.000Z'), // no es abierta
-        ],
-        pageInfo: { nextCursor: 'x', hasMore: true },
-      },
-      ahora,
-    );
-    expect(r.cotizacionesAbiertas).toBe(4);
-    expect(r.enviadasPorAntiguedad).toEqual({ hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 1 });
-    // Hay más páginas: la cifra es un mínimo y la pantalla dice «o más».
-    expect(r.cotizacionesAbiertasTruncado).toBe(true);
+  it('entrega lo que el servidor contó, con su alcance y su marca de truncado', () => {
+    const r = calcularResumenTrabajo(null, null, resumenDelServidor);
+    expect(r.cotizacionesAbiertas).toEqual(resumenDelServidor.cotizacionesAbiertas);
+    expect(r.porCobrar).toEqual(resumenDelServidor.porCobrar);
+    expect(r.porCobrar?.truncado).toBe(true);
+    expect(r.alcanceDeCifras).toBe('AGENCIA');
+    expect(r.estaVacio).toBe(false);
+  });
+
+  it('sin respuesta del servidor no inventa ceros: las cifras son null', () => {
+    const r = calcularResumenTrabajo(null, null, null);
+    expect(r.cotizacionesAbiertas).toBeNull();
+    expect(r.porCobrar).toBeNull();
+    expect(r.alcanceDeCifras).toBeNull();
+  });
+
+  it('sin cobro.ver la clave porCobrar no viene y queda en null (no en cero)', () => {
+    const { porCobrar: _fuera, ...sinCobro } = resumenDelServidor as unknown as Record<
+      string,
+      unknown
+    >;
+    const r = calcularResumenTrabajo(null, null, sinCobro as unknown as ResumenDeReportes);
+    expect(r.porCobrar).toBeNull();
+    expect(r.cotizacionesAbiertas?.total).toBe(4);
   });
 });
