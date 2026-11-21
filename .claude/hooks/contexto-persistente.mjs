@@ -80,15 +80,31 @@ function leer(ruta, maxLineas, desdeElFinal = false) {
   }
 }
 
-/** Tablero: el de la rama de la sesión madre si existe (más reciente), si no el del checkout. */
+/** Fecha del último commit que tocó el tablero en una referencia; 0 si no existe allí. */
+function fechaDelTableroEn(ref) {
+  const salida = git(['log', '-1', '--format=%ct', ref, '--', 'docs/_contexto/TABLERO-DEL-ORQUESTADOR.md']);
+  return salida ? Number.parseInt(salida.trim(), 10) || 0 : 0;
+}
+
+function recortar(texto) {
+  const lineas = texto.split('\n');
+  return lineas.length <= MAX_LINEAS_TABLERO ? texto : lineas.slice(0, MAX_LINEAS_TABLERO).join('\n') + '\n… (recortado)';
+}
+
+/**
+ * Tablero: el más reciente entre el del checkout y el de la rama de la sesión madre.
+ *
+ * Antes se prefería siempre la rama. Al integrarse el tablero en `main` por squash, esa rama se
+ * queda atrás y seguía ganando: las sesiones leían un tablero viejo. Ahora gana la fecha.
+ */
 function leerTablero() {
-  const enRama = git(['show', `${RAMA_DEL_TABLERO}:docs/_contexto/TABLERO-DEL-ORQUESTADOR.md`]);
-  if (enRama) {
-    const lineas = enRama.split('\n');
-    const texto = lineas.length <= MAX_LINEAS_TABLERO ? enRama : lineas.slice(0, MAX_LINEAS_TABLERO).join('\n') + '\n… (recortado)';
-    return { texto, origen: `rama ${RAMA_DEL_TABLERO}` };
-  }
   const local = leer(rutaTablero, MAX_LINEAS_TABLERO);
+  const fechaLocal = fechaDelTableroEn('HEAD');
+  const fechaRama = fechaDelTableroEn(RAMA_DEL_TABLERO);
+  if (fechaRama > fechaLocal) {
+    const enRama = git(['show', `${RAMA_DEL_TABLERO}:docs/_contexto/TABLERO-DEL-ORQUESTADOR.md`]);
+    if (enRama) return { texto: recortar(enRama), origen: `rama ${RAMA_DEL_TABLERO}` };
+  }
   return local ? { texto: local, origen: 'checkout' } : null;
 }
 
