@@ -52,9 +52,9 @@
 
 Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)). #402 y #362 se cerraron por sustitución.
 
-**Ids de tarea ya usados:** T-513..T-519 (cola de la auditoría de #410, en este PR).
+**Ids de tarea ya usados:** T-515..T-521 (cola de la auditoría de #410, en este PR).
 
-**Antes:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-520**; `git fetch` antes de numerar.
+**Antes:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-522**; `git fetch` antes de numerar.
 
 ### Integrado en este turno (2026-11-21)
 
@@ -64,7 +64,7 @@ Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-
 ## 4. Pendientes del orquestador (prometido y no hecho)
 
 - **El tope de 150 mil tokens por sesión no se cumple solo.** Ninguna sesión recibe aviso de su propio consumo: la hija de T-331 terminó en **318 mil** y ~25 USD sin enterarse, y lo hizo notar ella. **La madre tiene que consultar `get_session` → `context_usage` en cada vuelta del ciclo** y archivar al pasarse. Es paso del ciclo, no buena intención.
-- **Siguiente trabajo:** T-511 (web, ventana libre), T-343 y T-344 tras T-342, y la cola nueva T-513..T-519 de la auditoría de cobros.
+- **Siguiente trabajo:** T-511 (web, ventana libre), T-343 y T-344 tras T-342, y la cola nueva T-515..T-521 de la auditoría de cobros.
 - **Sin repartir, esperando la ventana web** (va de una en una, y hoy la tiene T-331): **T-343** y **T-344** (dashboards del asesor y de administración; dependen de que T-342 entre primero) y **T-511** (ingreso por apodo a 390 px contra la API real). T-506 a T-509 son P3.
 - **Ojo con T-511:** su criterio dice «contra la API real, no simulada», y en este entorno **ninguna sesión puede levantar Postgres en local**. En la práctica significa escribir la e2e para que **la corra el CI**, que sí tiene Postgres. Dilo así en el PR en vez de afirmar que se probó en local.
 

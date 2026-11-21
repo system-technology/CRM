@@ -47,7 +47,16 @@ con tres bloqueantes, los tres corregidos con prueba de regresión: el saldo a f
 negativo y la confirmación decía siempre «Falta por cobrar»; la clave de idempotencia vivía en el
 diálogo, así que cerrarlo y reabrirlo tras un fallo de red permitía **cobrar dos veces**; y el aviso
 decía que los números de tarjeta no se guardan cuando sí se guardan. Cola abierta por esa
-auditoría: **T-513 a T-519**.
+auditoría: **T-515 a T-521**.
+
+**En vuelo al cerrar el lote:** **#417** (T-342, `review`) deja que **el servidor imponga el alcance
+de los reportes**: `alcanceDeReporte` sale de la sesión y nunca del parámetro del cliente, los tres
+puertos lo reciben obligatorio, el resumen es una unión discriminada validada en el servidor, y un
+`asesorId` ajeno sin permiso responde **403** en reportes y en seguimientos — lo que **cambia el
+silencio provisional de #395**. Al implementarlo apareció que **`cotizaciones.creado_por` existía y
+nadie la escribía**: atribuir por ella sin rellenarla habría dejado «Mis números» en cero para todos
+los asesores, sin que fallara nada. Se arregla en la misma rama. Su rastro documental viaja en este
+PR de cierre para que #417 quede de carril `a` puro y «Carril y tarea» no pida `override-lane`.
 
 **No verificado:** **T-510 sigue abierta** — su criterio son cinco corridas de CI seguidas sin rojo
 y van **cero**, y los deadlocks 40P01 no se reprodujeron ni se cerraron; un PR todavía puede salir

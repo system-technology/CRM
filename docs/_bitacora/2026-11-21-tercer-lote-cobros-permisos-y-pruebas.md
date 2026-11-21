@@ -12,7 +12,7 @@
 | #410 (`e16f5499`) | T-331 → `done` | Registrar un pago y ver el saldo en el archivo de viaje |
 
 `main` quedó en **`e16f5499`**, con cero PR abiertos. La cola abierta por la auditoría de #410 es
-**T-513 a T-519**.
+**T-515 a T-521**.
 
 ## El hallazgo del día: el sobrepago se verificó sin querer
 
@@ -110,3 +110,19 @@ completas de CI que no se pueden ahorrar mientras la compuerta sea `strict`.
 
 El rastro documental del lote va en **un solo PR** en lugar de tres: con tres sesiones tocando
 `roadmap/tasks.yaml` a la vez, el conflicto estaba garantizado.
+
+## Por qué este PR lleva también el rastro de #417
+
+#417 (T-342) salió con «Carril y tarea» en rojo: es carril `a` (API) y llevaba dentro sus tres
+archivos del carril `i` (`ESTADO.md`, su bitácora y `roadmap/tasks.yaml`), como pide R14. La salida
+no fue pedir `override-lane` —que es del propietario y no alcanza a la orquestadora— sino **mover el
+rastro a este PR de cierre**, que ya es carril `i`. R14 lo admite expresamente: la documentación va
+en el mismo PR «o, como tarde, en el PR de cierre del lote». #417 queda de carril `a` puro y el
+check se pone en verde sin pedir nada a nadie.
+
+De paso se resolvió una **colisión de ids**: #417 y este PR habían asignado los dos T-513 y T-514 a
+cosas distintas, porque #417 se abrió después de mirar los `tasks.yaml` abiertos. Mandan los de
+#417 (alias transitorio del contrato y `cotizaciones.actualizado_por`); la cola de la auditoría de
+cobros pasó a **T-515..T-521**. El siguiente id libre es **T-522**. Es el fallo exacto que la regla
+de numeración quiere evitar, y aun así ocurrió: la lección es que hay que volver a mirar **justo
+antes de commitear**, no solo al empezar.
