@@ -11,23 +11,13 @@
 
 Última actualización: **2026-11-21, 09:15 UTC**, cierre del tercer lote. `main` en **`e16f5499`**. **Cero PR abiertos.**
 
-> ## ⚠️ AVISO AL DESPERTAR — LEE ESTO ANTES QUE NADA
->
-> **La sesión madre es `session_01R81Xh3ygCnt8wYfALeA6yY`** (relevo de las 08:50 UTC del 2026-11-21).
->
-> **Si tú eres `session_01R81Xh45hbFQHivoDJ8cbJQ`, ya NO eres la madre: te relevaste.** La tarea
-> programada `trig_016u2cLZTGLRrJvkZWgJpqpG` sigue apuntándote por un problema de permisos (ver §5),
-> no porque sigas al mando. Al despertar **no orquestes, no integres y no gastes contexto**: manda un
-> `send_message` a `session_01R81Xh3ygCnt8wYfALeA6yY` con el texto «DESPERTAR DE ORQUESTACIÓN
-> DESATENDIDA: ejecuta tu ciclo» y termina en una línea. Dos madres a la vez integrando en serie es
-> justo lo que rompe la integración serializada.
 
 ## 1. Quién es quién
 
 - **Propietario:** Alfavear (español). Autorización literal: «tú tienes autorización mía para aprobar y destrabar los temas pendientes como si fuera yo»; «tú como sesión principal tienes toda mi autorización para aprobar los PRs y destrabar todo lo que nos bloquea». El 2026-11-21 añadió: **modo desatendido, avanzar en todos los frentes**.
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
 - **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
-- **El despertar de las 2 h está descolocado.** La tarea programada **`trig_016u2cLZTGLRrJvkZWgJpqpG`** (`15 */2 * * *`) sigue apuntando a la madre **anterior**, y no se pudo repuntar: el clasificador deniega `create_trigger` a la madre nueva, y `update_trigger` solo deja cambiar el prompt desde la conversación a la que la tarea escribe. Mitigación: el **aviso al despertar** de arriba, que la madre anterior leerá en el paso 0 de su propio prompt. **Arreglo de verdad: lo tiene que hacer el propietario** (§5).
+- **El despertar de las 2 h ya apunta bien.** Tarea programada **`trig_01H8nNZUwV2DdTA2fnJzQkVh`** (`15 */2 * * *`), creada por la madre anterior el 2026-11-21 a las 09:53 UTC apuntando a la madre actual; la suya, `trig_016u2cLZTGLRrJvkZWgJpqpG`, quedó borrada. **Verificado con `list_triggers`**, no de palabra. Quedó así porque a la madre nueva el clasificador le deniega `create_trigger`: si vuelve a haber relevo, **la madre saliente crea la tarea de la entrante antes de retirarse**.
 - **Sesiones vivas tras el tercer lote:**
   - `session_01R81Xh2Mp9wjvR7gCGBq6Hy` — **T-342**, alcance de reportes impuesto por el servidor (Opus alto; es autorización, no se recortan vueltas). Única en marcha.
   - `session_01R81Xh45ka1iCdkTRwDfH1k` (T-331) entregó y **se archiva**: llegó a 318 mil tokens. `…2b5dGTvt5ts5Xj12s` (T-505) y `…3U8x4WLRoij6qTX6s` (T-510) también entregaron.
