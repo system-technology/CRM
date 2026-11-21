@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import type {
   CotizacionesAgregadas,
   EtapaConOportunidades,
@@ -7,6 +8,11 @@ import type {
 import { armarResumen, porcentaje, porcentajeDeMargen, ventasDeUnaMoneda } from './resumen.js';
 
 const rango = { desde: new Date('2026-10-01T05:00:00Z'), hasta: new Date('2026-11-01T05:00:00Z') };
+const DE_AGENCIA: AlcanceDeReporte = { nivel: 'AGENCIA', asesorId: null };
+const PROPIO: AlcanceDeReporte = {
+  nivel: 'PROPIO',
+  asesorId: '01932000-0000-7000-8000-00000000aaaa',
+};
 
 const etapa = (
   orden: number,
@@ -120,7 +126,13 @@ describe('ventasDeUnaMoneda', () => {
 
 describe('armarResumen', () => {
   it('sin datos: todo en cero y las razones en null', () => {
-    const r = armarResumen({ rango, cotizaciones: sinCotizaciones, etapas: [], respuesta: vacia });
+    const r = armarResumen({
+      alcance: DE_AGENCIA,
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: vacia,
+    });
     expect(r.periodo).toEqual({
       desde: '2026-10-01T05:00:00.000Z',
       hasta: '2026-11-01T05:00:00.000Z',
@@ -143,6 +155,7 @@ describe('armarResumen', () => {
 
   it('respuesta: tasa = respondidas / nuevas, del mismo grupo; respondidas + sinResponder = nuevas', () => {
     const r = armarResumen({
+      alcance: DE_AGENCIA,
       rango,
       cotizaciones: sinCotizaciones,
       etapas: [],
@@ -171,6 +184,7 @@ describe('armarResumen', () => {
 
   it('respuesta: con nuevas pero ninguna respondida, la tasa es 0 y los tiempos null', () => {
     const r = armarResumen({
+      alcance: DE_AGENCIA,
       rango,
       cotizaciones: sinCotizaciones,
       etapas: [],
@@ -182,6 +196,7 @@ describe('armarResumen', () => {
 
   it('no mezcla monedas: una fila por moneda, en el orden recibido', () => {
     const r = armarResumen({
+      alcance: DE_AGENCIA,
       rango,
       cotizaciones: {
         creadas: 4,
@@ -205,6 +220,7 @@ describe('armarResumen', () => {
 
   it('aceptadasSinFecha: solo aparece cuando hay alguna (contrato opcional)', () => {
     const con = armarResumen({
+      alcance: DE_AGENCIA,
       rango,
       cotizaciones: { ...sinCotizaciones, aceptadas: 2, enviadas: 2, aceptadasSinFecha: 2 },
       etapas: [],
@@ -212,6 +228,7 @@ describe('armarResumen', () => {
     });
     expect(con.cotizaciones.aceptadasSinFecha).toBe(2);
     const sin = armarResumen({
+      alcance: DE_AGENCIA,
       rango,
       cotizaciones: sinCotizaciones,
       etapas: [],
@@ -222,6 +239,7 @@ describe('armarResumen', () => {
 
   it('oportunidades: ordena por etapa, cuenta ganadas/perdidas/abiertas y calcula la conversión', () => {
     const r = armarResumen({
+      alcance: DE_AGENCIA,
       rango,
       cotizaciones: sinCotizaciones,
       etapas: [
@@ -244,11 +262,36 @@ describe('armarResumen', () => {
 
   it('oportunidades sin ninguna cerrada: conversión null, no 0', () => {
     const r = armarResumen({
+      alcance: DE_AGENCIA,
       rango,
       cotizaciones: sinCotizaciones,
       etapas: [etapa(1, 3)],
       respuesta: vacia,
     });
     expect(r.oportunidades.tasaConversion).toBeNull();
+  });
+
+  it('el alcance y el asesor efectivos viajan en la respuesta (ADR-0035 §4)', () => {
+    const agencia = armarResumen({
+      alcance: DE_AGENCIA,
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: vacia,
+    });
+    expect(agencia.alcance).toBe('AGENCIA');
+    expect(agencia.asesorId).toBeNull();
+
+    const propio = armarResumen({
+      alcance: PROPIO,
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: vacia,
+    });
+    expect(propio.alcance).toBe('PROPIO');
+    expect(propio.asesorId).toBe(PROPIO.asesorId);
+    // Las cifras son las mismas claves: lo que cambia es qué filas las componen.
+    expect(Object.keys(propio).sort()).toEqual(Object.keys(agencia).sort());
   });
 });
