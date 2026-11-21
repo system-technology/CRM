@@ -23,7 +23,8 @@
  *
  * **Dos cifras NO son del periodo: son de hoy.** `cotizacionesAbiertas` y `porCobrar` (T-528)
  * miran el trabajo vivo en el instante de la consulta, no lo que ocurrió entre `desde` y `hasta`.
- * Ambas respetan el mismo `alcance`: con `PROPIO` solo traen lo del usuario de la sesión.
+ * Ambas respetan el mismo `alcance`: con `PROPIO` solo traen lo del usuario de la sesión. Y
+ * `porCobrar` exige además `cobro.ver` (T-537): sin ese permiso la clave no viene.
  *
  * **Cohortes.** Cada cifra se ancla al hecho que la define, y la tasa usa la misma cohorte que su
  * numerador y su denominador:
@@ -181,7 +182,8 @@ export const SaldoPorCobrarDeUnaMoneda = z.object({
 export type SaldoPorCobrarDeUnaMoneda = z.infer<typeof SaldoPorCobrarDeUnaMoneda>;
 
 /**
- * **Por cobrar, HOY.** Como las cotizaciones abiertas, una foto y no una cifra del periodo.
+ * **Por cobrar, HOY.** Como las cotizaciones abiertas, una foto y no una cifra del periodo. A
+ * diferencia de ellas, **existe solo con `cobro.ver`** (T-537).
  *
  * Son los archivos de viaje **ABIERTOS** —los mismos que lista la pantalla de cobros— cuyo saldo
  * (`total − pagado`, ADR-0034 §3) es positivo. El archivo es «propio» del asesor ACTUAL de su
@@ -206,9 +208,11 @@ const CIFRAS_DEL_RESUMEN = {
   oportunidades: ResumenDeOportunidades,
   respuesta: ResumenDeRespuesta,
   /**
-   * T-528. Opcionales en el ESQUEMA para no romper a un cliente anterior, pero el servidor las
-   * envía SIEMPRE: que estén es lo que prueban `obtener-resumen.use-case.spec.ts` y el e2e, no
-   * la validación de salida.
+   * T-528. Opcionales en el ESQUEMA para no romper a un cliente anterior. `cotizacionesAbiertas`
+   * la envía SIEMPRE el servidor; `porCobrar` **solo con `cobro.ver`** (T-537), el mismo permiso
+   * que exigen las pantallas de cobro: sin él la clave no existe, ni en cero ni en `null`, como
+   * el margen con el suyo. Que estén —o no— es lo que prueban
+   * `obtener-resumen.use-case.spec.ts` y el e2e, no la validación de salida.
    */
   cotizacionesAbiertas: CotizacionesAbiertas.optional(),
   porCobrar: PorCobrar.optional(),

@@ -121,7 +121,12 @@ export function armarResumen(entrada: {
   etapas: EtapaConOportunidades[];
   respuesta: RespuestaAgregada;
   abiertas: CotizacionesAbiertasAgregadas;
-  cobros: CobrosAgregados;
+  /**
+   * **Ausente cuando el usuario no tiene `cobro.ver`** (T-537): sin el permiso el caso de uso ni
+   * siquiera consulta el puerto, igual que con el margen, y aquí la clave `porCobrar` no se
+   * construye. No es cero ni `null`: lo que no se puede ver, no existe en la respuesta.
+   */
+  cobros: CobrosAgregados | undefined;
 }): ResumenDeReportesPorAlcance {
   const { alcance, rango, cotizaciones: c, etapas, respuesta, abiertas, cobros } = entrada;
 
@@ -175,7 +180,9 @@ export function armarResumen(entrada: {
     // T-528. Las dos son de HOY, no del periodo, y las componen las mismas filas que el alcance
     // decide para el resto: con `PROPIO`, solo las del asesor de la sesión.
     cotizacionesAbiertas: cotizacionesAbiertas(abiertas),
-    porCobrar: porCobrarPorMoneda(cobros),
+    // T-537: `porCobrar` solo existe con `cobro.ver`. Alcance y permiso son ejes distintos, como
+    // con el margen: el alcance decide QUÉ FILAS, el permiso SI LA CIFRA EXISTE.
+    ...(cobros === undefined ? {} : { porCobrar: porCobrarPorMoneda(cobros) }),
   };
 
   return alcance.nivel === 'PROPIO'

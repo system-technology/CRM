@@ -17,6 +17,14 @@
  * antigüedad y el saldo por cobrar por moneda—, por los mismos puertos y con el MISMO alcance. Sin
  * ellas la web no podía decir «las tuyas» sin filtrar listas de agencia en el cliente, que es lo
  * que ADR-0035 §5 prohíbe.
+ *
+ * **T-537:** el saldo por cobrar exige además `cobro.ver`, el mismo permiso que las pantallas de
+ * cobro (`payments/interface/cobros.controller.ts`). Un reporte puede ser MÁS ESTRECHO que lo que
+ * el usuario ve en pantalla, nunca más amplio (ADR-0035 §4): sin ese permiso la clave `porCobrar`
+ * no viene —ni en cero ni en `null`—, exactamente como el margen con el suyo. Hoy los tres roles
+ * sembrados lo tienen, así que no cambia nada visible; se cierra antes de que exista el endpoint
+ * para componer roles a medida (R12), con el que un rol sin `cobro.ver` más `reportes.ver_agencia`
+ * vería el dinero de toda la agencia que su propia pantalla de cobros le niega.
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { type ConsultarResumenDeReportes, ResumenDeReportesPorAlcance } from '@viajapro/contracts';
@@ -48,6 +56,9 @@ export class ObtenerResumenDeReportes {
     const alcance = alcanceDeReporte(contexto, consulta.asesorId);
     const rango = { desde: new Date(consulta.desde), hasta: new Date(consulta.hasta) };
     const incluirMargen = ContextoTenant.tienePermiso('cotizacion.ver_neto_y_margen');
+    // T-537: el saldo por cobrar es la MISMA cifra que sirven las pantallas de cobro, que exigen
+    // `cobro.ver`. Sin el permiso no se pide: ni se consulta el puerto ni la clave existe.
+    const incluirPorCobrar = ContextoTenant.tienePermiso('cobro.ver');
     // Las dos cifras de T-528 son de HOY, no del rango: su reloj se lee una sola vez, aquí, para
     // que los tramos de antigüedad no se midan contra instantes distintos dentro de la misma
     // respuesta.
@@ -58,7 +69,9 @@ export class ObtenerResumenDeReportes {
       this.oportunidades.porEtapa(tenantId, rango, alcance),
       this.respuesta.resumir(tenantId, rango, alcance),
       this.cotizaciones.abiertas(tenantId, alcance, ahora),
-      this.cobros.porCobrar(tenantId, alcance, TOPE_DE_ARCHIVOS_PARA_COBRAR),
+      incluirPorCobrar
+        ? this.cobros.porCobrar(tenantId, alcance, TOPE_DE_ARCHIVOS_PARA_COBRAR)
+        : undefined,
     ]);
 
     return ResumenDeReportesPorAlcance.parse(
