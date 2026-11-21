@@ -107,7 +107,12 @@ a la cadena**.
   lateral (insignia «Vista» de T-566, entrada «Cobros» de T-332).
 
 **Para una agencia, esto es media pieza nueva** (pasajeros en cobros, aún sin columna en pantalla) y
-dos que hacen presentable lo que ya existía. **Ninguna agencia ha visto todavía nada.**
+dos que hacen presentable lo que ya existía.
+
+> **Corregida esta frase el mismo día, sin borrarla** (las reglas del diario piden corregir con otra
+> entrada, no reescribir la historia): aquí decía «ninguna agencia ha visto todavía nada», y **era
+> falso**. Lo desmiente la entrada de esa misma noche, que lo midió. Se deja escrito **porque el error
+> importa más que la frase**: se repitió durante tres turnos sin que nadie lo comprobara.
 
 ### Otras dos cosas medidas, no supuestas
 
