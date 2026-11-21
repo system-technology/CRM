@@ -6,6 +6,7 @@
  */
 
 import {
+  CambiarApodo as EsquemaCambiarApodo,
   type InvitarMiembro as InvitarMiembroTipo,
   InvitarMiembro as EsquemaInvitarMiembro,
   ErrorApi as EsquemaErrorApi,
@@ -33,6 +34,8 @@ export interface MiembroEquipo {
   id: string;
   nombre: string;
   email: string;
+  /** Apodo de ingreso; `null` si no tiene. */
+  apodo: string | null;
   /** Solo en modo demo. */
   telefono?: string;
   /** Clave del rol sembrado; `null` en un rol propio de la agencia. */
@@ -67,6 +70,7 @@ export function miembroDesdeApi(m: MiembroDeAgencia): MiembroEquipo {
     id: m.id,
     nombre: m.nombre,
     email: m.correo,
+    apodo: m.apodo ?? null,
     rolClave: m.rol.clave,
     rolNombre: m.rol.nombre,
     estado: m.estado,
@@ -80,6 +84,7 @@ function miembroDesdeMock(m: MiembroMock): MiembroEquipo {
     id: m.id,
     nombre: m.nombre,
     email: m.email,
+    apodo: m.apodo ?? null,
     telefono: m.telefono,
     rolClave: m.rol,
     rolNombre: m.rol === 'DUENO' ? 'Dueño / Administrador' : 'Asesor Comercial',
@@ -307,6 +312,81 @@ export async function darDeBajaMiembroApi(id: string): Promise<void> {
         : `El servidor respondió con error ${res.status}.`,
     res.status,
   );
+}
+
+/**
+ * Fija o quita el apodo de ingreso de un miembro (`PATCH /api/v1/identidad/miembros/:id/apodo`,
+ * permiso `usuarios.administrar`). `null` lo quita. Valida con el esquema del contrato (R3): la
+ * normalización la hace el contrato, no la pantalla. Códigos: `APODO_NO_DISPONIBLE` (409),
+ * `APODO_INVALIDO` (formato o reservado), `PERMISO_DENEGADO`, `NO_ENCONTRADO`.
+ */
+export async function cambiarApodoMiembroApi(id: string, apodo: string | null): Promise<void> {
+  const validacion = EsquemaCambiarApodo.safeParse({ apodo: apodo?.trim() ? apodo : null });
+  if (!validacion.success) {
+    throw new ErrorMiembrosApi(
+      'APODO_INVALIDO',
+      validacion.error.errors[0]?.message ?? 'El apodo no es válido.',
+    );
+  }
+
+  if (esModoDemo()) {
+    const nuevos = obtenerMiembrosCache().map((m) =>
+      m.id === id ? { ...m, apodo: validacion.data.apodo } : m,
+    );
+    try {
+      localStorage.setItem(CLAVE_STORAGE_EQUIPO, JSON.stringify(nuevos));
+    } catch {
+      // cuota de storage llena: el cambio demo es solo ilustrativo
+    }
+    return;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(
+      `${obtenerBaseApi()}/api/v1/identidad/miembros/${encodeURIComponent(id)}/apodo`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...cabecerasDeTenantDev(),
+        },
+        credentials: 'include',
+        body: JSON.stringify(validacion.data),
+      },
+    );
+  } catch {
+    throw new ErrorMiembrosApi(
+      'ERROR_CONEXION',
+      'No hay conexión con ViajaPro. Revisa tu internet e inténtalo de nuevo.',
+    );
+  }
+  if (res.ok) return;
+
+  const err = EsquemaErrorApi.safeParse(await res.json().catch(() => null));
+  const codigo = err.success ? err.data.error.code : 'ERROR_SERVIDOR';
+  throw new ErrorMiembrosApi(codigo, mensajeDeErrorDeApodo(res.status, codigo), res.status);
+}
+
+/** Texto para la persona, sin jerga: qué pasó y qué hacer. Nunca incluye el apodo escrito. */
+export function mensajeDeErrorDeApodo(estado: number, codigo: string): string {
+  if (estado === 409 || codigo === 'APODO_NO_DISPONIBLE') {
+    return 'Ese usuario ya está en uso. Prueba con otro, por ejemplo agregando el apellido o un número.';
+  }
+  if (estado === 403) {
+    return 'No puedes cambiar el usuario de esta persona: tiene más permisos que tú.';
+  }
+  if (estado === 404) {
+    return 'Esa persona ya no está en la agencia. Recarga la lista.';
+  }
+  if (estado === 400) {
+    return 'Ese usuario no es válido. Usa de 3 a 30 letras minúsculas sin tilde, números y . _ - entre caracteres.';
+  }
+  if (estado === 429) {
+    return 'Demasiados intentos. Espera un momento y vuelve a probar.';
+  }
+  return 'No se pudo guardar el usuario. Inténtalo de nuevo en unos minutos.';
 }
 
 /**

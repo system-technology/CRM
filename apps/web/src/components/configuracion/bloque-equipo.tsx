@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Lock,
   UserMinus,
+  UserPen,
   X,
 } from 'lucide-react';
 import {
@@ -18,6 +19,7 @@ import {
   listarRolesAgenciaApi,
   invitarMiembroApi,
   darDeBajaMiembroApi,
+  cambiarApodoMiembroApi,
   formatearFechaIngreso,
   ErrorMiembrosApi,
   interpretarErrorInvitacion,
@@ -49,6 +51,47 @@ export function BloqueEquipo() {
   const [enviando, setEnviando] = useState(false);
   const [errorInvitacion, setErrorInvitacion] = useState<ErrorInvitacion | null>(null);
   const [exitoInvitacion, setExitoInvitacion] = useState<string | null>(null);
+
+  // Edición del usuario de ingreso (apodo) de un miembro existente
+  const [editandoApodo, setEditandoApodo] = useState<MiembroEquipo | null>(null);
+  const [apodoTexto, setApodoTexto] = useState('');
+  const [guardandoApodo, setGuardandoApodo] = useState(false);
+  const [errorApodo, setErrorApodo] = useState<string | null>(null);
+  const [exitoApodo, setExitoApodo] = useState<string | null>(null);
+
+  const modalApodoRef = useFocoModal<HTMLDivElement>({
+    abierto: editandoApodo !== null,
+    alCerrar: () => setEditandoApodo(null),
+  });
+
+  const abrirEdicionApodo = (m: MiembroEquipo) => {
+    setErrorApodo(null);
+    setExitoApodo(null);
+    setApodoTexto(m.apodo ?? '');
+    setEditandoApodo(m);
+  };
+
+  const guardarApodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editandoApodo) return;
+    setErrorApodo(null);
+    setGuardandoApodo(true);
+    try {
+      const nuevo = apodoTexto.trim() === '' ? null : apodoTexto;
+      await cambiarApodoMiembroApi(editandoApodo.id, nuevo);
+      setExitoApodo(
+        nuevo === null
+          ? `Se quitó el usuario de ${editandoApodo.nombre}. Entrará con su correo.`
+          : `Listo: ${editandoApodo.nombre} ya puede entrar con su usuario.`,
+      );
+      setEditandoApodo(null);
+      await cargarDatos();
+    } catch (err) {
+      setErrorApodo(err instanceof Error ? err.message : 'No se pudo guardar el usuario.');
+    } finally {
+      setGuardandoApodo(false);
+    }
+  };
 
   const modalRef = useFocoModal<HTMLDivElement>({
     abierto: modalInvitar,
@@ -195,6 +238,16 @@ export function BloqueEquipo() {
         </div>
       )}
 
+      {exitoApodo && (
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          <span>{exitoApodo}</span>
+        </div>
+      )}
+
       {/* Cabecera y Botón Invitar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -306,6 +359,12 @@ export function BloqueEquipo() {
                       <div className="min-w-0">
                         <p className="font-semibold text-neutral-900 dark:text-white">{m.nombre}</p>
                         <p className="truncate text-[11px] text-neutral-500">{m.email}</p>
+                        <p
+                          className="text-[11px] text-neutral-500"
+                          data-testid="usuario-de-ingreso"
+                        >
+                          {m.apodo ? `Usuario: ${m.apodo}` : 'Sin usuario (entra con su correo)'}
+                        </p>
                         {m.telefono && (
                           <p className="cifra flex items-center gap-1 text-[10px] text-neutral-400 sm:hidden">
                             <Phone className="h-3 w-3" />
@@ -356,6 +415,17 @@ export function BloqueEquipo() {
                     {formatearFechaIngreso(m.fechaIngreso)}
                   </td>
                   <td className="px-4 py-3.5 text-right">
+                    {m.estado === 'ACTIVO' && bajaPendiente !== m.id && (
+                      <button
+                        type="button"
+                        onClick={() => abrirEdicionApodo(m)}
+                        aria-label={`Editar usuario de ${m.nombre}`}
+                        className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 text-[11px] font-semibold text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                      >
+                        <UserPen className="h-3.5 w-3.5" />
+                        Usuario
+                      </button>
+                    )}
                     {m.estado === 'ACTIVO' &&
                       (bajaPendiente === m.id ? (
                         <span className="inline-flex items-center gap-1">
@@ -410,6 +480,102 @@ export function BloqueEquipo() {
           </p>
         </div>
       </div>
+
+      {/* Modal Usuario de ingreso */}
+      {editandoApodo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titulo-modal-apodo"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
+        >
+          <div
+            ref={modalApodoRef}
+            className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-5 shadow-xl sm:p-6 dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
+              <h3
+                id="titulo-modal-apodo"
+                className="text-base font-bold text-neutral-900 dark:text-white"
+              >
+                Usuario de {editandoApodo.nombre}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditandoApodo(null)}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                aria-label="Cerrar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              Con este usuario la persona entra sin escribir su correo. Es opcional: déjalo vacío
+              para quitarlo.
+            </p>
+
+            {errorApodo && (
+              <div
+                role="alert"
+                data-testid="error-usuario-de-ingreso"
+                className="mt-3.5 flex items-start gap-1.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/60 dark:text-rose-200"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                <span>{errorApodo}</span>
+              </div>
+            )}
+
+            <form onSubmit={(e) => void guardarApodo(e)} className="mt-4 space-y-3.5">
+              <div>
+                <label
+                  htmlFor="input-usuario-de-ingreso"
+                  className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                >
+                  Usuario
+                </label>
+                <input
+                  id="input-usuario-de-ingreso"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={30}
+                  placeholder="ej. ialvear"
+                  value={apodoTexto}
+                  onChange={(e) => setApodoTexto(e.target.value)}
+                  aria-describedby="ayuda-usuario-de-ingreso"
+                  className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 focus:outline-hidden sm:text-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                />
+                <p
+                  id="ayuda-usuario-de-ingreso"
+                  className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400"
+                >
+                  De 3 a 30 caracteres: letras minúsculas sin tilde ni ñ, números y . _ - entre
+                  caracteres.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setEditandoApodo(null)}
+                  className="min-h-[44px] rounded-xl border border-neutral-300 px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardandoApodo}
+                  className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold shadow-xs"
+                >
+                  {guardandoApodo ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal Invitar Miembro */}
       {modalInvitar && (

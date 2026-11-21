@@ -43,9 +43,7 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
     });
 
     it('mapearErrorAcceso mapea códigos de error canónicos a mensajes legibles', () => {
-      expect(mapearErrorAcceso('CREDENCIALES_INVALIDAS')).toContain(
-        'Correo o contraseña incorrectos',
-      );
+      expect(mapearErrorAcceso('CREDENCIALES_INVALIDAS')).toContain('Los datos no coinciden');
       expect(mapearErrorAcceso('DEMASIADOS_INTENTOS')).toContain('Demasiados intentos');
       expect(mapearErrorAcceso('SIN_SESION')).toContain('No hay una sesión activa');
       expect(mapearErrorAcceso('SIN_AGENCIA_ACTIVA')).toContain('Debes seleccionar una agencia');
@@ -193,7 +191,7 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
 
       await expect(
         iniciarSesionApi({ correo: 'asesor@viajapro.com', contrasena: 'erronea' }),
-      ).rejects.toThrowError(/Correo o contraseña incorrectos/);
+      ).rejects.toThrowError(/Los datos no coinciden/);
     });
 
     it('iniciarSesionApi maneja error 429 como DEMASIADOS_INTENTOS', async () => {

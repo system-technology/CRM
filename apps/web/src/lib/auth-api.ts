@@ -56,7 +56,7 @@ export class AuthApiError extends Error {
 export function mapearErrorAcceso(codigo: string, mensajeFallback?: string): string {
   switch (codigo) {
     case 'CREDENCIALES_INVALIDAS':
-      return 'Correo o contraseña incorrectos. Verifica tus credenciales o solicita acceso al administrador.';
+      return 'Los datos no coinciden. Revisa tu correo o usuario y tu contraseña, o pide ayuda al administrador de tu agencia.';
     case 'DEMASIADOS_INTENTOS':
       return 'Demasiados intentos fallidos. Por seguridad, espera un momento antes de volver a intentar.';
     case 'SIN_SESION':
