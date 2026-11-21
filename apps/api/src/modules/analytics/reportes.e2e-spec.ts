@@ -401,9 +401,13 @@ beforeAll(async () => {
   const opDeBeto = await oportunidad(TENANT_A, a.contacto, etapasA.perdida.id, usuarioId.betoA);
   const opDeB = await oportunidad(TENANT_B, b.contacto, etapaB.id, usuarioId.duenoB);
 
-  // Tres conversaciones en A. El viajero escribió hace una hora; Valentina respondió a los 10
-  // minutos, Beto a los 20, y una queda sin responder asignada a Valentina.
-  const hace1h = new Date(Date.now() - 3600_000);
+  // Cinco conversaciones en A. El viajero escribió hace tres horas; Valentina respondió a los 10
+  // minutos y una queda sin responder asignada a ella; Beto respondió a los 20, a los 40 y a los
+  // 90. Beto tiene VARIAS respuestas con tiempos distintos a propósito (T-531): con una sola,
+  // promedio, mediana y p90 coinciden y una prueba que los compara no distingue un percentil de
+  // otro (el fixture anterior dejó pasar un 0.5 cambiado por 0.9). Las suyas dan promedio 50,
+  // mediana 40 y p90 80: tres cifras distintas.
+  const hace1h = new Date(Date.now() - 3 * 3600_000);
   const cuenta = await admin.cuentaWhatsapp.create({
     data: {
       tenantId: TENANT_A,
@@ -472,6 +476,8 @@ beforeAll(async () => {
   };
   await conversacionDe(usuarioId.valentinaA, 10);
   await conversacionDe(usuarioId.betoA, 20);
+  await conversacionDe(usuarioId.betoA, 40);
+  await conversacionDe(usuarioId.betoA, 90);
   await conversacionDe(usuarioId.valentinaA, null);
 
   Logger.overrideLogger(false);
@@ -610,13 +616,13 @@ describe('alcance de agencia', () => {
     ]);
 
     expect(r.json.respuesta).toEqual({
-      conversacionesNuevas: 3,
-      conversacionesRespondidas: 2,
-      promedioMinutos: 15,
-      medianaMinutos: 15,
-      p90Minutos: 19,
+      conversacionesNuevas: 5,
+      conversacionesRespondidas: 4,
+      promedioMinutos: 40,
+      medianaMinutos: 30,
+      p90Minutos: 75,
       sinResponder: 1,
-      tasaRespuesta: 66.7,
+      tasaRespuesta: 80,
     });
   });
 
@@ -633,8 +639,12 @@ describe('alcance de agencia', () => {
     });
     expect(r.json.ventasPorMoneda[0]?.ventas).toEqual({ unidades: '1200000', moneda: 'COP' });
     expect(r.json.oportunidades).toMatchObject({ creadas: 1, ganadas: 0, perdidas: 1 });
-    expect(r.json.respuesta.conversacionesNuevas).toBe(1);
-    expect(r.json.respuesta.promedioMinutos).toBe(20);
+    expect(r.json.respuesta).toMatchObject({
+      conversacionesNuevas: 3,
+      promedioMinutos: 50,
+      medianaMinutos: 40,
+      p90Minutos: 80,
+    });
     // Nada de Valentina: ni su venta ni sus dos oportunidades abiertas.
     expect(r.texto).not.toContain('2400000');
     expect(r.texto).not.toContain('3600000');
@@ -1039,6 +1049,16 @@ describe('cifras por asesor en una sola respuesta (T-531)', () => {
     expect(vale?.ventasPorMoneda[0]?.ventas).toEqual({ unidades: '2400000', moneda: 'COP' });
     expect(vale?.respuesta.conversacionesNuevas).toBe(2);
     expect(vale?.respuesta.sinResponder).toBe(1);
+    // Beto: promedio, mediana y p90 distintos, así que la igualdad con su consulta filtrada
+    // distingue un percentil de otro.
+    const beto = filas.find((f) => f.asesorId === usuarioId.betoA);
+    expect(beto?.respuesta).toMatchObject({
+      conversacionesNuevas: 3,
+      conversacionesRespondidas: 3,
+      promedioMinutos: 50,
+      medianaMinutos: 40,
+      p90Minutos: 80,
+    });
     expect(vale?.oportunidades).toMatchObject({ creadas: 3, ganadas: 1, perdidas: 0, abiertas: 2 });
   });
 
