@@ -12524,3 +12524,30 @@ tasks:
     owner: qa
     notes: "Sale de la auditoria de T-340. Cola, no bloqueante."
 
+  - id: T-582
+    title: "Cobros: la tabla no muestra pasajeros porque FilaDeCobro no los trae; ampliar el contrato y la API"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-332
+    acceptance:
+      - "T-332 pedia la lista «con pasajeros» y se entrego sin ellos, DECLARADO por quien la hizo:
+        FilaDeCobro (packages/contracts/src/cobros.ts) lleva archivoId, numero, contactoId, destino,
+        fechaSalida, total, pagado, saldo, situacion, estadoDeCobro y fechaLimite. Ni pasajeros ni
+        nombre del contacto. La pantalla muestra file, destino y salida"
+      - "NO es bloqueante y esta razonado: el criterio de salida del piloto (roadmap JD Tours seccion 3
+        punto 4) pide total, pagado y saldo por archivo, el filtro de saldo pendiente y el CSV. Los
+        pasajeros no estan en ese criterio"
+      - "Ampliar el contrato y el endpoint de cobros (carril a) para traer el numero de pasajeros o sus
+        nombres, y despues la columna en la pantalla y en el CSV (carril b)"
+      - "R10: si se traen NOMBRES de viajeros y no solo el recuento, es dato personal: ni en registros ni
+        en el CSV sin pensar quien puede verlo"
+    source: "entrega de T-332, declarado por la sesion que la construyo (2026-11-21)"
+    owner: backend
+    notes: "La sesion de T-332 encontro el limite y NO amplio el contrato por su cuenta porque no era su
+      carril. Era lo correcto: se registra aqui en vez de colarse un cambio de API en un PR de frontend."
+
+
