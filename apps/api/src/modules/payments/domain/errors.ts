@@ -11,19 +11,15 @@ import { DomainError, EstadoInvalidoError, InvariantError, ProhibidoError } from
 export class ArchivoDeCobroNoEncontradoError extends DomainError {
   readonly code = 'ARCHIVO_NO_ENCONTRADO';
   constructor(readonly archivoId?: string) {
-    super(`No hay un archivo de viaje ${archivoId ?? ''} en esta agencia`.replace('  ', ' '));
+    // Sin el id en el texto: el 404 de un archivo ajeno es idéntico al de uno inexistente.
+    super('No hay un archivo de viaje con ese id en esta agencia');
   }
 }
 
 export class MovimientoDeCobroNoEncontradoError extends DomainError {
   readonly code = 'MOVIMIENTO_DE_COBRO_NO_ENCONTRADO';
   constructor(readonly pagoId?: string) {
-    super(
-      `No hay un movimiento de cobro ${pagoId ?? ''} en ese archivo de esta agencia`.replace(
-        '  ',
-        ' ',
-      ),
-    );
+    super('No hay un movimiento de cobro con ese id en ese archivo de esta agencia');
   }
 }
 
@@ -93,6 +89,28 @@ export class PenalidadExcedeLoPagadoError extends InvariantError {
   readonly code = 'PENALIDAD_EXCEDE_LO_PAGADO';
   constructor() {
     super('Las penalidades no pueden superar lo pagado y no devuelto');
+  }
+}
+
+/**
+ * Devolver o reversar un pago dejaría una penalidad retenida que nadie pagó (ADR-0034 §3: la
+ * penalidad no supera lo pagado neto, y eso se mantiene mientras la penalidad esté vigente).
+ */
+export class PenalidadRetenidaSinPagarError extends InvariantError {
+  readonly code = 'PENALIDAD_RETENIDA_SIN_PAGAR';
+  constructor() {
+    super(
+      'Lo pagado y no devuelto no puede quedar por debajo de las penalidades vigentes; ' +
+        'para renunciar a la penalidad, reversa primero la PENALIDAD',
+    );
+  }
+}
+
+/** Otro proceso retiene el candado del archivo: se puede reintentar. 409. */
+export class CobroOcupadoError extends EstadoInvalidoError {
+  readonly code = 'COBRO_OCUPADO_REINTENTA';
+  constructor() {
+    super('El cobro de este archivo está ocupado por otra operación; reintenta en un momento');
   }
 }
 

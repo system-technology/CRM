@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import {
   ClaveDeIdempotenciaReutilizadaError,
+  CobroOcupadoError,
   FalloDeEscrituraDelLibroError,
   MovimientoRechazadoPorLaBaseError,
   MovimientoYaReversadoError,
@@ -124,6 +125,20 @@ describe('traducirErrorDelLibro', () => {
       expect((r as FalloDeEscrituraDelLibroError).codigoPg).toBe(codigo);
       expect((r as { cause?: unknown }).cause).toBeUndefined();
     }
+  });
+
+  it('55P03 (lock_timeout vencido) → CobroOcupado, un 409 reintentable', () => {
+    const r = atrapar(crudo('55P03', 'canceling statement due to lock timeout'));
+    expect(r).toBeInstanceOf(CobroOcupadoError);
+    expect((r as CobroOcupadoError).code).toBe('COBRO_OCUPADO_REINTENTA');
+    // Sin código estructurado, el SQLSTATE viaja solo en el texto.
+    const sinCodigo = new Prisma.PrismaClientUnknownRequestError(
+      'ERROR: 55P03 lock_not_available',
+      {
+        clientVersion: 'x',
+      },
+    );
+    expect(atrapar(sinCodigo)).toBeInstanceOf(CobroOcupadoError);
   });
 
   it('un error de dominio pasa tal cual; lo desconocido no arrastra el original', () => {

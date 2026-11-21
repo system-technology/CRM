@@ -122,7 +122,17 @@ const FechaDeCalendario = FechaViaje.refine(
   { message: 'no es una fecha de calendario' },
 );
 
-const ClaveDeIdempotencia = z.string().uuid();
+/**
+ * Un uuid normalizado a MINÚSCULAS. Postgres los devuelve así, y el reintento de una petición con
+ * el id en mayúsculas no debe verse como «contenido distinto» (409) ni dar otra clave de candado.
+ * Se exporta para validar los `:id` y `:pagoId` de las rutas con el mismo criterio.
+ */
+export const IdEnMinusculas = z
+  .string()
+  .uuid()
+  .transform((id) => id.toLowerCase());
+
+const ClaveDeIdempotencia = IdEnMinusculas;
 
 /** Monto positivo: entero en texto, 1..10^15 − 1, con su moneda. */
 const MontoPositivo = z
@@ -157,7 +167,7 @@ export const RegistrarPago = z
     pagadoEl: FechaDeCalendario,
     medio: MedioDePago,
     /** Quién pagó, si no es el titular: un contacto de la misma agencia. */
-    pagadorId: Id.optional(),
+    pagadorId: IdEnMinusculas.optional(),
     referencia: Referencia.optional(),
     nota: Nota.optional(),
     /** Sin esto, un pago que deja el saldo a favor se rechaza. */

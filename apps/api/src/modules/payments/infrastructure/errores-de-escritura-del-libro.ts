@@ -22,6 +22,7 @@ import { DomainError } from '@viajapro/domain';
 import {
   ArchivoDeCobroNoEncontradoError,
   ClaveDeIdempotenciaReutilizadaError,
+  CobroOcupadoError,
   FalloDeEscrituraDelLibroError,
   MovimientoDeCobroNoEncontradoError,
   MovimientoRechazadoPorLaBaseError,
@@ -44,7 +45,7 @@ export function sqlstateDe(error: unknown): string | null {
     return texto(propiedad(error.meta, 'code')) ?? error.code;
   }
   if (error instanceof Prisma.PrismaClientUnknownRequestError) {
-    const m = /\b(23503|23505|23514|23001|42501)\b/.exec(error.message);
+    const m = /\b(23503|23505|23514|23001|42501|55P03)\b/.exec(error.message);
     return m?.[1] ?? null;
   }
   return texto(propiedad(error, 'code')) ?? texto(propiedad(propiedad(error, 'cause'), 'code'));
@@ -84,6 +85,8 @@ export function traducirErrorDelLibro(error: unknown): never {
 
   const codigo = sqlstateDe(error);
   const restriccion = restriccionDe(error);
+  // 55P03: `lock_timeout` vencido esperando el candado del archivo. Transitorio: se reintenta.
+  if (codigo === '55P03') throw new CobroOcupadoError();
   const en = (fragmento: string): boolean => restriccion?.includes(fragmento) === true;
 
   if (codigo === '23503') {

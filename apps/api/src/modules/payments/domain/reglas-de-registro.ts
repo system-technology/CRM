@@ -20,6 +20,7 @@ import {
   MonedaDistintaDelArchivoError,
   MontoInvalidoParaElTipoError,
   MovimientoYaReversadoError,
+  PenalidadRetenidaSinPagarError,
   PenalidadExcedeLoPagadoError,
   ReversoDeReversoError,
   ReversoDejaPagadoNegativoError,
@@ -95,6 +96,8 @@ export function validarMovimiento(
     }
     case 'DEVOLUCION':
       if (pagado - m < 0n) throw new DevolucionExcedeLoPagadoError();
+      // Con una penalidad vigente, lo pagado y no devuelto no baja de ella.
+      if (pagado - m < sumas.penalidades) throw new PenalidadRetenidaSinPagarError();
       return;
     case 'AJUSTE':
       // El total de un archivo abierto no queda negativo.
@@ -124,6 +127,10 @@ export function validarReverso(
   if (original.tipo === 'PAGO') {
     if (pagadoNeto(sumas, moneda).unidades - original.montoUnidades < 0n) {
       throw new ReversoDejaPagadoNegativoError();
+    }
+    // Y tampoco por debajo de las penalidades vigentes (reversar la PENALIDAD primero lo permite).
+    if (pagadoNeto(sumas, moneda).unidades - original.montoUnidades < sumas.penalidades) {
+      throw new PenalidadRetenidaSinPagarError();
     }
   } else if (original.tipo === 'AJUSTE' && archivo.estado === 'ABIERTO') {
     const total = totalDelArchivo('ABIERTO', archivo.ventaUnidades, sumas, moneda).unidades;

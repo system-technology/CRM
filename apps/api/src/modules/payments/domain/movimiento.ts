@@ -45,14 +45,17 @@ export function mismoContenido(
   >,
   b: typeof a,
 ): boolean {
+  // Los uuid se comparan sin distinguir mayúsculas: el contrato ya los normaliza, y esto lo sostiene
+  // aunque otra vía no lo haga.
+  const id = (v: string | null): string | null => (v === null ? null : v.toLowerCase());
   return (
     a.tipo === b.tipo &&
-    a.travelFileId === b.travelFileId &&
+    id(a.travelFileId) === id(b.travelFileId) &&
     a.montoUnidades === b.montoUnidades &&
     a.monedaIso === b.monedaIso &&
     a.pagadoEl === b.pagadoEl &&
     a.medio === b.medio &&
-    a.pagadorId === b.pagadorId &&
-    a.reversoDeId === b.reversoDeId
+    id(a.pagadorId) === id(b.pagadorId) &&
+    id(a.reversoDeId) === id(b.reversoDeId)
   );
 }

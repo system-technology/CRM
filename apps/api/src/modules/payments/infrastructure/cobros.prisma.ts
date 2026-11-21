@@ -39,6 +39,9 @@ import { traducirErrorDelLibro } from './errores-de-escritura-del-libro.js';
 /** El espacio de candados del cobro: el mismo literal que `pagos_validar_alta`. */
 export const ESPACIO_DE_CANDADO_DEL_COBRO = 7_410_329;
 
+/** Espera máxima por el candado del archivo (mismo valor que booking y quoting). */
+export const ESPERA_MAXIMA_DEL_BLOQUEO = '5s';
+
 /**
  * Una suma de la base como `bigint`. Un `number` se rechaza aunque sea entero: si el controlador
  * dejara de devolver `BigInt`, un valor grande ya habría perdido dígitos y no habría cómo saberlo.
@@ -131,6 +134,11 @@ class OperacionesPrisma implements OperacionesDeCobro {
   ) {}
 
   async bloquearCobroDelArchivo(archivoId: string): Promise<void> {
+    // `lock_timeout` local a la transacción y ANTES del candado (patrón de booking): si otra
+    // operación lo retiene demasiado, falla con 55P03 (→ 409 reintentable) en vez de agotar la
+    // transacción interactiva de Prisma. Vale también para el `FOR SHARE` del puerto.
+    await this.tx
+      .$executeRaw`SELECT set_config('lock_timeout', ${ESPERA_MAXIMA_DEL_BLOQUEO}, true)`;
     // Su propia sentencia (ADR-0034 §4 paso 1). `$executeRaw` y no `$queryRaw`: la función devuelve
     // `void`, que Prisma no sabe deserializar.
     await this.tx.$executeRaw`

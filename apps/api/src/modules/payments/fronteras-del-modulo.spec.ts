@@ -117,4 +117,12 @@ describe('fronteras de payments', () => {
       /hashtext\(NEW\.tenant_id::text \|\| ':' \|\| NEW\.travel_file_id::text\)/,
     );
   });
+
+  it('el lock_timeout se fija dentro de la transacción y ANTES del candado', () => {
+    const t = readFileSync(join(SRC, 'modules/payments/infrastructure/cobros.prisma.ts'), 'utf8');
+    const timeout = t.indexOf("set_config('lock_timeout', ${ESPERA_MAXIMA_DEL_BLOQUEO}, true)");
+    const candado = t.indexOf('SELECT pg_advisory_xact_lock(');
+    expect(timeout).toBeGreaterThan(-1);
+    expect(candado).toBeGreaterThan(timeout);
+  });
 });

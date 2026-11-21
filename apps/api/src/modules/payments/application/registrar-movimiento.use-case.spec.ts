@@ -19,6 +19,7 @@ import {
   MovimientoDeCobroNoEncontradoError,
   MovimientoYaReversadoError,
   PenalidadExcedeLoPagadoError,
+  PenalidadRetenidaSinPagarError,
   ReversoDeReversoError,
   ReversoDejaPagadoNegativoError,
   SinUsuarioParaRegistrarError,
@@ -549,6 +550,34 @@ describe('RegistrarMovimientoUseCase', () => {
       expect(r.resultado.cobro.saldo.unidades).toBe('0');
       expect(r.resultado.cobro.situacion).toBe('PAGADO');
       expect(r.resultado.cobro.estadoDeCobro).toBe('CANCELADO');
+    });
+
+    it('con penalidad vigente: devolución total y reverso del pago, 422; reversada la penalidad, caben', async () => {
+      const p = await como(PERMISOS_DUENO, () =>
+        registro.registrar(F1, pago({ monto: { unidades: '1000000', moneda: 'COP' } })),
+      );
+      repo.poner(A, archivo(F1, { estado: 'CANCELADO' }));
+      const pen = await como(PERMISOS_DUENO, () =>
+        registro.registrar(F1, {
+          tipo: 'PENALIDAD',
+          claveIdempotencia: uuid(),
+          monto: { unidades: '300000', moneda: 'COP' },
+          motivo: 'Cancelación',
+        }),
+      );
+      await expect(
+        como(PERMISOS_DUENO, () => registro.registrar(F1, devolucion('1000000'))),
+      ).rejects.toBeInstanceOf(PenalidadRetenidaSinPagarError);
+      await expect(
+        como(PERMISOS_DUENO, () =>
+          registro.reversar(F1, p.resultado.movimiento.id, reversoCuerpo()),
+        ),
+      ).rejects.toBeInstanceOf(PenalidadRetenidaSinPagarError);
+      await como(PERMISOS_DUENO, () =>
+        registro.reversar(F1, pen.resultado.movimiento.id, reversoCuerpo()),
+      );
+      const r = await como(PERMISOS_DUENO, () => registro.registrar(F1, devolucion('1000000')));
+      expect(r.resultado.cobro.pagado.unidades).toBe('0');
     });
 
     it('la penalidad no supera lo pagado; en archivo abierto no se admite', async () => {

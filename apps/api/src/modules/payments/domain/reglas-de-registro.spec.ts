@@ -8,6 +8,7 @@ import {
   MontoInvalidoParaElTipoError,
   MovimientoYaReversadoError,
   PenalidadExcedeLoPagadoError,
+  PenalidadRetenidaSinPagarError,
   ReversoDeReversoError,
   ReversoDejaPagadoNegativoError,
   SobrepagoSinConfirmarError,
@@ -262,5 +263,69 @@ describe('validarReverso', () => {
     expect(() =>
       validarReverso(orig('AJUSTE', 200_000n), false, abierto, sumas({ ajustes: -900_000n })),
     ).toThrow(AjusteDejaTotalNegativoError);
+  });
+});
+
+describe('una penalidad vigente no queda sin pagar (ADR-0034 §3)', () => {
+  // Cancelado, 1.000.000 pagado y 300.000 de penalidad retenida.
+  const conPenalidad = sumas({ pagos: 1_000_000n, penalidades: 300_000n });
+  const d = (montoUnidades: bigint) => entrada({ tipo: 'DEVOLUCION', montoUnidades });
+  const original = (tipo: 'PAGO' | 'DEVOLUCION' | 'AJUSTE' | 'PENALIDAD', m: bigint) => ({
+    id: 'x',
+    tipo,
+    montoUnidades: m,
+  });
+
+  it('la devolución total se rechaza (422); devolver hasta la penalidad sí', () => {
+    expect(() => validarMovimiento(d(1_000_000n), cancelado, conPenalidad, HOY)).toThrow(
+      PenalidadRetenidaSinPagarError,
+    );
+    expect(() => validarMovimiento(d(700_001n), cancelado, conPenalidad, HOY)).toThrow(
+      PenalidadRetenidaSinPagarError,
+    );
+    expect(() => validarMovimiento(d(700_000n), cancelado, conPenalidad, HOY)).not.toThrow();
+  });
+
+  it('devolver más de lo pagado sigue siendo el error de siempre', () => {
+    expect(() => validarMovimiento(d(1_000_001n), cancelado, conPenalidad, HOY)).toThrow(
+      DevolucionExcedeLoPagadoError,
+    );
+  });
+
+  it('el reverso del PAGO se rechaza (422); si sobra pago por encima de la penalidad, sí', () => {
+    expect(() =>
+      validarReverso(original('PAGO', 1_000_000n), false, cancelado, conPenalidad),
+    ).toThrow(PenalidadRetenidaSinPagarError);
+    // Dos pagos (600.000 + 400.000): reversar el de 400.000 deja 600.000 ≥ 300.000.
+    expect(() =>
+      validarReverso(original('PAGO', 400_000n), false, cancelado, conPenalidad),
+    ).not.toThrow();
+    expect(() =>
+      validarReverso(original('PAGO', 700_001n), false, cancelado, conPenalidad),
+    ).toThrow(PenalidadRetenidaSinPagarError);
+  });
+
+  it('el mensaje dice cómo renunciar a la penalidad y no lleva valores', () => {
+    const e = new PenalidadRetenidaSinPagarError();
+    expect(e.message).toMatch(/reversa primero la PENALIDAD/);
+    expect(e.message).not.toMatch(/\d/);
+  });
+
+  it('reversar la PENALIDAD, una DEVOLUCION o un AJUSTE sigue permitido', () => {
+    expect(() =>
+      validarReverso(original('PENALIDAD', 300_000n), false, cancelado, conPenalidad),
+    ).not.toThrow();
+    expect(() =>
+      validarReverso(original('DEVOLUCION', 100_000n), false, cancelado, conPenalidad),
+    ).not.toThrow();
+    expect(() =>
+      validarReverso(original('AJUSTE', 5n), false, cancelado, conPenalidad),
+    ).not.toThrow();
+  });
+
+  it('reversada la penalidad, la devolución total vuelve a caber', () => {
+    expect(() =>
+      validarMovimiento(d(1_000_000n), cancelado, sumas({ pagos: 1_000_000n }), HOY),
+    ).not.toThrow();
   });
 });

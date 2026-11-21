@@ -19,22 +19,12 @@
  * comprueba `RegistrarMovimientoUseCase` antes de tocar la base y lo prueban las e2e. Reverso,
  * plazo y parámetros exigen `cobro.corregir` en la ruta.
  */
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Put,
-  Query,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Put, Query, Res } from '@nestjs/common';
 import {
   type CobroDelArchivo,
   FijarParametrosDeCobro,
   FijarPlazoDeCobro,
+  IdEnMinusculas,
   ListarCobros,
   type ParametrosDeCobro,
   RegistrarMovimiento,
@@ -61,7 +51,7 @@ export class PagosDeArchivoController {
   @RequierePermiso('cobro.ver')
   @Post(':id/pagos')
   async registrarMovimiento(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('id', new ZodValidationPipe(IdEnMinusculas)) id: string,
     @Body(new ZodValidationPipe(RegistrarMovimiento)) body: RegistrarMovimiento,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResultadoDeMovimiento> {
@@ -74,8 +64,8 @@ export class PagosDeArchivoController {
   @RequierePermiso('cobro.corregir')
   @Post(':id/pagos/:pagoId/reverso')
   async reversar(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Param('pagoId', new ParseUUIDPipe()) pagoId: string,
+    @Param('id', new ZodValidationPipe(IdEnMinusculas)) id: string,
+    @Param('pagoId', new ZodValidationPipe(IdEnMinusculas)) pagoId: string,
     @Body(new ZodValidationPipe(ReversarMovimiento)) body: ReversarMovimiento,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResultadoDeMovimiento> {
@@ -87,7 +77,7 @@ export class PagosDeArchivoController {
   @RequierePermiso('cobro.corregir')
   @Post(':id/plazo-de-cobro')
   async fijarPlazo(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('id', new ZodValidationPipe(IdEnMinusculas)) id: string,
     @Body(new ZodValidationPipe(FijarPlazoDeCobro)) body: FijarPlazoDeCobro,
   ): Promise<CobroDelArchivo> {
     return this.plazos.fijarPlazo(id, body);
@@ -95,7 +85,9 @@ export class PagosDeArchivoController {
 
   @RequierePermiso('cobro.ver')
   @Get(':id/cobro')
-  async leerCobro(@Param('id', new ParseUUIDPipe()) id: string): Promise<CobroDelArchivo> {
+  async leerCobro(
+    @Param('id', new ZodValidationPipe(IdEnMinusculas)) id: string,
+  ): Promise<CobroDelArchivo> {
     return this.lector.delArchivo(id);
   }
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   FijarParametrosDeCobro,
   FijarPlazoDeCobro,
+  IdEnMinusculas,
   RegistrarMovimiento,
   ReversarMovimiento,
   contieneNumeroDeTarjeta,
@@ -186,5 +187,21 @@ describe('otros cuerpos', () => {
     for (const d of [-1, 366, 1.5, '30']) {
       expect(FijarParametrosDeCobro.safeParse({ diasPlazoDeCobro: d }).success).toBe(false);
     }
+  });
+});
+
+describe('uuid en minúsculas (un reintento con mayúsculas es el mismo)', () => {
+  const MAYUS = 'ABCDEF00-0000-7000-8000-0000000000AA';
+  it('IdEnMinusculas normaliza y sigue rechazando lo que no es uuid', () => {
+    expect(IdEnMinusculas.parse(MAYUS)).toBe(MAYUS.toLowerCase());
+    expect(IdEnMinusculas.safeParse('no-es-uuid').success).toBe(false);
+  });
+  it('la clave y el pagador del cuerpo salen en minúsculas', () => {
+    const r = RegistrarMovimiento.parse({ ...PAGO, claveIdempotencia: MAYUS, pagadorId: MAYUS });
+    expect(r.claveIdempotencia).toBe(MAYUS.toLowerCase());
+    expect(r.tipo === 'PAGO' && r.pagadorId).toBe(MAYUS.toLowerCase());
+    expect(
+      ReversarMovimiento.parse({ claveIdempotencia: MAYUS, motivo: 'x' }).claveIdempotencia,
+    ).toBe(MAYUS.toLowerCase());
   });
 });

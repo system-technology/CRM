@@ -579,7 +579,7 @@ describe('permisos con sesiones reales (ADR-0034 §6)', () => {
 });
 
 describe('aislamiento entre agencias', () => {
-  it('un asesor de A no ve ni toca el cobro del archivo de B: 404 en cada ruta, y B queda intacta', async () => {
+  it('un ASESOR y un DUEÑO de A no ven ni tocan el cobro del archivo de B: 404 en cada ruta, y B queda intacta', async () => {
     const deB = archivos.deB;
     await http(agencias.B, 'POST', rutaPagos(deB.id), pago(5_000n));
     const original = await pagosEnBase(TENANT_B, deB.id);
@@ -587,8 +587,9 @@ describe('aislamiento entre agencias', () => {
     const idDeB = original[0]?.id ?? '';
 
     const intentos: Respuesta[] = [
-      await comoMiembro('dueno', 'GET', rutaCobro(deB.id)),
-      await comoMiembro('dueno', 'POST', rutaPagos(deB.id), pago(1_000n)),
+      // El ASESOR real (cobro.ver + cobro.registrar) lee y registra; reverso y plazo exigen al DUEÑO.
+      await comoMiembro('asesor', 'GET', rutaCobro(deB.id)),
+      await comoMiembro('asesor', 'POST', rutaPagos(deB.id), pago(1_000n)),
       await comoMiembro('dueno', 'POST', `${rutaPagos(deB.id)}/${idDeB}/reverso`, reverso()),
       await comoMiembro(
         'dueno',
@@ -612,6 +613,39 @@ describe('aislamiento entre agencias', () => {
       [TENANT_B],
     );
     expect(plazosDeB[0]?.n).toBe('0');
+  });
+
+  it('el cuerpo del 404 de un archivo o movimiento de OTRA agencia es IDÉNTICO al de un id inexistente', async () => {
+    const [filaDeB] = await pagosEnBase(TENANT_B, archivos.deB.id);
+    const inexistente = randomUUID();
+    const comparar = (ajeno: Respuesta, propio: Respuesta): void => {
+      expect(ajeno.estado).toBe(404);
+      expect(propio.estado).toBe(404);
+      expect(ajeno.texto).toBe(propio.texto);
+    };
+    comparar(
+      await comoMiembro('asesor', 'GET', rutaCobro(archivos.deB.id)),
+      await comoMiembro('asesor', 'GET', rutaCobro(inexistente)),
+    );
+    comparar(
+      await comoMiembro('asesor', 'POST', rutaPagos(archivos.deB.id), pago(1_000n)),
+      await comoMiembro('asesor', 'POST', rutaPagos(inexistente), pago(1_000n)),
+    );
+    // Movimiento de B, y uno inexistente, desde un archivo PROPIO.
+    comparar(
+      await comoMiembro(
+        'dueno',
+        'POST',
+        `${rutaPagos(archivos.principal.id)}/${filaDeB?.id ?? ''}/reverso`,
+        reverso(),
+      ),
+      await comoMiembro(
+        'dueno',
+        'POST',
+        `${rutaPagos(archivos.principal.id)}/${inexistente}/reverso`,
+        reverso(),
+      ),
+    );
   });
 
   it('la vista de A no trae archivos de B y RLS oculta los pagos de A a B', async () => {
@@ -1086,4 +1120,108 @@ describe('la carrera registrar-pago vs cancelar-archivo', () => {
       expect(despues.estado).toBe(409);
     }
   }, 120_000);
+});
+
+describe('vuelta de auditoría de T-330 (B1, C2 y concurrencia)', () => {
+  const cancelar = (id: string) =>
+    http(agencias.A, 'POST', `/api/v1/archivos/${id}/cancelacion`, { motivo: 'CLIENTE_DESISTIO' });
+
+  it('B1: con penalidad vigente, la devolución total y el reverso del PAGO dan 422; reversada la penalidad, caben', async () => {
+    const a = await archivoNuevo(agencias.A);
+    const p = await pagar('dueno', a.id, 1_000_000n);
+    expect((await cancelar(a.id)).estado).toBe(201);
+    const pena = await comoMiembro('dueno', 'POST', rutaPagos(a.id), penalidad(300_000n));
+    expect(pena.estado, pena.texto).toBe(201);
+    const idPena = ResultadoDeMovimiento.parse(pena.json).movimiento.id;
+
+    const devTotal = await comoMiembro('dueno', 'POST', rutaPagos(a.id), devolucion(1_000_000n));
+    expect(devTotal.estado).toBe(422);
+    expect(codigo(devTotal.json)).toBe('PENALIDAD_RETENIDA_SIN_PAGAR');
+    expect(devTotal.texto).toMatch(/reversa primero la PENALIDAD/);
+
+    const revPago = await comoMiembro(
+      'dueno',
+      'POST',
+      `${rutaPagos(a.id)}/${p.movimiento.id}/reverso`,
+      reverso(),
+    );
+    expect(revPago.estado).toBe(422);
+    expect(codigo(revPago.json)).toBe('PENALIDAD_RETENIDA_SIN_PAGAR');
+    expect((await pagosEnBase(TENANT_A, a.id)).map((f) => f.tipo)).toEqual(['PAGO', 'PENALIDAD']);
+
+    // Devolver hasta la penalidad sí cabe; renunciar a ella (reversarla primero) permite el resto.
+    expect((await comoMiembro('dueno', 'POST', rutaPagos(a.id), devolucion(700_000n))).estado).toBe(
+      201,
+    );
+    const revPena = await comoMiembro(
+      'dueno',
+      'POST',
+      `${rutaPagos(a.id)}/${idPena}/reverso`,
+      reverso(),
+    );
+    expect(revPena.estado, revPena.texto).toBe(201);
+    const resto = await comoMiembro('dueno', 'POST', rutaPagos(a.id), devolucion(300_000n));
+    expect(resto.estado, resto.texto).toBe(201);
+    const c = ResultadoDeMovimiento.parse(resto.json).cobro;
+    expect(c.pagado.unidades).toBe('0');
+    expect(c.saldo.unidades).toBe('0');
+  }, 60_000);
+
+  it('dos REVERSOS simultáneos del mismo pago: uno 201 y otro 409; una sola fila REVERSO', async () => {
+    const a = archivos.reversos;
+    const p = await pagar('dueno', a.id, 2_000n);
+    const ruta = `${rutaPagos(a.id)}/${p.movimiento.id}/reverso`;
+    const rs = await Promise.all([
+      comoMiembro('dueno', 'POST', ruta, reverso()),
+      comoMiembro('dueno', 'POST', ruta, reverso()),
+    ]);
+    expect(rs.map((r) => r.estado).sort()).toEqual([201, 409]);
+    const perdedor = rs.find((r) => r.estado === 409);
+    expect(codigo(perdedor?.json)).toBe('MOVIMIENTO_YA_REVERSADO');
+    const filas = await pagosEnBase(TENANT_A, a.id);
+    expect(filas.filter((f) => f.reverso_de_id === p.movimiento.id)).toHaveLength(1);
+  });
+
+  it('dos DEVOLUCIONES simultáneas que juntas pasarían lo pagado: una 201 y otra 422 (candado por archivo)', async () => {
+    const a = archivos.carrera; // cancelado por la prueba de la carrera: la devolución vale en cualquier estado
+    const antes = BigInt((await cobroDe('dueno', a.id)).pagado.unidades);
+    expect(antes).toBeGreaterThan(0n);
+    // Cada una pide más de la mitad de lo pagado: las dos juntas no caben.
+    const mitadMas = antes / 2n + 1n;
+    const rs = await Promise.all([
+      comoMiembro('dueno', 'POST', rutaPagos(a.id), devolucion(mitadMas)),
+      comoMiembro('dueno', 'POST', rutaPagos(a.id), devolucion(mitadMas)),
+    ]);
+    expect(rs.map((r) => r.estado).sort()).toEqual([201, 422]);
+    expect(codigo(rs.find((r) => r.estado === 422)?.json)).toBe('DEVOLUCION_EXCEDE_LO_PAGADO');
+    expect((await cobroDe('dueno', a.id)).pagado.unidades).toBe((antes - mitadMas).toString());
+  });
+
+  it('la misma clave con otro pagador o con otro tipo: 409; con los uuid en mayúsculas: 200 (C2)', async () => {
+    const a = archivos.reversos;
+    const cuerpo = pago(1_500n, { pagadorId: agencias.A.contacto });
+    expect((await comoMiembro('dueno', 'POST', rutaPagos(a.id), cuerpo)).estado).toBe(201);
+
+    const sinPagador = { ...cuerpo, pagadorId: undefined };
+    const otroPagador = await comoMiembro('dueno', 'POST', rutaPagos(a.id), sinPagador);
+    expect(otroPagador.estado).toBe(409);
+    expect(codigo(otroPagador.json)).toBe('CLAVE_DE_IDEMPOTENCIA_REUTILIZADA');
+
+    const otroTipo = await comoMiembro(
+      'dueno',
+      'POST',
+      rutaPagos(a.id),
+      devolucion(1_500n, { claveIdempotencia: cuerpo.claveIdempotencia }),
+    );
+    expect(otroTipo.estado).toBe(409);
+    expect(codigo(otroTipo.json)).toBe('CLAVE_DE_IDEMPOTENCIA_REUTILIZADA');
+
+    // El mismo reintento con la clave, el pagador y el `:id` del archivo en MAYÚSCULAS es el mismo.
+    const enMayusculas = await comoMiembro('dueno', 'POST', rutaPagos(a.id.toUpperCase()), {
+      ...cuerpo,
+      claveIdempotencia: cuerpo.claveIdempotencia.toUpperCase(),
+      pagadorId: agencias.A.contacto.toUpperCase(),
+    });
+    expect(enMayusculas.estado, enMayusculas.texto).toBe(200);
+  });
 });
