@@ -6999,7 +6999,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316]
     acceptance:
       - "Buscar un id devuelve algo que la pantalla resuelve; «cotizaciones» y «seguimientos» devuelven su módulo"
@@ -7007,6 +7007,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T02:10:00.000Z
+    evidence: "Integrada en main por el PR #374 (b878e06) con los 14 checks en verde, incluido navegador en el PR. La paleta (Ctrl+K y lupa móvil) busca archivos de viaje con listarArchivos, la misma fuente que /viajes y solo con archivo.ver; «File 1043 — San Andrés, Colombia» abre /viajes?id=; filtro «Archivos»; todos los módulos de la tabla de navegación salen como comando y el título va primero («seguimientos» + Enter lleva a Seguimientos, ya no a Hoy); en modo real solo se indexa lo que la pantalla también lee; error de carga con «Reintentar» y sin console.error. SIN verificar con la API real: el modo real solo se cubrió con spec y variables de entorno. Cola: T-403 a T-406."
   - id: T-320
     title: 'N4: móvil con barra inferior de 5 y hoja «Más»'
     type: feature
@@ -7085,7 +7087,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-323]
     acceptance:
       - "Tabla por agencia con color (R12, no enum), asignación a lo que decida T-323, RLS con USING y WITH CHECK, sembrado por defecto"
@@ -7093,6 +7095,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: datos
+    done_at: 2026-11-21T02:10:00.000Z
+    evidence: "Integrada en main por el PR #372 (1857a42) con los 15 checks en verde, incluidos aislamiento-tenants y test (la migración solo se ejerce en el CI: aquí no hay Postgres). Migración 20261121110000: tablas etiquetas y conversacion_etiquetas con tenant_id, RLS ENABLE+FORCE con USING y WITH CHECK, claves foráneas compuestas, privilegios solo para viajapro_app, permiso etiquetas.administrar solo para DUENO, siembra y copia por agencia; pruebas E1 a E7. Dos auditorías (la de la sesión madre y auditor-seguridad) sin bloqueantes. Cola: T-395 a T-402."
   - id: T-325
     title: 'B2: API de etiquetas (gestionar, asignar, filtrar)'
     type: feature
@@ -7688,7 +7692,7 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: done
     human_required: true
     depends_on: [T-307]
     acceptance:
@@ -7700,13 +7704,14 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20). now() es la hora de inicio de la transacción: viajapro_app puede abrir una, esperar y escribir, y las fechas quedan antedatadas (migración 20261120160000, líneas 44-45 y 57)"
     created_at: 2026-11-21T00:00:00.000Z
     owner: datos
+    notes: "Integrada en #361 (migración 20261120170000, pruebas P-8 y P-9). Auditoría de seguridad: integrable, sin bloqueantes; aislamiento-tenants 173/173. Su cola es T-408, T-409 y T-410."
   - id: T-376
     title: "Endurecer el cinturón de la migración 20261120160000 sobre proteger_verificacion_del_perfil"
     type: security
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: done
     human_required: true
     depends_on: [T-307]
     acceptance:
@@ -7718,6 +7723,7 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): las comprobaciones finales solo miran la línea del UPDATE y aceptan un proconfig con ajustes de más"
     created_at: 2026-11-21T00:00:00.000Z
     owner: datos
+    notes: "Integrada en #361 junto con T-375, en la misma migración (cinturón con el cuerpo entero de la función y proconfig exacto). Su cola es T-408."
   - id: T-377
     title: "Mutación que cubra T-307 (M24) y evaluar correr mutaciones-aislamiento.mjs en el CI"
     type: test
@@ -8003,3 +8009,231 @@ tasks:
     source: "cola de T-318 (2026-11-21): quedó fuera de su alcance"
     created_at: 2026-11-21T01:40:00.000Z
     owner: frontend
+  - id: T-395
+    title: "El cinturón final de la migración de etiquetas también vigila los privilegios de columna"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "La matriz de privilegios del cinturón final suma NOT has_any_column_privilege (SELECT, INSERT, UPDATE) para todo rol de login que no sea viajapro_app, como el precedente 20261117120000:766-771"
+      - "Corrección en una migración nueva (la aplicada no se edita) y spec que falla si se concede una columna a viajapro_webhook"
+    source: "auditoría de T-324 (2026-11-21), BAJO, aislamiento"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-396
+    title: "E1 y el cinturón de etiquetas vigilan también los roles NOLOGIN dueños de funciones"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "E1 y el cinturón incluyen viajapro_registro, _planificador, _metricas, _ajustes y _accesos y esperan que no tengan privilegios sobre etiquetas ni conversacion_etiquetas"
+      - "Spec que falla si alguno recibe un permiso"
+    source: "auditoría de T-324 (2026-11-21), BAJO, aislamiento"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-397
+    title: "La comprobación de PUBLIC del cinturón de etiquetas mira todos los privilegios, no solo SELECT"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "La comprobación de concesiones a PUBLIC cubre SELECT, INSERT, UPDATE y DELETE en las dos tablas nuevas"
+    source: "revisión de la sesión madre de #372 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-398
+    title: "Corregir el comentario falso de que el cambio del CHECK de roles no bloquea escrituras"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "El comentario de migration.sql (líneas 44-45 y 62-63) y el precedente 20261118100000 dicen la verdad: dentro de una transacción DROP/ADD CHECK toma ACCESS EXCLUSIVE sobre roles y las claves foráneas SHARE ROW EXCLUSIVE hasta el COMMIT"
+      - "La corrección va en una migración o nota nueva, no editando la aplicada; se anota la condición para separar el CHECK cuando haya volumen"
+    source: "auditoría de T-324 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-399
+    title: "Normalizar nombres de etiqueta: NFC y rechazo de espacios Unicode, ancho cero y controles bidireccionales"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "La API normaliza a NFC y convierte los espacios Unicode en U+0020 antes de recortar; rechaza U+200B-200D, U+FEFF, U+202A-202E, U+2066-2069 y los controles C1"
+      - "Un CHECK adicional en la base impide los mismos caracteres; spec con «Pagado », «Pagado\\u200b» y U+202E"
+    source: "auditoría de T-324 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: backend
+  - id: T-400
+    title: "Los errores de etiquetas duplicadas no registran el nombre (R10)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Los errores 23505 y 23514 de Postgres se convierten en ETIQUETA_DUPLICADA y en un error de forma sin registrar message, meta ni detail, que traen el nombre de la etiqueta"
+      - "Spec: crear dos veces la misma etiqueta no deja el nombre en ningún log, evento ni outbox"
+    source: "auditoría de T-324 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: backend
+  - id: T-401
+    title: "La sesión de demo del dueño incluye etiquetas.administrar antes de construir la pantalla de etiquetas"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "MOCK_SESION_DUENO incluye el permiso etiquetas.administrar y la asesora no; spec de permisos de la demo"
+    source: "revisión de la sesión madre de #372 (2026-11-21), BAJO; antes de T-326"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-402
+    title: "crear_agencia siembra las etiquetas iniciales de la agencia nueva"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "Una agencia creada por el registro nace con Pagado, Pago pendiente y Seguimiento, o se decide por escrito que se siembran al incorporarla"
+      - "Spec de aislamiento si se toca crear_agencia (ruta protegida: auditor y aprobación de la madre)"
+    source: "revisión de la sesión madre de #372 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-403
+    title: "La paleta busca contactos y conversaciones en modo real (con debounce)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "En modo real la paleta consulta listarContactos(buscar) y consultarBandeja({buscar}) con debounce y abre la misma ficha o conversación que las pantallas"
+      - "Error y vacío con salida, sin console.error; spec del debounce"
+    source: "cola de T-319 (2026-11-21): en modo real hoy solo salen módulos y archivos"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-404
+    title: "En la paleta, «1043» muestra el archivo de viaje antes que un chat que coincide por teléfono"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "Una consulta numérica que coincide con un archivo de viaje y con un teléfono ordena de forma que el archivo no quede detrás del chat, o la regla del orden queda escrita y probada"
+    source: "cola de T-319 (2026-11-21)"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-405
+    title: "La paleta no repite «Hoy» como resultado y como etiqueta de grupo"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "El grupo y el resultado no se llaman igual en la lista de la paleta; verificado con captura a 390 y 1440 px"
+    source: "cola de T-319 (2026-11-21), cosmético"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-406
+    title: "El resultado de un archivo de viaje en la paleta muestra el titular"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "El subtítulo del archivo trae el nombre del titular; hoy ResumenDeArchivo solo trae contactoId. Se resuelve ampliando el resumen del servidor o con una lectura ligera (sin bajar la ficha completa, R10)"
+    source: "cola de T-319 (2026-11-21)"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-407
+    title: "Añadir al guion de mutaciones de aislamiento las tres de etiquetas (ruta protegida)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "packages/database/scripts/mutaciones-aislamiento.mjs gana las tres mutaciones propuestas en la revisión de #372 (quitar la política, WITH CHECK (true), clave foránea simple) y cada una pone en rojo su prueba E1 a E7"
+      - "Ruta protegida: auditor-seguridad y aprobación de la sesión madre antes de integrar"
+    source: "revisión de la sesión madre de #372 (2026-11-21)"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-408
+    title: "El cinturón de perfiles_de_agencia y P-9 no detectan localtimestamp, current_time, localtime ni timeofday()"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: [T-375]
+    acceptance:
+      - "La expresión de P-9 y la del cinturón de la próxima migración incluyen localtimestamp, current_time, localtime y timeofday()"
+      - "Las dos comprobaciones ignoran los comentarios del cuerpo de la función, o se decide por escrito que no hace falta"
+      - "Va con una migración nueva (la 20261120170000 ya está aplicada y no se edita)"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditoría de seguridad de T-375 y T-376 (cola, 2026-11-21): el cinturón compara texto y no distingue comentarios ni cubre esas funciones de hora"
+    created_at: 2026-11-21T02:30:00.000Z
+    owner: datos
+  - id: T-409
+    title: "Fijar y documentar la versión de PostgreSQL de Neon (el esquema ya exige 15 o más)"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "La versión de Postgres de Neon (staging y producción) queda escrita en ADR-0028 o en el runbook de despliegue, con la fecha en que se comprobó"
+      - "Se anota qué migraciones dependen de una versión mínima (regexp_count, de Postgres 15) y se fija esa versión al crear el proyecto de producción"
+    files:
+      - docs/03-adr
+    source: "auditoría de seguridad de T-375 (cola, 2026-11-21): la versión no está escrita en ningún ADR ni documento de despliegue y las migraciones ya usan regexp_count"
+    created_at: 2026-11-21T02:30:00.000Z
+    owner: devops
+  - id: T-410
+    title: "Darle un tiempo límite explícito a la prueba P-8 de aislamiento.spec.ts"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-375]
+    acceptance:
+      - "P-8 (espera de 1,2 s dos veces, unos 2,4 s en total) lleva un tiempo límite explícito, de unos 15 s, porque vitest usa 5 s por defecto y aislamiento-tenants es un check obligatorio"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditoría de seguridad de T-375 (cola, 2026-11-21): en un CI lento la prueba podría agotar el tiempo por defecto"
+    created_at: 2026-11-21T02:30:00.000Z
+    owner: qa
