@@ -52,10 +52,18 @@ export abstract class PuertoArchivoParaCobro {
   /**
    * Archivos ABIERTOS de la agencia, por fecha de salida y número. Hasta `limite` filas: quien llama
    * pide una más que las que muestra para saber si hubo recorte.
+   *
+   * `deAsesor` es OBLIGATORIO y sin valor por defecto (T-528): olvidarlo no compila, y olvidarlo
+   * era devolver toda la agencia. `null` = sin filtro de asesor, que es lo que pide la pantalla de
+   * cobros (hoy muestra la agencia entera a cualquier miembro: T-490, fuera de este cambio).
+   * Con un id, son los archivos cuya OPORTUNIDAD tiene a esa persona como asesor actual
+   * (ADR-0035 §2); los que no tienen oportunidad, o cuya oportunidad no tiene asesor, no son de
+   * nadie y quedan fuera. Quien llama desde reportes lo deriva del `AlcanceDeReporte`, que sale de
+   * la sesión: este puerto nunca lo recibe del cliente.
    */
   abstract listarAbiertos(
     tx: ClienteTenant,
     tenantId: string,
-    filtros: { limite: number },
+    filtros: { limite: number; deAsesor: string | null },
   ): Promise<ArchivoParaCobro[]>;
 }

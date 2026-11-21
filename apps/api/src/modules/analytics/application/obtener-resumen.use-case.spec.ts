@@ -2,11 +2,15 @@ import type { Permiso } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
 import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
+  type CobrosAgregados,
+  type CotizacionesAbiertasAgregadas,
   type CotizacionesAgregadas,
+  PuertoCobrosParaReportes,
   PuertoCotizacionesParaReportes,
   PuertoOportunidadesParaReportes,
   PuertoRespuestaParaReportes,
   type RangoDeReporte,
+  TOPE_DE_ARCHIVOS_PARA_COBRAR,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ObtenerResumenDeReportes } from './obtener-resumen.use-case.js';
@@ -53,6 +57,40 @@ class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
       ],
     });
   }
+
+  abiertasLlamadas: Array<{ tenantId: string; alcance: AlcanceDeReporte; ahora: Date }> = [];
+  abiertas(
+    tenantId: string,
+    alcance: AlcanceDeReporte,
+    ahora: Date,
+  ): Promise<CotizacionesAbiertasAgregadas> {
+    this.abiertasLlamadas.push({ tenantId, alcance, ahora });
+    return Promise.resolve({
+      borradores: 2,
+      enviadas: 5,
+      hastaTresDias: 1,
+      deCuatroASiete: 1,
+      masDeSiete: 3,
+    });
+  }
+}
+
+class CobrosFalsos extends PuertoCobrosParaReportes {
+  llamadas: Array<{ tenantId: string; alcance: AlcanceDeReporte; tope: number }> = [];
+  porCobrar(tenantId: string, alcance: AlcanceDeReporte, tope: number): Promise<CobrosAgregados> {
+    this.llamadas.push({ tenantId, alcance, tope });
+    return Promise.resolve({
+      archivos: [
+        {
+          moneda: 'COP',
+          estado: 'ABIERTO',
+          ventaUnidades: 3_000_000n,
+          sumas: { pagos: 1_000_000n, devoluciones: 0n, ajustes: 0n, penalidades: 0n },
+        },
+      ],
+      truncado: false,
+    });
+  }
 }
 
 class OportunidadesFalsas extends PuertoOportunidadesParaReportes {
@@ -84,7 +122,8 @@ function ejecutar(permisos: Permiso[], asesorId?: string, usuarioId: string | nu
   const cotizaciones = new CotizacionesFalsas();
   const oportunidades = new OportunidadesFalsas();
   const respuesta = new RespuestaFalsa();
-  const caso = new ObtenerResumenDeReportes(cotizaciones, oportunidades, respuesta);
+  const cobros = new CobrosFalsos();
+  const caso = new ObtenerResumenDeReportes(cotizaciones, oportunidades, respuesta, cobros);
   const resultado = ContextoTenant.ejecutarCon(
     {
       tenantId: TENANT,
@@ -100,7 +139,7 @@ function ejecutar(permisos: Permiso[], asesorId?: string, usuarioId: string | nu
         ...(asesorId === undefined ? {} : { asesorId }),
       }),
   );
-  return { resultado, cotizaciones, oportunidades, respuesta };
+  return { resultado, cotizaciones, oportunidades, respuesta, cobros };
 }
 
 describe('ObtenerResumenDeReportes', () => {
@@ -140,12 +179,15 @@ describe('ObtenerResumenDeReportes', () => {
   // --- alcance (T-342, ADR-0035 §1 y §4) -------------------------------------------------------
 
   it('sin reportes.ver_agencia el alcance es PROPIO y LOS TRES puertos lo reciben', async () => {
-    const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar([]);
+    const { resultado, cotizaciones, oportunidades, respuesta, cobros } = ejecutar([]);
     const r = await resultado;
     const propio = { nivel: 'PROPIO', asesorId: YO };
     expect(cotizaciones.llamadas[0]?.alcance).toEqual(propio);
     expect(oportunidades.alcances).toEqual([propio]);
     expect(respuesta.alcances).toEqual([propio]);
+    // T-528: los dos puertos nuevos reciben EL MISMO alcance, no uno propio suyo.
+    expect(cotizaciones.abiertasLlamadas[0]?.alcance).toEqual(propio);
+    expect(cobros.llamadas[0]?.alcance).toEqual(propio);
     expect(r.alcance).toBe('PROPIO');
     expect(r.asesorId).toBe(YO);
   });
@@ -164,6 +206,7 @@ describe('ObtenerResumenDeReportes', () => {
       response: { error: { code: 'PERMISO_DENEGADO' } },
     });
     expect(cotizaciones.llamadas).toHaveLength(0);
+    expect(cotizaciones.abiertasLlamadas).toHaveLength(0);
   });
 
   it('con reportes.ver_agencia: sin asesor es toda la agencia, con asesor filtra', async () => {
@@ -190,5 +233,46 @@ describe('ObtenerResumenDeReportes', () => {
     await expect(resultado).rejects.toMatchObject({
       response: { error: { code: 'PERMISO_DENEGADO' } },
     });
+  });
+
+  // --- cotizaciones abiertas y por cobrar (T-528) ----------------------------------------------
+
+  it('la respuesta trae SIEMPRE las dos cifras de hoy, con el alcance de la sesión', async () => {
+    const { resultado, cotizaciones, cobros } = ejecutar([]);
+    const r = await resultado;
+
+    expect(r.cotizacionesAbiertas).toEqual({
+      total: 7,
+      borradores: 2,
+      enviadas: 5,
+      porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 3 },
+    });
+    // 3.000.000 vendidos − 1.000.000 pagados.
+    expect(r.porCobrar).toEqual({
+      porMoneda: [{ moneda: 'COP', archivos: 1, saldo: { unidades: '2000000', moneda: 'COP' } }],
+      truncado: false,
+    });
+
+    expect(cotizaciones.abiertasLlamadas[0]?.tenantId).toBe(TENANT);
+    expect(cobros.llamadas[0]?.tenantId).toBe(TENANT);
+    expect(cobros.llamadas[0]?.tope).toBe(TOPE_DE_ARCHIVOS_PARA_COBRAR);
+  });
+
+  it('con reportes.ver_agencia y filtro de asesor, los dos puertos nuevos lo reciben', async () => {
+    const { resultado, cotizaciones, cobros } = ejecutar(['reportes.ver_agencia'], OTRO);
+    await resultado;
+    const esperado = { nivel: 'AGENCIA', asesorId: OTRO };
+    expect(cotizaciones.abiertasLlamadas[0]?.alcance).toEqual(esperado);
+    expect(cobros.llamadas[0]?.alcance).toEqual(esperado);
+  });
+
+  it('un solo reloj para toda la respuesta: `ahora` no se lee dos veces', async () => {
+    const antes = Date.now();
+    const { resultado, cotizaciones } = ejecutar([]);
+    await resultado;
+    const ahora = cotizaciones.abiertasLlamadas[0]?.ahora;
+    expect(ahora).toBeInstanceOf(Date);
+    expect(ahora!.getTime()).toBeGreaterThanOrEqual(antes);
+    expect(ahora!.getTime()).toBeLessThanOrEqual(Date.now());
   });
 });

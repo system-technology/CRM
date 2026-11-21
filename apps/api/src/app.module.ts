@@ -8,6 +8,7 @@ import { CrmModule } from './modules/crm/crm.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { InboxModule } from './modules/inbox/inbox.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { PaymentsReportesModule } from './modules/payments/payments-reportes.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { QuotingPuertosModule } from './modules/quoting/quoting-puertos.module.js';
 import { QuotingModule } from './modules/quoting/quoting.module.js';
@@ -48,6 +49,8 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
     BookingPuertosModule,
     // T-330 (ADR-0034): cobros del viajero. Lee el archivo por el puerto de `BookingPuertosModule`.
     PaymentsModule,
+    // T-528: el puerto de cobros hacia `analytics`, aparte por la misma razón que CrmReportesModule.
+    PaymentsReportesModule,
   ],
   controllers: [SaludController],
   providers: [
