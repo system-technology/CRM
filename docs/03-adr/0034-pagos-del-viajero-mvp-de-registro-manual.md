@@ -62,12 +62,12 @@ estado de cobro calculados en el servidor en cada lectura. Lo que no está en §
 
 ### 1. Módulo y fronteras (R4)
 
-`apps/api/src/modules/payments/` con sus cuatro capas. Nombres de código según el lenguaje ubicuo:
+`payments` (carpeta nueva de módulos de la API; aún no existe) con sus cuatro capas. Nombres de código según el lenguaje ubicuo:
 `Payment` (pago), `Refund` (devolución), `Reversal` (reverso), `CollectionStatus` (estado de cobro),
 `collectionDueDate` (fecha límite de cobro).
 
 - **Lo que `payments` necesita del archivo** lo pide por un puerto **declarado por él**, en
-  `apps/api/src/shared/puertos/puertos-hacia-booking.ts`, implementado en `booking-puertos.module.ts`,
+  `puertos-hacia-booking.ts` (en los puertos compartidos de la API), implementado en `booking-puertos.module.ts`,
   con la misma forma que `PuertoArchivoDeUnAviso` (recibe `tx` y `tenantId`, nunca abre otra
   transacción): `PuertoArchivoParaCobro.leer(tx, tenantId, travelFileId)` y `.listarAbiertos(tx,
   tenantId, filtros)` devuelven `{ id, numero, contactoId, destino, fechaSalida, estado,
@@ -154,7 +154,7 @@ Luhn. Es una red contra el asesor que pega el número de la tarjeta, no una gara
 
 ### 3. Saldo y estado de cobro: derivados, en el servidor
 
-Funciones puras en `packages/domain/src/cobro.ts`, sobre `Money` (enteros `bigint`, sin `float`, sin
+Funciones puras en `cobro.ts` (nuevo, en el paquete `domain`), sobre `Money` (enteros `bigint`, sin `float`, sin
 redondeo: solo sumas y restas en la misma moneda):
 
 ```
@@ -259,7 +259,7 @@ T-333 («Hoy» y la campana) y de los recordatorios futuros, sin reabrir el caso
 
 **Entra:** `pagos` y `plazos_de_cobro` con RLS; registrar pago, devolución y reverso, idempotentes;
 saldo, situación y estado de cobro calculados; fecha límite por defecto y editable; tres permisos; dos
-eventos; rutas en `packages/contracts/src/cobros.ts`:
+eventos; rutas en `cobros.ts` (nuevo, en el paquete `contracts`):
 
 - `POST /api/v1/archivos/:id/pagos` — pago o devolución (`cobro.registrar`).
 - `POST /api/v1/archivos/:id/pagos/:pagoId/reverso` — con motivo (`cobro.reversar`).
@@ -314,7 +314,7 @@ la sesión y no del cuerpo; que logs y outbox no lleven `nota` ni `referencia`. 
 | PR | Contenido | Revisión |
 |---|---|---|
 | **T-329** — Migración | Enum, `pagos`, `plazos_de_cobro`, `UNIQUE (id, tenant_id, moneda_iso)` en `travel_files`, FK, CHECK, índices, disparadores, `privilegios_declarados`, permisos `cobro.*` y su siembra, cinturón; `aislamiento.spec.ts` y guardia. Sin código de aplicación. Ruta protegida (R11) | `datos` + `auditor-seguridad` |
-| **T-330** — Dominio y API | `packages/domain/src/cobro.ts` (saldo, situación, estado, fecha límite) con pruebas de los umbrales; contratos `cobros.ts`; módulo `payments`; `PuertoArchivoParaCobro` en `booking`; las cinco rutas; idempotencia; eventos. Absorbe la mitad «abonos y saldo» de T-283 | `backend` |
+| **T-330** — Dominio y API | `cobro.ts` (nuevo, en el paquete `domain`) (saldo, situación, estado, fecha límite) con pruebas de los umbrales; contratos `cobros.ts`; módulo `payments`; `PuertoArchivoParaCobro` en `booking`; las cinco rutas; idempotencia; eventos. Absorbe la mitad «abonos y saldo» de T-283 | `backend` |
 | **T-331**, **T-332** — Web | Registrar y ver el saldo en el archivo; vista «quién pagó y quién debe» | `frontend` |
 
 T-330 depende de T-329; las pantallas, de T-330. La vista de T-332 tiene una meta de rendimiento
