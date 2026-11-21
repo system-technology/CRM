@@ -7321,7 +7321,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
+    done_at: 2026-11-21T12:20:00.000Z
     depends_on: []
     acceptance:
       - "Catálogo de reportes por nivel: asesor (lo suyo) y administrador (toda la agencia y su equipo), apoyado en 06-roadmap-de-reportes.md y T-137 a T-148"
@@ -7329,6 +7330,7 @@ tasks:
       - "Móvil primero: qué se ve en 390 px sin desplazamiento lateral y qué se resume; preguntas al dueño de JD Tours en el roadmap §4"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
+    notes: "Entregable en main: docs/08-roadmap/11-reportes-por-nivel-catalogo.md (469 lineas), que entro con #392 dentro de la consolidacion documental #401. Cubre los tres criterios: catalogo por nivel (asesor y administracion), que va en «Hoy» frente a Reportes con consultas, filtros y exportaciones, y movil primero a 390 px con las preguntas al dueno de JD Tours. El PR #394 propuso un segundo documento de 366 lineas para esta misma tarea y el propietario lo cerro sin integrar por duplicado, fijando #392 como canonico por ser mas detallado; lo que #394 tenia de mas se fundio en el. Registro tardio (R14): la tarea se quedo en ready meses despues de estar entregada, y eso invitaba a reescribir un catalogo que ya existia. Lo unico de #394 que NO sobrevivio es el «ancho util de la tablet», que no aparece en el documento integrado; si hace falta, se recupera de la rama i/T-339-reportes-por-nivel, que sigue en el servidor."
     owner: analista-datos
   - id: T-340
     title: "F1: ADR de los niveles de acceso a reportes (propio, equipo, agencia)"
