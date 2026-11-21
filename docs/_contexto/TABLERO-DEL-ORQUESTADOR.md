@@ -270,6 +270,44 @@ llamada **no se hace**. La barrera es real; lo que falta es la segunda, en el ad
 estrechamiento sale de un `if` sobre un discriminante, hay comprobación en ejecución aunque el tipo
 desaparezca. La hija lo clasificó bien como cola (T-580); yo lo verifiqué en vez de creerla.
 
+## 1.13 LA CADENA DE MADRES SE AGOTÓ: profundidad de linaje 8 de 8 (2026-11-21, 19:12 UTC)
+
+**El hecho, verificado contra el error literal de la herramienta, no deducido.** La séptima madre
+(`session_01R81Xh4xCBnaheEL9Gxa6TL`) intentó crear sus hijas y recibió:
+
+> «this session is at lineage depth 8 (limit 8), so it cannot start sessions, or create, fire or
+> re-arm routines and reminders. **No user or organization setting changes this limit.**»
+
+`get_session` lo confirma en su propio cuerpo: `"lineage":{"depth":8,"limit":8}`.
+
+**Qué significa para la forma de trabajar.** Cada madre nacía de la anterior con `create_session`, y
+eso gastaba un escalón por relevo. Siete relevos después, no queda ninguno. Desde esta sesión:
+
+1. **No se pueden crear sesiones hijas.** El reparto a hijas, que es el método de los siete turnos
+   anteriores, no está disponible.
+2. **No se puede crear la madre siguiente.** El protocolo de relevo no se puede ejecutar.
+3. **No se puede crear ni rearmar la tarea programada.** La que existe apunta a
+   `session_01R81Xh5mmenvvqrBAdaBUW1`, **archivada en este mismo turno**: sus despertares no llegan a
+   ninguna sesión viva. **El modo desatendido está parado de hecho.**
+
+**La salida, y solo la tiene el propietario:** abrir una sesión nueva **desde la raíz**, no como
+relevo de ninguna otra. Vuelve a profundidad 1 y recupera los ocho escalones. Está escrito como
+punto 19 de `PENDIENTES-DEL-PROPIETARIO.md`.
+
+**La lección para quien venga, y es de método:** el relevo por `create_session` **tiene un presupuesto
+finito que nadie estaba contando**. Ninguno de los siete turnos miró `lineage.depth`, aunque
+`get_session` lo devuelve en cada vuelta, junto al `context_usage` que sí se mira religiosamente.
+*Se vigilaba el consumo de contexto y se ignoraba el consumo de la cadena.* **Mira `lineage.depth` en
+la misma llamada en la que miras `used_tokens`:** a partir de 6 conviene que el siguiente relevo nazca
+desde la raíz en vez de encadenarse.
+
+**El apaño que sí funciona mientras tanto, y sus límites.** Los **subagentes en proceso** (herramienta
+`Agent`, que `CLAUDE.md` §8 ya contempla con su lista de roles) **no** cuentan contra el linaje. Con
+`isolation: "worktree"` cada uno trabaja en su propio árbol y no se pisan en el único `checkout`.
+Pero: **no llevan las herramientas MCP de GitHub**, así que no abren PR —empujan la rama y la madre
+abre e integra—, **consumen contexto de la madre** en vez del suyo, y **mueren con la sesión**.
+Sirven para un lote; no sustituyen a la cadena.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
