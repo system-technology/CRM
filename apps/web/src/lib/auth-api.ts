@@ -116,6 +116,9 @@ export const MOCK_SESION_UNICA_AGENCIA: SesionActualTipo = {
       'cotizacion.escribir',
       'archivo.ver',
       'archivo.operar',
+      // ADR-0034 §6: el ASESOR ve y registra pagos; corregir (`cobro.corregir`) es del dueño.
+      'cobro.ver',
+      'cobro.registrar',
     ],
   },
 };
