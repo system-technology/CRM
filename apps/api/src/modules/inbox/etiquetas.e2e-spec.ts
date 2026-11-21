@@ -458,6 +458,9 @@ describe('topes', () => {
     expect(await admin.label.count({ where: { tenantId: TENANT_B } })).toBe(50);
     // La agencia A, con sus pocas etiquetas, sigue creando.
     expect((await crear('dueno', `Tope de A ${randomBytes(2).toString('hex')}`)).status).toBe(201);
+    // Se deshace el relleno: las pruebas siguientes crean etiquetas en B y toparían con las 50.
+    await admin.label.deleteMany({ where: { tenantId: TENANT_B, nombre: { startsWith: 'Tope ' } } });
+    expect(await admin.label.count({ where: { tenantId: TENANT_B } })).toBeLessThan(50);
   });
 
   it('10 etiquetas por conversación: la 11 es 422; repetir una puesta es idempotente aun en el tope', async () => {
