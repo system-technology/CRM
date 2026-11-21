@@ -121,12 +121,18 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
       await expect(iniciarSesionApi({ identificador: '', contrasena: '' })).rejects.toMatchObject({
         name: 'AuthApiError',
         code: 'ENTRADA_INVALIDA',
+        // Los dos campos llegan vacíos: el mensaje los PIDE, no manda «revisar» nada.
+        message: 'Escribe tu correo o usuario y tu contraseña para entrar.',
       });
-      const error = await iniciarSesionApi({ identificador: '', contrasena: '' }).catch((e) => e);
-      expect(error.message).not.toContain('too_small');
-      expect(error.message).not.toContain('path');
-      // Los dos campos llegan vacíos: el mensaje los PIDE, no manda «revisar» nada.
-      expect(error.message).toBe('Escribe tu correo o usuario y tu contraseña para entrar.');
+
+      const fallo: unknown = await iniciarSesionApi({
+        identificador: '',
+        contrasena: '',
+      }).catch((e: unknown) => e);
+      const mensaje = fallo instanceof Error ? fallo.message : String(fallo);
+      expect(mensaje).not.toContain('too_small');
+      expect(mensaje).not.toContain('path');
+      expect(mensaje).not.toContain('"code"');
     });
 
     it('mensajeDeErrorDeAcceso nunca devuelve un volcado, venga de donde venga', () => {
