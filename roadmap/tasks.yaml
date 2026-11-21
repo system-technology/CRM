@@ -9497,10 +9497,11 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: review
     acceptance:
       - "El catalogo de permisos vive en tres literales a mano (packages/contracts/src/identidad.ts, el CHECK roles_permisos_del_catalogo y packages/database/tests/permisos-de-reportes.spec.ts) y ninguna prueba compara los conjuntos"
       - "Una prueba lee pg_get_constraintdef del CHECK y lo contrasta con PERMISOS: falla si difieren en cualquier sentido"
+    notes: "Rama test/datos-T-505-permisos-check-vs-contratos: packages/database/tests/catalogo-de-permisos.spec.ts lee pg_get_constraintdef de roles_permisos_del_catalogo y lo compara con PERMISOS en los dos sentidos (el mensaje dice que permiso falta y en cual lado). permisos-de-reportes.spec.ts deriva CATALOGO_ANTERIOR de PERMISOS. Anade @viajapro/contracts como devDependency de packages/database (ruta protegida: aprobacion del propietario). Sin verificar en local (sin Postgres): pendiente del CI. En cola: DUENO_ANTES/ASESOR_ANTES/OPERACIONES_ANTES siguen a mano (son fotos historicas) y los CHECK de otras columnas de permisos no se comparan."
     source: "auditoria de #407, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
     owner: datos
