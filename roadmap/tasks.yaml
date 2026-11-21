@@ -7958,7 +7958,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: blocked
     depends_on:
       - T-316
       - T-327
@@ -7967,7 +7967,7 @@ tasks:
       - Se ve a 1440 y a 390 px; estados vacío y error
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     notes: "Reconciliación 2026-11-21: intacta (/viajes solo filtra por estado ABIERTO/CANCELADO y no tiene las
-      columnas de la hoja); sus dependencias T-316 y T-327 están hechas, pasa a ready."
+      columnas de la hoja); sus dependencias T-316 y T-327 están hechas, pasa a ready. || CORRECCION 2026-11-21 (madre del lote nocturno): estaba marcada ready y es FALSO. Su primer criterio exige las columnas de la hoja REAL del piloto y esa muestra NO existe en el repositorio (buscado: ningun .csv). El propio roadmap pone las preguntas al dueno ANTES de T-334 y la ultima es su hoja: cuantas reservas y que columnas, muestra sin nombres ni telefonos (R10). Es el punto 12 de PENDIENTES-DEL-PROPIETARIO. Pasa a blocked: la desbloquea el propietario, no una sesion de codigo."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-335
@@ -7976,15 +7976,15 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: ready
     depends_on:
-      - T-334
+      - T-332
     acceptance:
       - El CSV trae lo que el usuario ve; sin neto ni margen para quien no tenga cotizacion.ver_neto_y_margen
       - Escapado de celdas contra inyección de fórmulas
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     notes: "Confirmada P1: no hay exportación CSV de archivos de viaje (apps/web/src/lib/exportar-csv.ts existe
-      pero no lo usa /viajes); es del criterio de salida de JD Tours."
+      pero no lo usa /viajes); es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: su dependencia pasa de T-334 a T-332. Lo que hay que exportar es la tabla con total, pagado y saldo del criterio de salida (§3 punto 4), que la entrega T-332; NO hacen falta las columnas de la hoja del propietario, que son lo que bloquea a T-334. Se entrega junto a T-332 en el mismo PR."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-336
@@ -7993,7 +7993,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: blocked
     depends_on:
       - T-334
       - T-327
@@ -8002,7 +8002,7 @@ tasks:
         datos personales en los logs (R10)
       - "Auditoría de seguridad: importa datos de personas dentro de una sola agencia y no cruza agencias"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
-    notes: "Confirmada P1: no existe importación de la hoja; es del criterio de salida de JD Tours."
+    notes: "Confirmada P1: no existe importación de la hoja; es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: pasa a blocked por la misma razon que T-334. Importar la hoja del piloto exige la hoja del piloto."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-337
@@ -8525,7 +8525,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     human_required: true
     acceptance:
       - "Ya existe: migración 20261120150000_apodo_de_ingreso (usuarios.apodo, accesos_identidad.apodo,
@@ -8547,7 +8547,7 @@ tasks:
       verificacion por confiar en lecturas (T-547 y el e2e de T-529). Se queda backlog hasta que el arnes
       corra. Lo hecho si esta en main: migracion 20261120150000, AP1-AP12 en aislamiento.spec.ts. ||
       Reconciliación 2026-11-21: se mantiene la decisión del triaje de la madre (no cerrarla moviendo el
-      criterio a T-377). Solo se estrecha el texto a lo que falta."
+      criterio a T-377). Solo se estrecha el texto a lo que falta. || MEDIDA Y CERRADA 2026-11-21 por la madre del lote nocturno. El arnes YA se ejecuta en todo PR desde T-377. En la corrida 44934621499 (rama i/tablero-y-seguimientos-del-arnes, ya integrada en main, 18:18 UTC) M17 (el disparador NO borra el par OLD al cambiar identidad_id o tenant_id) y M21 (el disparador sin la rama del apodo: un cambio de apodo no llega al indice) salieron las dos ROJAS, que es exactamente el criterio que faltaba. Resumen de esa corrida: 23 mutaciones detectadas, 1 no aplicable. Rastro en la bitacora del lote."
   - id: T-373
     title: "ADR-0031 PR 2 API: identificador, centinela, tope por identidad y PATCH del apodo"
     type: feature
