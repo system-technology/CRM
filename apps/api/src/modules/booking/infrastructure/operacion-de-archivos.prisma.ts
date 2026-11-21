@@ -12,6 +12,7 @@ import {
   type FiltroDeArchivos,
   type OperacionesDelArchivo,
   RepositorioDeOperacionDeArchivos,
+  type RestriccionDeOportunidades,
 } from '../application/puertos-de-operacion.js';
 import type { Archivo, CancelacionDelArchivo, PasajeroNuevo } from '../domain/archivo.js';
 import {
@@ -250,13 +251,45 @@ class OperacionesPrisma implements OperacionesDelArchivo {
   }
 }
 
+/**
+ * La condición SQL de `RestriccionDeOportunidades` (T-549). Con la lista vacía se escribe `false`
+ * en vez de `= ANY('{}')`: dice lo mismo, se lee mejor y no depende de cómo se serialice un
+ * arreglo vacío.
+ */
+const porOportunidadDe = (restriccion: RestriccionDeOportunidades): Prisma.Sql => {
+  const enLaLista =
+    restriccion.oportunidades.length === 0
+      ? Prisma.sql`false`
+      : Prisma.sql`t.oportunidad_id = ANY(${[...restriccion.oportunidades]}::uuid[])`;
+  return restriccion.incluirSinOportunidad
+    ? Prisma.sql`t.oportunidad_id IS NULL OR ${enLaLista}`
+    : enLaLista;
+};
+
 @Injectable()
 export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperacionDeArchivos {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
     super();
   }
 
-  listar(filtro: FiltroDeArchivos): Promise<Archivo[]> {
+  /**
+   * Los `oportunidad_id` de los archivos ABIERTOS (T-549). Una sola columna, sin JOIN y sin tope:
+   * es la pregunta que hay que hacerle a `crm` entera, no sobre una ventana ya recortada.
+   */
+  oportunidadesDeArchivosAbiertos(): Promise<string[]> {
+    const { tenantId } = ContextoTenant.obtener();
+    return this.prisma.conTenant(async (tx) => {
+      const filas = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT DISTINCT t.oportunidad_id AS id
+          FROM travel_files t
+         WHERE t.tenant_id = ${tenantId}::uuid
+           AND t.estado = 'ABIERTO'
+           AND t.oportunidad_id IS NOT NULL`;
+      return filas.map((f) => f.id);
+    });
+  }
+
+  listar(filtro: FiltroDeArchivos, restriccion?: RestriccionDeOportunidades): Promise<Archivo[]> {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
       // T-251: el orden de «Reservas» se decide AQUÍ, antes del LIMIT. Ordenar en memoria después
@@ -271,6 +304,13 @@ export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperaci
         filtro.estado === 'TODOS'
           ? Prisma.empty
           : Prisma.sql`AND t.estado = ${filtro.estado}::estado_archivo_de_viaje`;
+      // T-549: la restricción por oportunidad va en el WHERE, no después del LIMIT. Los ids vienen
+      // de fuera (los puertos de `crm` e `identity`), así que aquí no hay JOIN con otro contexto:
+      // se comparan contra la columna propia `travel_files.oportunidad_id` (R4).
+      const porOportunidad =
+        restriccion === undefined
+          ? Prisma.empty
+          : Prisma.sql`AND (${porOportunidadDe(restriccion)})`;
       const ordenados = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT t.id
           FROM travel_files t
@@ -284,7 +324,7 @@ export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperaci
              WHERE b.tenant_id = ${tenantId}::uuid
              GROUP BY b.travel_file_id
           ) p ON p.travel_file_id = t.id
-         WHERE t.tenant_id = ${tenantId}::uuid ${porEstado}
+         WHERE t.tenant_id = ${tenantId}::uuid ${porEstado} ${porOportunidad}
          ORDER BY (CASE WHEN t.estado = 'ABIERTO' THEN p.proximo_plazo END) ASC NULLS LAST,
                   (CASE WHEN t.estado = 'ABIERTO' AND p.proximo_plazo IS NOT NULL
                         THEN t.numero END) ASC,

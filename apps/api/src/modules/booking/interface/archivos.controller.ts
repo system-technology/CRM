@@ -17,7 +17,9 @@
  * dos; un rol que la agencia componga sin ellos recibe 403.
  *
  * **`sin-responsable` (T-529) exige los dos**: es una lista de archivos huérfanos para que alguien
- * los tome, y quien no puede operarlos no tiene nada que hacer con ella.
+ * los tome, y quien no puede operarlos no tiene nada que hacer con ella. Su `limite` es el tope de
+ * la lista YA filtrada (T-549): mientras no venga `truncado`, lo que devuelve es el total de la
+ * agencia, no una muestra de los más urgentes.
  */
 import {
   Body,

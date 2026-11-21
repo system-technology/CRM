@@ -38,6 +38,7 @@ import { aDetalle, aResumen } from './archivo.mapper.js';
 import {
   RepositorioDeOperacionDeArchivos,
   type OperacionesDelArchivo,
+  type RestriccionDeOportunidades,
 } from './puertos-de-operacion.js';
 
 /** Quien lee solo ve el neto con este permiso. Sin contexto, no: se niega. */
@@ -51,10 +52,18 @@ export class OperarArchivoUseCase {
     private readonly archivos: RepositorioDeOperacionDeArchivos,
   ) {}
 
-  async listar(filtro: ListarArchivos): Promise<ListaDeArchivos> {
+  /**
+   * `restriccion` (T-549) acota qué archivos entran por su oportunidad ANTES del tope de filas.
+   * No sale del contrato: la decide `ListarArchivosSinResponsableUseCase` preguntando a `crm` y a
+   * `identity` por sus puertos. El orden, el neto y el mapeo siguen decidiéndose aquí, una vez.
+   */
+  async listar(
+    filtro: ListarArchivos,
+    restriccion?: RestriccionDeOportunidades,
+  ): Promise<ListaDeArchivos> {
     const verNeto = puedeVerNeto();
     const ahora = new Date();
-    const encontrados = await this.archivos.listar(filtro);
+    const encontrados = await this.archivos.listar(filtro, restriccion);
     const ordenados = encontrados
       .map((a) => ({ a, ...plazosDelArchivo(a.reservas, ahora) }))
       .sort((x, y) =>
