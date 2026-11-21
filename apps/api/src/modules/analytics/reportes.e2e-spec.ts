@@ -2,9 +2,10 @@
  * `GET /api/v1/reportes/resumen`, de punta a punta: aplicación ensamblada, HTTP real y PostgreSQL
  * con RLS. Dos agencias, y tres personas con sesión real:
  *
- *   · `duenoA`  — rol con `cotizacion.ver_neto_y_margen` en la agencia A.
- *   · `asesorA` — rol SIN ese permiso, en la misma agencia A.
- *   · `duenoB`  — rol con el permiso, en la agencia B.
+ *   · `duenoA`  — rol con `conversaciones.ver_todas` y `cotizacion.ver_neto_y_margen` (agencia A).
+ *   · `operacionesA` — con `ver_todas` pero SIN el margen, en la misma agencia A.
+ *   · `asesorA` — sin `ver_todas`: el resumen es de toda la agencia y le da 403 (D3, H1).
+ *   · `duenoB`  — rol con los permisos, en la agencia B.
  *
  * Lo que afirma:
  *   · las cifras de A salen de los datos de A y nada más: las de B (más caras, para que se note)
@@ -47,10 +48,16 @@ const FECHA = '2027-03-15';
 const correo = {
   duenoA: `fixture-aislamiento-rep-dueno-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   asesorA: `fixture-aislamiento-rep-asesor-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
+  operacionesA: `fixture-aislamiento-rep-oper-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   duenoB: `fixture-aislamiento-rep-dueno-b-${randomBytes(3).toString('hex')}${DOMINIO}`,
 };
 type Quien = keyof typeof correo;
-const identidadId: Record<Quien, string> = { duenoA: '', asesorA: '', duenoB: '' };
+const identidadId: Record<Quien, string> = {
+  duenoA: '',
+  asesorA: '',
+  operacionesA: '',
+  duenoB: '',
+};
 
 let app: INestApplication;
 let base: string;
@@ -128,7 +135,19 @@ async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigin
       tenantId: tenant,
       nombre: 'Dueño',
       clave: 'DUENO',
-      permisos: ['cotizacion.ver_neto_y_margen', 'cotizacion.escribir', 'crm.escribir'],
+      permisos: [
+        'conversaciones.ver_todas',
+        'cotizacion.ver_neto_y_margen',
+        'cotizacion.escribir',
+        'crm.escribir',
+      ],
+    },
+  });
+  const sinMargen = await admin.rol.create({
+    data: {
+      tenantId: tenant,
+      nombre: 'Operaciones',
+      permisos: ['conversaciones.ver_todas', 'cotizacion.escribir', 'crm.escribir'],
     },
   });
   const sinPermiso = await admin.rol.create({
@@ -177,6 +196,7 @@ async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigin
   return {
     conPermiso: conPermiso.id,
     sinPermiso: sinPermiso.id,
+    sinMargen: sinMargen.id,
     contacto: contacto.id,
     paquete: paquete.id,
   };
@@ -241,6 +261,7 @@ beforeAll(async () => {
   const b = await crearAgencia(TENANT_B, 'B', 2_100_000n);
   await persona('duenoA', TENANT_A, a.conPermiso);
   await persona('asesorA', TENANT_A, a.sinPermiso);
+  await persona('operacionesA', TENANT_A, a.sinMargen);
   await persona('duenoB', TENANT_B, b.conPermiso);
 
   // Oportunidades: A tiene 2 abiertas, 1 ganada y 1 perdida; B una abierta.
@@ -402,9 +423,16 @@ describe('GET /api/v1/reportes/resumen', () => {
     });
   });
 
-  it('quien NO tiene el permiso recibe lo mismo, sin neto ni margen: las claves no existen', async () => {
+  it('H1: un asesor (sin ver_todas) recibe 403 PERMISO_DENEGADO y ninguna cifra de la agencia', async () => {
+    const r = await reporte('asesorA');
+    expect(r.estado).toBe(403);
+    expect((r.json as unknown as { error: { code: string } }).error.code).toBe('PERMISO_DENEGADO');
+    expect(r.texto).not.toMatch(/ventasPorMoneda|cotizaciones|oportunidades/);
+  });
+
+  it('quien NO tiene el permiso de margen recibe lo mismo, sin neto ni margen: las claves no existen', async () => {
     const con = await reporte('duenoA');
-    const sin = await reporte('asesorA');
+    const sin = await reporte('operacionesA');
     expect(sin.estado).toBe(200);
 
     expect(sin.texto).not.toMatch(/neto|margen/i);
