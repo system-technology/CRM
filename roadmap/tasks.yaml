@@ -7400,7 +7400,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: review
+    status: backlog
     depends_on: [T-342]
     acceptance:
       - "Embudo, ventas por moneda, destino y asesor, tiempos de respuesta, cobros y salidas próximas, con comparación entre asesores y periodos"
@@ -7408,7 +7408,6 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
-    notes: "Piezas autocontenidas en apps/web (components/dashboard-admin/, lib/dashboard-admin-*): ventas por moneda, embudo y cotizaciones, tiempos de respuesta, comparación entre asesores, cobros por cobrar, salidas próximas y destinos, con el periodo anterior del mismo largo y sin margen salvo que la API envíe la clave. Enganchado en /reportes (apps/web/src/app/(app)/reportes/page.tsx): con la respuesta alcance AGENCIA y sin el filtro «Míos» se monta <DashboardAdmin periodo zona bloques=asesores,cobros,salidas,destinos /> debajo de ReportesListo. Solo esos cuatro bloques: ventas, embudo y respuesta ya los pinta ReportesListo (T-343) y repetirlos duplicaba cifras y data-testid; el resto de la página de T-343 no se tocó. Probado contra API simulada (vitest; capturas a 390, 820 y 1440 px en modo demostración, la página integrada a 390 y 1440); contra la API real y Postgres no se corrió nada. Cola de la duplicación: T-534. Dos límites que dejan cola: comparar asesores son N consultas (T-531) y no hay ventas por destino del periodo (T-532): hoy se muestran los destinos de los archivos abiertos, rotulados como tales."
   - id: T-345
     title: "F6: consultas del administrador (filtros, filtros guardados y exportar)"
     type: feature
@@ -9866,61 +9865,4 @@ tasks:
     source: "ADR-0033 aceptado, decision del propietario 2026-11-21"
     created_at: 2026-11-21T11:30:00.000Z
     owner: whatsapp
-  - id: T-535
-    title: "Errores de acceso: la web ya no pinta el mensaje del servidor sin mirarlo"
-    type: fix
-    phase: 1
-    priority: P1
-    effort: S
-    status: done
-    done_at: 2026-11-21T12:00:00.000Z
-    acceptance:
-      - "El staging mostro en la pantalla de ingreso el volcado de Zod en crudo (issues con validation, code y path). El build desplegado era viejo, pero el mecanismo seguia en main: el default de mapearErrorAcceso devolvia el message del servidor tal cual"
-      - "mapearErrorAcceso solo acepta el mensaje del servidor si parece una frase; un JSON serializado cae al generico. Prueba con el volcado literal que se vio en pantalla"
-      - "ENTRADA_INVALIDA pasa a estar mapeado y usa los details campo por campo que la API ya enviaba: dice que campo revisar en vez de «datos invalidos» a secas"
-    source: "captura del propietario en staging, 2026-11-21"
-    created_at: 2026-11-21T12:00:00.000Z
-    owner: frontend
 
-  - id: T-531
-    title: "Reportes de agencia: agregado por asesor en una sola consulta (hoy son N)"
-    type: feature
-    phase: 1
-    priority: P2
-    effort: M
-    status: backlog
-    depends_on: [T-342]
-    acceptance:
-      - "La respuesta de reportes con alcance AGENCIA trae las cifras por asesor (cotizaciones, ventas por moneda, oportunidades, respuesta), con la misma atribución de ADR-0035 §2 y sin margen salvo cotizacion.ver_neto_y_margen"
-      - "La web deja de pedir el resumen una vez por asesor (obtenerResumenesDeAsesoresApi) y de recortar a 12 asesores"
-    source: "T-344: la comparación entre asesores hace una consulta por asesor, en lotes de cuatro, con tope de 12"
-    created_at: 2026-11-21T23:00:00.000Z
-    owner: backend
-  - id: T-532
-    title: "Reportes de agencia: ventas del periodo por destino"
-    type: feature
-    phase: 1
-    priority: P2
-    effort: M
-    status: backlog
-    depends_on: [T-342]
-    acceptance:
-      - "ventasPorMoneda (o un campo hermano) agrupa por destino, una fila por destino y moneda, sin sumar monedas (R8), solo con alcance AGENCIA"
-      - "El bloque «Destinos» del dashboard de administración pasa de «archivos abiertos» a «ventas del periodo» y cambia su rótulo"
-    source: "T-344: la API de reportes no trae el destino; hoy el bloque usa los archivos abiertos de GET /cobros y lo dice"
-    created_at: 2026-11-21T23:00:00.000Z
-    owner: backend
-  - id: T-534
-    title: "Reportes de agencia: ventas, embudo y respuesta están dos veces (ReportesListo y los bloques de DashboardAdmin)"
-    type: chore
-    phase: 1
-    priority: P3
-    effort: M
-    status: backlog
-    depends_on: [T-344]
-    acceptance:
-      - "Decidir una sola versión de ventas por moneda, embudo y tiempos de respuesta para la vista de agencia: o ReportesListo adopta los bloques de DashboardAdmin (variación contra el periodo anterior, fracción bajo n = 20, margen por la clave), o se retiran los bloques de DashboardAdmin que no se usan"
-      - "Sin perder los specs de reportes-permisos.spec.tsx ni el caso H6 del e2e (data-testid reportes-reales): se migran, no se borran"
-    source: "T-344: al enganchar se vio que ReportesListo (T-343) y DashboardAdmin pintan lo mismo; se montó solo lo no repetido para no duplicar cifras ni data-testid"
-    created_at: 2026-11-21T23:30:00.000Z
-    owner: frontend
