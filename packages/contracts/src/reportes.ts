@@ -175,24 +175,9 @@ export type ResumenDeAgencia = z.infer<typeof ResumenDeAgencia>;
  * la prueba y no en producción (§9.3). La respuesta dice el `alcance` y el `asesorId` efectivos
  * para que la web titule con la verdad y no deduzca nada de los permisos.
  */
-export const ResumenDeReportesPorAlcance = z.discriminatedUnion('alcance', [
-  ResumenPropio,
-  ResumenDeAgencia,
-]);
-export type ResumenDeReportesPorAlcance = z.infer<typeof ResumenDeReportesPorAlcance>;
-
-/**
- * TRANSITORIO (T-342 → T-343, cola T-513). La web todavía construye y consume el resumen sin
- * `alcance`, y el carril de API no toca `apps/web`: hasta el PR del carril `b` las dos claves
- * nuevas viajan como opcionales en el tipo que la web importa.
- *
- * **El servidor no valida con este esquema**: declara y valida `ResumenDeReportesPorAlcance`.
- * Cuando la web lea `alcance`, este alias se borra y `ResumenDeReportes` vuelve a ser el nombre de
- * la unión.
- */
-export const ResumenDeReportes = z.object({
-  ...CIFRAS_DEL_RESUMEN,
-  alcance: AlcanceDelResumen.optional(),
-  asesorId: Id.nullable().optional(),
-});
+export const ResumenDeReportes = z.discriminatedUnion('alcance', [ResumenPropio, ResumenDeAgencia]);
 export type ResumenDeReportes = z.infer<typeof ResumenDeReportes>;
+
+/** Nombre anterior de la unión (T-342); se conserva como alias de exportación, sin segundo esquema. */
+export const ResumenDeReportesPorAlcance = ResumenDeReportes;
+export type ResumenDeReportesPorAlcance = ResumenDeReportes;

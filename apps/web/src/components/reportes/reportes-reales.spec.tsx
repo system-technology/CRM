@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReportesReales } from './reportes-reales';
 import * as api from '../../lib/reportes-api';
-import type { ResumenDeReportes } from '@viajapro/contracts';
+import type { ResumenDeAgencia, ResumenDeReportes } from '@viajapro/contracts';
 
 vi.mock('../../lib/crm-api', () => ({
   obtenerTableroPipeline: () => Promise.resolve({ columnas: [] }),
@@ -11,8 +11,10 @@ vi.mock('../../lib/crm-api', () => ({
 
 const ETAPA = '01932000-0000-7000-8000-0000000000e1';
 
-function base(extra: Partial<ResumenDeReportes> = {}): ResumenDeReportes {
+function base(extra: Partial<ResumenDeAgencia> = {}): ResumenDeReportes {
   return {
+    alcance: 'AGENCIA' as const,
+    asesorId: null,
     periodo: { desde: '2026-10-05T05:00:00.000Z', hasta: '2026-11-04T05:00:00.000Z' },
     cotizaciones: { creadas: 4, enviadas: 3, aceptadas: 1, tasaAceptacion: 33.3 },
     ventasPorMoneda: [

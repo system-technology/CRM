@@ -101,6 +101,8 @@ describe('reportes-logica (T-142)', () => {
 
   it('7. transformarResumenReporte maneja múltiples monedas sin sumarlas ni asumir COP', () => {
     const mockResumen: ResumenDeReportes = {
+      alcance: 'AGENCIA' as const,
+      asesorId: null,
       periodo: { desde: '2026-10-01T05:00:00.000Z', hasta: '2026-11-01T05:00:00.000Z' },
       cotizaciones: { creadas: 4, enviadas: 3, aceptadas: 1, tasaAceptacion: 33.3 },
       ventasPorMoneda: [
@@ -170,6 +172,8 @@ describe('reportes-logica (T-142)', () => {
 
   it('8. transformarResumenReporte preserva confidencial si el servidor lo entrega', () => {
     const mockResumen: ResumenDeReportes = {
+      alcance: 'AGENCIA' as const,
+      asesorId: null,
       periodo: { desde: '2026-10-01T05:00:00.000Z', hasta: '2026-11-01T05:00:00.000Z' },
       cotizaciones: { creadas: 1, enviadas: 1, aceptadas: 1, tasaAceptacion: 100 },
       ventasPorMoneda: [

@@ -8,6 +8,7 @@ import {
   NAVEGACION,
   elementosDeBarraMovil,
   entradaDe,
+  entradaParaUsuario,
   entradasDeHojaMas,
   entradasDelMenu,
   etiquetaDeBarra,
@@ -27,7 +28,7 @@ const ORDEN_DEL_MENU = [
   'Seguimientos',
   'Contactos',
   'Catálogo',
-  'Reportes',
+  'Reportes de la agencia',
   'Configuración',
 ];
 
@@ -63,7 +64,7 @@ describe('NAVEGACION', () => {
       'Seguimientos',
       'Contactos',
       'Catálogo',
-      'Reportes',
+      'Reportes de la agencia',
       'Configuración',
     ]);
     // Cada módulo del menú está en la barra o en la hoja: ninguno se queda sin camino en móvil.
@@ -88,7 +89,7 @@ describe('NAVEGACION', () => {
       'Seguimientos',
       'Contactos',
       'Catálogo',
-      'Reportes',
+      'Reportes de la agencia',
       'Configuración',
     ]);
   });
@@ -129,7 +130,7 @@ describe('moduloActivo', () => {
     ['/seguimientos', 'Seguimientos'],
     ['/contactos/9', 'Contactos'],
     ['/catalogo', 'Catálogo'],
-    ['/reportes', 'Reportes'],
+    ['/reportes', 'Reportes de la agencia'],
     ['/configuracion', 'Configuración'],
     ['/configuracion/whatsapp', 'Configuración'],
     ['/bienvenida', 'Configuración'],
@@ -190,5 +191,34 @@ describe('tituloDeDocumento', () => {
   it('sin pantalla devuelve solo la marca', () => {
     expect(tituloDeDocumento()).toBe('ViajaPro');
     expect(tituloDeDocumentoParaRuta('/ensayo')).toBe('ViajaPro');
+  });
+});
+
+describe('entradaParaUsuario: una sola entrada de reportes, dos títulos (ADR-0035 §5)', () => {
+  const reportes = entradaDe('reportes');
+
+  it('sin reportes.ver_agencia se titula «Mis números»', () => {
+    const e = entradaParaUsuario(reportes, () => false);
+    expect(e.etiqueta).toBe('Mis números');
+    expect(etiquetaDeBarra(e)).toBe('Mis números');
+    expect(e.ruta).toBe('/reportes');
+  });
+
+  it('con reportes.ver_agencia, «Reportes de la agencia»', () => {
+    const e = entradaParaUsuario(reportes, (p) => p === 'reportes.ver_agencia');
+    expect(e.etiqueta).toBe('Reportes de la agencia');
+  });
+
+  it('sin sesión no afirma nada: queda la etiqueta general', () => {
+    expect(entradaParaUsuario(reportes, null).etiqueta).toBe('Reportes de la agencia');
+  });
+
+  it('solo hay una entrada a /reportes en el menú', () => {
+    expect(entradasDelMenu().filter((e) => e.ruta === '/reportes')).toHaveLength(1);
+  });
+
+  it('las demás entradas no cambian', () => {
+    const hoy = entradaDe('hoy');
+    expect(entradaParaUsuario(hoy, () => false)).toBe(hoy);
   });
 });
