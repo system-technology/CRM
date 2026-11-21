@@ -9840,7 +9840,8 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     depends_on: [T-342]
     acceptance:
       - "Un endpoint devuelve los archivos sin oportunidad, o con asesor inactivo o sin archivo.operar, para quien tenga archivo.operar; misma regla que destinatariosDelAviso"
@@ -9848,6 +9849,8 @@ tasks:
     source: "ADR-0035 §2 y §5; T-343 no lo pudo pintar por falta de endpoint"
     created_at: 2026-11-21T23:00:00.000Z
     owner: backend
+    notes: "Integrada como #432 (d755ea69). GET /api/v1/archivos/sin-responsable con archivo.ver + archivo.operar, declarado ANTES de :id (si no, se lo tragaria como id). Motivos SIN_OPORTUNIDAD, SIN_ASESOR y ASESOR_NO_ELEGIBLE, sin distinguir baja de perdida de permiso, a proposito, para no filtrar el estado de la cuenta de un companero. Regla extraida de destinatariosDelAviso (T-254) a booking/domain; booking pregunta a crm e identity POR PUERTOS (R4), sin JOIN entre contextos. Sin migracion. AISLAMIENTO: tras la auditoria la madre pidio UNA vuelta mas, solo por esto, porque el e2e no cruzaba agencias (CLAUDE.md 3.1: el aislamiento es el unico sitio donde no se recorta). Ahora es simetrico y NO PUEDE PASAR EN VACIO: cada agencia afirma que SI ve su propio huerfano antes de afirmar que no ve el ajeno, asi que una lista vacia, un 403 tragado o una ventana recortada rompen la primera mitad. MUTACION MEDIDA: con el filtro de tenant_id retirado, test salio VERDE. No es que la prueba no discrimine: es que RLS SOLA sigue cubriendo la ruta. Se derriba una capa y la otra aguanta (R2, defensa en profundidad), y ahora esta MEDIDO en vez de leido. Lo que NO demuestra: que la asercion cace una fuga, porque no hubo fuga que cazar. Cola: T-549 (el filtro va despues del LIMIT, la cifra es un minimo) y T-551."
+
   - id: T-530
     title: "Paleta de comandos y bloque «Rendimiento comercial» de «Hoy» hablan de «equipo» ante un asesor que solo ve lo suyo"
     type: chore
@@ -9960,7 +9963,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     acceptance:
       - "reportes.controller.ts no lleva @RequierePermiso('cobro.ver') para porCobrar; payments/interface si lo exige. Hoy no hay diferencia porque DUENO, ASESOR y OPERACIONES tienen cobro.ver, y no existe endpoint para componer roles a medida: por eso es cola y no bloqueante"
       - "Contradice ADR-0035 4: el alcance de un reporte puede ser mas estrecho que las pantallas, nunca mas amplio"
@@ -9969,6 +9973,8 @@ tasks:
     source: "auditoria independiente de #428 (T-528), 2026-11-21"
     created_at: 2026-11-21T12:40:00.000Z
     owner: backend
+    notes: "Integrada como #432 (d755ea69). porCobrar se OMITE sin cobro.ver, con el patron del margen: el puerto NI SE INVOCA, asi que el dato nunca se lee de la base, y armarResumen no construye la clave. Ni cero, ni null, ni error. AUDITORIA INDEPENDIENTE DE LA MADRE: sin bloqueantes. Lo que mas se miro, porque habria sido lo peor que podia traer el PR, es si el cambio de fixture aflojaba alguna prueba: NO. Antes del PR cobro.ver no aparecia en el fichero, ninguna asercion dependia de su ausencia, las de #428 siguen con los mismos valores, y la discriminacion SE ANADE con un rol que tiene reportes.ver_agencia pero no cobro.ver. Tambien se comprobo que la excepcion LECTURAS_CON_MAS no afloja el guard: es getAllAndMerge, que SUMA clase y metodo, asi que la ruta exige archivo.ver Y archivo.operar. El contrato sigue .optional(): T-540 intacto."
+
   - id: T-538
     title: "Web: el resumen devuelve truncado: true a partir de 500 archivos abiertos y la web no lo presenta"
     type: feature
