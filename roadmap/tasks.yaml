@@ -8667,11 +8667,13 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: done
     human_required: true
     depends_on:
       - T-307
     acceptance:
+      - "HECHA (PR #471, 2026-11-21): el arnes corre en TODO PR contra main, cada noche y a demanda.\n        Coste medido 43 s (job 1m45), lo que desmintio la premisa de que eran minutos y permitio quitar\n        el filtro de rutas. M24 anadida y DEMOSTRADA en rojo. Resultado: 17 controles verdes, M1-M21\n        rojas, M22 no aplicable, M23 y M24 rojas; 23 detectadas, 1 no aplicable"
+      - "Su primera ejecucion destapo que el arnes moria en M22 y que M23 y M24 nunca corrian: una\n        mutacion rota escondia a todas las posteriores. Corregido con cuatro estados por mutacion.\n        Lo que queda abierto va en T-577, T-578 y T-579, ninguno bloqueante"
       - "Sube de P3 a P1 el 2026-11-21: la reconciliacion de las P1 (PR #463) dejo ver que el arnes de
         mutaciones de aislamiento NO corre en el CI mientras esta tarea dormia en P3. CLAUDE.md §3.1 dice que
         el aislamiento entre agencias es el unico sitio donde no se recorta: una compuerta de aislamiento que

@@ -239,7 +239,7 @@ pueden dejar su rastro documental **les hacía quitar trabajo bueno por una regl
 
 ## 3. Cola de integración (orden)
 
-### Lote del arnés y la cola (2026-11-21, madre `…64ppDELKxYC1Tkdsu`) — EN CURSO
+### Lote del arnés y la cola (2026-11-21, madre `…64ppDELKxYC1Tkdsu`) — CERRADO
 
 Arranca con `main` en **`36bd12f2`** y cero PR abiertos. Tres sesiones en paralelo, una por carril.
 
@@ -247,8 +247,7 @@ Arranca con `main` en **`36bd12f2`** y cero PR abiertos. Tres sesiones en parale
   5 estaban hechas, 5 bajan de prioridad. Auditoría propia antes de integrar: comprobé tres de las
   cinco citas de `done` contra el código y **las tres exactas**. La hipótesis de la madre (T-131 y
   T-132) era correcta pero **parcial**: T-120, T-121 y T-123 también estaban hechas.
-- **#471** (T-377, carril `a` + rutas protegidas) — **devuelto una vez** por §1.8, corregido por la
-  misma sesión en `cf12eb89`. Pendiente de leer M22, M23 y M24 en la corrida nueva.
+- **#471** (T-377, carril `a` + rutas protegidas) — **INTEGRADO** en `010d77d5`. **Devuelto dos veces**: la primera por §1.8 (moría en M22), la segunda al medir 43 s y ver que su propia justificación era falsa. Las dos vueltas destaparon defectos reales; ninguna fue una pasada de auditoría sobre una auditoría.
 - **#473** (T-569, carril `b`) — 14 checks en verde, rama puesta al día tras entrar #472.
   41 clases de la familia `primary`, que no existe en ninguna paleta, mapeadas a `acento-*` del mismo
   tono. Trae una prueba nueva que exige que toda familia usada sea de Tailwind o de `@theme`.
