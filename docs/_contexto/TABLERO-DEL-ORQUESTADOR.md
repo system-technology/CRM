@@ -19,7 +19,17 @@
 - **Sesión madre ACTUAL: `session_01R81Xh5a2iFmSzSLVN6VcXy`** (Opus, esfuerzo alto), desde las **15:08 UTC** del 2026-11-21. Es la **cuarta** madre del día. Las tres anteriores se pasaron del tope de 150 mil: `…3ygCnt8wYfALeA6yY` con 688 mil y 122 USD, `…45hbFQHivoDJ8cbJQ` con 400 mil, y `…5b7wpteu5YpcDpw5p` con **275.757 tokens y 18,11 USD**.
 - **El despertar apunta bien y es ÚNICO: `trig_01RSjZimU6jHEhMXXe6kApQu`** (`47 */2 * * *`), creado por la madre saliente apuntando **directo** a la entrante. **Verificado con `list_triggers` a las 15:09 UTC:** una sola tarea programada, y su `persistent_session_id` es el de la madre actual. Sin relevo en dos saltos.
 - **El traspaso traía un id de tarea programada que NO existe** (`trig_01W27QjMm5BD8aFm1EJ6wa17`): la madre entrante iba a borrarlo. Es la **tercera vez** que el traspaso entre madres trae un id inventado. **No se borra ni se cita un id sin verlo antes en `list_triggers`.**
-- **Sobre el medidor de consumo propio.** La madre saliente avisó de que un `0` al arrancar significa «todavía no hay dato», no «el instrumento está roto». **Confirmado aquí, y matizado:** `external_metadata.context_usage.used_tokens` marcó **`0` en dos lecturas separadas** (15:08 y 15:12 UTC), con trabajo real en medio. Así que **tampoco es solo retraso de un instante**. Se anota como **«sin dato todavía»** y se sigue midiendo en cada vuelta; no se construye ninguna teoría sobre esa lectura ni se usa para decidir que queda margen. `rate_limit_info` sí traía dato (`seven_day`, `allowed_warning`): es otra cosa, no el consumo de contexto.
+- **EL MEDIDOR DE CONSUMO PROPIO NO ESTÁ ROTO: VA CON RETRASO. Demostrado el 2026-11-21 por el camino caro.**
+  `external_metadata.context_usage.used_tokens` marcó **`0` durante CASI TODO el turno** —tres lecturas
+  separadas, con `updated_at` avanzando y trabajo real en medio— y la madre concluyó que «sirve para vigilar a
+  las hijas pero no se autorreporta para la propia sesión». **Esa conclusión era FALSA.** A las 16:48 el mismo
+  campo marcó **457.098 tokens y 52,26 USD**: el triple del tope de 150 mil.
+  - **Es la misma trampa que ya avisó la madre anterior y que esta volvió a pisar**, solo que con una teoría más
+    elaborada: tres lecturas en cero no prueban nada, porque el retraso dura más que tres lecturas.
+  - **La regla, sin matices: un `0` significa «todavía no hay dato». Nunca significa «tengo margen».** Mientras
+    no haya cifra, se gobierna por calendario: **relevo al cerrar el lote**, pase lo que pase.
+  - Y lo que hace daño de verdad: esa conclusión falsa **se escribió en el tablero y en el prompt del despertar**,
+    es decir, se propagó a la siguiente madre. Al corregir algo así, **corregir también donde se propagó**.
 - **Sesiones hijas vivas (4), TODAS ociosas y esperando encargo.** Entregaron bien y declararon sus límites;
   merece la pena reutilizarlas o archivarlas, no dejarlas colgando:
   - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **T-556** y **T-560**. Declaró sola un error suyo

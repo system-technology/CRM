@@ -68,6 +68,12 @@ contraste fallaba por los tonos sin declarar, y los modos **ya existían** pero 
 (T-572). Hicieron falta un manual, una sesión midiendo y **dos correcciones de la madre** para establecer dónde
 está. Si no lo encuentra quien conoce el producto, una agencia tampoco.
 
+**Corrección del propio turno, anotada antes de cerrarlo:** la madre escribió en el tablero que el medidor de
+consumo «no se autorreporta para la propia sesión», tras verlo en `0` tres veces. **Falso: iba con retraso.** A
+las 16:48 marcaba **457.098 tokens y 52,26 USD**, el triple del tope. Es la **cuarta** premisa falsa del turno y
+la única sobre sí misma. La regla que queda: **un `0` es «aún no hay dato», nunca «tengo margen»**; sin cifra, se
+releva por calendario al cerrar el lote.
+
 **Supuesto, no verificado:** que las capturas del manual se vean bien en pantallas reales (son medición y
 revisión visual, sin dispositivos); que `/ingresar` muestre el conmutador fuera de la compilación con
 autenticación real. **Nada de esto está desplegado y ninguna agencia lo ha visto todavía.**
