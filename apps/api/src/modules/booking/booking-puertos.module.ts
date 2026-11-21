@@ -7,11 +7,17 @@
  */
 import { Global, Module } from '@nestjs/common';
 import { PuertoArchivoDeUnAviso } from '../../shared/puertos/puertos-para-avisos.js';
+import { PuertoArchivoParaCobro } from '../../shared/puertos/puertos-hacia-booking.js';
 import { ArchivoDeUnAvisoDeBooking } from './infrastructure/archivo-de-un-aviso.prisma.js';
+import { ArchivoParaCobroDeBooking } from './infrastructure/archivo-para-cobro.prisma.js';
 
 @Global()
 @Module({
-  providers: [{ provide: PuertoArchivoDeUnAviso, useClass: ArchivoDeUnAvisoDeBooking }],
-  exports: [PuertoArchivoDeUnAviso],
+  providers: [
+    { provide: PuertoArchivoDeUnAviso, useClass: ArchivoDeUnAvisoDeBooking },
+    // T-330 (ADR-0034 §1): `payments` lee el total y el estado del archivo por este puerto.
+    { provide: PuertoArchivoParaCobro, useClass: ArchivoParaCobroDeBooking },
+  ],
+  exports: [PuertoArchivoDeUnAviso, PuertoArchivoParaCobro],
 })
 export class BookingPuertosModule {}
