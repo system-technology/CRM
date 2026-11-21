@@ -7151,7 +7151,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: ready
+    status: done
     depends_on: [T-327]
     acceptance:
       - "Define el contexto payments mínimo: pago, saldo, estados de cobro, R8 (unidad mínima), R5 (idempotencia), permiso propio, historial inmutable, relación con el archivo de viaje y con la TRM"
@@ -7159,14 +7159,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: arquitecto
-    notes: "ADR-0034 redactado en el PR de esta tarea (estado Propuesto). Antes de aceptarlo: auditor-seguridad sin recortar vueltas (dinero y aislamiento) y experto-turismo sobre los estados y la fecha límite. Su cola es T-419 a T-424."
+    notes: "Integrada en #378 (ADR-0034, estado Propuesto). Auditoría de seguridad y de turismo aplicadas en una vuelta. Su cola es T-419 a T-424. Falta aceptar el ADR: lo decide el propietario con las preguntas del roadmap 08 §4."
+
   - id: T-329
     title: 'C2: migración de pagos del viajero (insert-only, historial inmutable, RLS) y su permiso'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-328]
     acceptance:
       - "Tabla con tenant_id y RLS; sin UPDATE ni DELETE para los roles de aplicación; permiso nuevo sembrado por rol"
@@ -7174,6 +7175,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: datos
+    notes: "Integrada en #382 (migración 20261121140000, 13 pruebas de aislamiento, permisos cobro.ver, cobro.registrar y cobro.corregir). Auditoría de seguridad: integrable, sin bloqueantes; aislamiento-tenants verde sobre 06ca56d. PUNTO B: tenants.id es inmutable por diseño, sin excepción en el disparador de travel_files. Su cola es T-330 (reglas de la API) y T-425 a T-432."
+
   - id: T-330
     title: 'C3: API para registrar un pago y leer el saldo del archivo (idempotente)'
     type: feature
@@ -7188,6 +7191,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
+    notes: "Reglas que la base NO cubre y que la API de T-330 debe imponer, cada una con su e2e (auditoría de T-329 y ADR-0034): el tipo de movimiento según el estado del archivo (PAGO y AJUSTE solo con el archivo ABIERTO, PENALIDAD solo CANCELADO); devolución y reverso sin dejar lo pagado en negativo; registrado_por tomado de la sesión; un reintento idempotente con el mismo contenido responde 200 y con distinto contenido 409; la carrera entre registrar un pago y cancelar el archivo (los candados de cobro y de booking son distintos); registrado_en nunca del cliente en plazos_de_cobro, con orden por (registrado_en, id); sumas leídas como bigint, nunca Number; permisos cobro.* (ASESOR solo registra PAGO; el resto es cobro.corregir, que solo siembra DUENO); filtro Luhn sobre nota y referencia; pagado_el no futuro; que la penalidad no supere lo pagado."
   - id: T-331
     title: 'C4: registrar un pago y ver el saldo en el archivo de viaje'
     type: feature
@@ -7746,6 +7750,7 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
+    notes: "Ampliada con T-329: añadir al script las mutaciones de la migración de pagos (quitar el disparador de inmutabilidad de pagos, el de travel_files_venta_inmutable, GRANT UPDATE o DELETE sobre pagos a viajapro_app, GRANT UPDATE sobre la columna tenants.id, DISABLE TRIGGER) y comprobar que cada una pone en rojo su prueba."
   - id: T-378
     title: "Permitir en .claude/settings.json los comandos habituales de solo lectura para que las sesiones desatendidas no se detengan"
     type: infra
@@ -8432,3 +8437,107 @@ tasks:
     source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
     created_at: 2026-11-21T03:00:00.000Z
     owner: backend
+  - id: T-425
+    title: "Guardia de arranque del trabajador y de identidad con pagos, plazos_de_cobro y parametros_de_cobro"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "Desviación 4 de T-329: el ADR-0034 pide que la guardia de arranque incluya las tres tablas; esa guardia no existe en el repositorio (solo TABLAS_DE_NEGOCIO_VEDADAS_A_IDENTIDAD, del rol de identidad) (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: backend
+  - id: T-426
+    title: "Decidir si las foráneas de las tablas de agencia hacia tenants pasan a ON UPDATE RESTRICT"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "PUNTO B de T-329: tenants.id es inmutable por diseño pero las foráneas dicen ON UPDATE CASCADE; que el esquema diga lo mismo que el diseño (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: datos
+  - id: T-427
+    title: "Añadir cobro.ver, cobro.registrar y cobro.corregir a semilla-agencia-aislamiento.spec.ts"
+    type: test
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de T-329 (cola, 2026-11-21): la semilla de pruebas de aislamiento no conoce los permisos de cobro (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: qa
+  - id: T-428
+    title: "Documentación de los pagos: modelo de datos, lenguaje ubicuo y contextos delimitados"
+    type: docs
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "ADR-0034 y T-329: faltan las tablas pagos, plazos_de_cobro y parametros_de_cobro en 03-modelo-de-datos.md; los términos Devolución, Reverso, Estado de cobro, Fecha límite de cobro, Saldo, Saldo a favor y Ajuste del total en el lenguaje ubicuo (con la aclaración de Abono); y en 02-contextos-delimitados.md el contexto payments publica PaymentRecorded y PaymentReversed y lee el archivo por puerto (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: documentador
+  - id: T-429
+    title: "Endurecimiento menor de la migración de pagos: tipos con pg_catalog, relleno de permisos con roles duplicados y ENABLE ALWAYS TRIGGER"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): tipos sin calificar con pg_catalog en pagos_validar_alta y pagos_inmutables (::text y boolean); el relleno de permisos aborta si hay roles sembrados con duplicados; opcional, ENABLE ALWAYS TRIGGER en los disparadores de pagos frente a session_replication_role. Una migración NUEVA: la 20261121140000 ya está aplicada (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: datos
+  - id: T-430
+    title: "La purga declarada de pagos permite borrar movimientos sueltos de esa agencia: documentarlo o exigir que el tenant ya no exista"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): la salida de purga de pagos_inmutables autoriza al dueño a borrar filas de la agencia declarada aunque la agencia exista (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: datos
+  - id: T-431
+    title: "Casos de aislamiento explícitos en parametros_de_cobro y afinar P-B de la migración de pagos"
+    type: test
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): faltan UPDATE ajeno igual a 0 filas, SET tenant_id a otra agencia rechazado y upsert con el tenant de otra agencia; la segunda mitad de P-B acepta cualquier código de error; y el orden de COLUMNAS_DE_TEXTO_DECLARADAS (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: qa
+  - id: T-432
+    title: "Ley 1581 y pagador_id: un contacto pagador no se puede borrar (NO ACTION); diseñarlo con la supresión del titular"
+    type: security
+    phase: 2
+    priority: P3
+    effort: M
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): la foránea pagador_id con NO ACTION impide borrar a un contacto que figure como pagador, y el derecho de supresión del titular exige poder atenderlo sin romper el libro contable inmutable (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: arquitecto

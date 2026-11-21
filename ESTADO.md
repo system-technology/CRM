@@ -63,7 +63,7 @@ entrado. Seguimos en local.
 | Servidores MCP del proyecto (`.mcp.json`): 21st.dev, Neon, Render y Vercel, con la clave leída del entorno | PR #305 y #310; la sesión de despliegue confirmó que los cuatro conectan |
 | `docs/` reorganizada sin romper nada: comprobador de enlaces con línea base (job `enlaces-de-documentacion`, en modo aviso, fuera de los 8 obligatorios), `_auditoria` fusionada en `_auditorias`, la carpeta de traspaso movida a `docs/_traspasos/`, índice con los huérfanos | PR #316 a #319 (T-302) |
 
-El repositorio tiene 54 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
+El repositorio tiene 55 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
 **Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
 porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
