@@ -12,6 +12,74 @@
 
 ---
 
+## 2026-11-21 (lote de la tarde-noche) — El manual destapa lo que ninguna prueba verde enseñaba
+
+**Verificado** con `gh` y `git` en el mismo turno, cada PR con sus 14 checks comprobados **a mano** antes del
+merge. `main`: `ef44c75e` → **`7a0ac374`**. Nueve PR integrados, en serie y con squash a mano.
+
+- **#446 — T-555.** La comparación entre asesores sale ya contada de `porAsesor` (se retiran las N consultas y
+  el tope de 12) y «Destinos» pasa a ventas del periodo, una fila por destino **y** moneda, sin sumarlas (R8).
+- **#450 — T-556.** El modo demostración ya no enseña un error en «Hoy» donde debe haber datos de muestra.
+  Auditoría de unidades: COP en pesos, USD en centavos, separadas por moneda.
+- **#451 — T-549.** El filtro de «sin responsable» va **antes** del tope, por puertos y **sin JOIN entre
+  contextos** (R4 intacta, sin ADR ni migración). La sesión declaró que **dos de sus pruebas pasaban en verde
+  con el bug puesto** y las endureció hasta verlas fallar.
+- **#454 — T-561.** Ver abajo: la premisa era falsa y el hallazgo real fue mejor.
+- **#457 — T-560.** Conmutador de tema en las pantallas públicas y pruebas de **comportamiento** del anti-FOUC.
+- **#453 — T-562, el manual de usuario**, pedido por el propietario. Dos recorridos, 15 capturas regenerables
+  **con un comando**, y una página que dice sin adornos qué es maqueta.
+- **#448 y #455** — el relevo de la orquestadora y la corrección de sus dos diagnósticos falsos.
+
+### Lo que más valor dio no fue integrar, fue documentar
+
+Escribir el manual obligó a recorrer el producto **como lo recorre una persona**, y ahí aparecieron tres huecos
+que **ninguna prueba verde enseñaba**, porque las e2e hacen por API lo que la persona no puede hacer por pantalla:
+
+- **T-563 (P1): no se puede aceptar una cotización desde la web.** Verificado: `cambiarEstadoCotizacionApi` solo
+  se llama con `'ENVIADA'`. El paso «aceptar → abrir el archivo de viaje» es el corazón del producto, así que
+  **el propietario no podría cerrar una venta delante de una agencia**. Y `04-flujos-criticos.md:49` lo declaraba
+  **«Existe»**: documentación que miente, corregida en el mismo PR.
+- **T-564:** no hay pantalla para corregir un pago, pese a que ADR-0034 reserva `cobro.corregir` al dueño.
+- **T-565:** el ingreso afirma «Conectado a la API y PostgreSQL en vivo» **sin comprobar nada** (sale de una
+  bandera), y además habla en técnico a un dueño de agencia.
+- **T-566:** la demostración **solo sabe enseñar la vista del dueño**; el usuario de muestra no es asesor, que
+  es lo que será la mayoría del equipo de una agencia real.
+
+### Dos premisas falsas seguidas, las dos de la orquestadora
+
+| Tarea | Lo que la madre afirmó | Lo que resultó ser |
+|---|---|---|
+| **T-560** | «El tema no se aplica al arrancar» | **Falso.** El anti-FOUC existe e inyecta con el nonce de la CSP |
+| **T-561** | «Hay tokens bajo el umbral; ajustar luminancia» | **Falso.** Los 19 pares reales cumplen AA. El fallo eran **14 tonos usados sin declarar**: clase inerte, y en oscuro sobrevivía el color de claro. Un **botón destructivo a 2,34:1** |
+
+**Las dos sesiones pararon antes de escribir código y lo midieron** —una con navegador y CSP real, otra
+compilando el CSS con la Tailwind instalada—. Eso es consecuencia directa de pedir en cada encargo que **vean
+fallar la prueba** y que **declaren si alguna pasó en verde con el fallo puesto**: una declaró **tres**, incluida
+una que fallaba **por el motivo equivocado** y escondía justo el número que importaba.
+
+**Regla que queda:** una tarea nacida de lo que alguien **ve** se escribe como **síntoma y pregunta**, nunca como
+diagnóstico. El diagnóstico lo pone quien mide.
+
+### Y lo que el propietario vio con sus propios ojos
+
+Preguntó si se podían manejar los modos claro y oscuro, y dijo que «el toque de contraste negro hace que se
+pierdan un poco los textos». **Las dos cosas resultaron ciertas por motivos distintos de los supuestos:** el
+contraste fallaba por los tonos sin declarar, y los modos **ya existían** pero el conmutador es inencontrable
+(T-572). Hicieron falta un manual, una sesión midiendo y **dos correcciones de la madre** para establecer dónde
+está. Si no lo encuentra quien conoce el producto, una agencia tampoco.
+
+**Corrección del propio turno, anotada antes de cerrarlo:** la madre escribió en el tablero que el medidor de
+consumo «no se autorreporta para la propia sesión», tras verlo en `0` tres veces. **Falso: iba con retraso.** A
+las 16:48 marcaba **457.098 tokens y 52,26 USD**, el triple del tope. Es la **cuarta** premisa falsa del turno y
+la única sobre sí misma. La regla que queda: **un `0` es «aún no hay dato», nunca «tengo margen»**; sin cifra, se
+releva por calendario al cerrar el lote.
+
+**Supuesto, no verificado:** que las capturas del manual se vean bien en pantallas reales (son medición y
+revisión visual, sin dispositivos); que `/ingresar` muestre el conmutador fuera de la compilación con
+autenticación real. **Nada de esto está desplegado y ninguna agencia lo ha visto todavía.**
+
+---
+
 ## 2026-11-21 (lote de la tarde) — Reportes por asesor y por destino, y tres cierres que mentían
 
 **Verificado** con `gh` y `git` en el mismo turno. `main`: `47fb844e` → `cfae145c` → `a5e1fc44` → `2149b9db`.
