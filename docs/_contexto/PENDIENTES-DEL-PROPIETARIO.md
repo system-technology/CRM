@@ -33,6 +33,7 @@
 | 10 | **Coexistencia (recomendada para el piloto) o número separado** para el CRM: aceptar o cambiar el borrador del **ADR-0033** | Verificado en Meta el 2026-11-21 (PR #365). Con coexistencia el dueño **no pierde la app**, pero **todo chat individual del número entra al CRM** y **no hay forma documentada de excluir chats**; las etiquetas de WhatsApp Business **no se sincronizan** (nuestras etiquetas propias siguen siendo necesarias). La auditoría exige: vínculo número–agencia tomado de la sesión, filtro de exclusión en el trabajador, sin historial en el piloto, contrato de encargo y que el dueño saque sus chats personales del número |
 | 11 | **Pasarela de pagos en COP** (Wompi, PayU, ePayco o Mercado Pago) | Necesaria para la Ola 2 |
 | 12 | Respuestas del dueño de JD Tours: cobra por archivo o por pasajero, pagos libres o en cuotas, qué etiquetas usa, qué mira cada asesor, su hoja de reservas (muestra **sin datos personales**) | Roadmap de JD Tours §4 |
+| 12b | **Nombre comercial, logo y marca de ViajaPro** | La sesión de diseño los necesita para la portada de ingreso y para la propuesta al viajero (Ola 5 del rediseño). Sin ellos se usa un distintivo provisional |
 | 13 | **Cifrado del NIT** de la agencia (T-309) | Hoy está en claro bajo RLS |
 
 ## Trámites externos
