@@ -3,7 +3,8 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import React from 'react';
 import SeguimientosPage from './page';
 import * as crmApi from '../../../lib/crm-api';
-import type { Seguimiento } from '@viajapro/contracts';
+import * as authApi from '../../../lib/auth-api';
+import type { Seguimiento, SesionActual } from '@viajapro/contracts';
 
 const MOCK_SEGUIMIENTOS: Seguimiento[] = [
   {
@@ -218,5 +219,39 @@ describe('SeguimientosPage (T-101)', () => {
     await waitFor(() => {
       expect(crmApi.crearSeguimientoApi).toHaveBeenCalled();
     });
+  });
+});
+
+describe('SeguimientosPage — alcance del asesor (T-485)', () => {
+  function sesion(permisos: string[]) {
+    return {
+      identidad: { id: 'i', correo: 'a@b.co', nombre: 'A' },
+      agencias: [],
+      tenantActivoId: 't',
+      acceso: { usuarioId: 'u', rol: 'Asesor', permisos },
+    } as unknown as SesionActual;
+  }
+  const pagina = { datos: MOCK_SEGUIMIENTOS, pageInfo: { nextCursor: null, hasMore: false } };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(crmApi, 'listarSeguimientosApi').mockResolvedValue(pagina);
+  });
+
+  it('sin la llave de agencia explica que solo ve lo suyo y no ofrece filtrar por asesor', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(sesion(['crm.escribir']));
+    render(<SeguimientosPage />);
+    const aviso = await screen.findByTestId('aviso-solo-lo-propio');
+    expect(aviso.textContent).toContain('Ves solo tus seguimientos');
+    expect(screen.queryByTestId('select-filtro-asesor')).toBeNull();
+  });
+
+  it('con la llave de agencia no muestra el aviso y conserva el filtro por asesor', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(
+      sesion(['conversaciones.ver_todas']),
+    );
+    render(<SeguimientosPage />);
+    expect(await screen.findByTestId('select-filtro-asesor')).toBeDefined();
+    expect(screen.queryByTestId('aviso-solo-lo-propio')).toBeNull();
   });
 });

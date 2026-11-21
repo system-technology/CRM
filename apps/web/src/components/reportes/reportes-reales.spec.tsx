@@ -141,7 +141,7 @@ describe('ReportesReales', () => {
     await screen.findByTestId('reportes-vacio');
   });
 
-  it('403: «no tienes permiso»', async () => {
+  it('403: «Esta vista es de administración»', async () => {
     vi.spyOn(api, 'obtenerResumenDeReportesApi').mockRejectedValue(
       new api.ErrorReportesApi('PERMISO_DENEGADO', 'x', 403),
     );
