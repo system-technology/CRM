@@ -23,6 +23,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from 'pg';
+import { PERMISOS } from '@viajapro/contracts';
 import { ROLES_SEMBRADOS } from '../prisma/siembra-de-tenant.js';
 
 const URL_ADMIN = process.env['DATABASE_URL'] ?? '';
@@ -39,24 +40,14 @@ const MARCA_FIN = '-- [/relleno-reportes]';
 
 const REPORTES = 'reportes.ver_agencia';
 
-/** Los catorce de la migración `20261121140000`, el catálogo anterior a esta. */
-const CATALOGO_ANTERIOR = [
-  'cotizacion.ver_neto_y_margen',
-  'usuarios.administrar',
-  'roles.administrar',
-  'conversaciones.ver_todas',
-  'catalogo.administrar',
-  'bandeja.operar',
-  'crm.escribir',
-  'cotizacion.escribir',
-  'archivo.ver',
-  'archivo.operar',
-  'etiquetas.administrar',
-  'cobro.ver',
-  'cobro.registrar',
-  'cobro.corregir',
-];
+/**
+ * El catálogo anterior a esta migración: el vigente (`PERMISOS`, la fuente de verdad de R3) menos
+ * el permiso nuevo. Ya no se repite a mano: que el CHECK y `PERMISOS` coincidan lo comprueba
+ * `catalogo-de-permisos.spec.ts`.
+ */
+const CATALOGO_ANTERIOR: string[] = PERMISOS.filter((p) => p !== REPORTES);
 
+/** Lo que tenía `DUENO` ANTES de esta migración: es una foto histórica, no el catálogo vigente. */
 const DUENO_ANTES = [
   'cotizacion.ver_neto_y_margen',
   'usuarios.administrar',
