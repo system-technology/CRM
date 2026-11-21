@@ -52,4 +52,29 @@ describe('MarcoDeTrabajo: un solo desplazamiento', () => {
     expect(screen.queryByTestId('pie-de-pagina-privacidad')).toBeNull();
     expect(screen.getByTestId('pagina').parentElement?.id).toBe('contenido');
   });
+
+  it('monta la cabecera móvil con la lupa UNA vez, antes de main (T-320)', () => {
+    ruta = '/seguimientos';
+    render(
+      <MarcoDeTrabajo>
+        <p data-testid="pagina">contenido</p>
+      </MarcoDeTrabajo>,
+    );
+    expect(screen.getAllByTestId('lupa-movil')).toHaveLength(1);
+    const cabecera = screen.getByTestId('cabecera-movil');
+    const main = document.querySelector('main#contenido')!;
+    expect(main.contains(cabecera)).toBe(false);
+    expect(cabecera.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('en la conversación a pantalla completa no hay lupa ni se reserva la barra inferior', () => {
+    ruta = '/bandeja/abc';
+    render(
+      <MarcoDeTrabajo>
+        <p data-testid="pagina">contenido</p>
+      </MarcoDeTrabajo>,
+    );
+    expect(screen.queryByTestId('lupa-movil')).toBeNull();
+    expect(document.querySelector('main#contenido')?.className).not.toContain('pb-14');
+  });
 });
