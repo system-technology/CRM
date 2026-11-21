@@ -131,7 +131,11 @@ export function FichaCliente({
           )}
 
           {contacto.etiquetas.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-1">
+            <div className="flex flex-wrap items-center gap-1 pt-1">
+              {/* Atributos duraderos del contacto: no son las etiquetas de la conversación (T-326) */}
+              <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+                Del contacto:
+              </span>
               {contacto.etiquetas.map((t) => (
                 <span
                   key={t}

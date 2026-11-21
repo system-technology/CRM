@@ -18,6 +18,8 @@ export const PERMISO_CATALOGO_ADMINISTRAR: Permiso = 'catalogo.administrar';
 /** Permisos introducidos en T-089 para mutaciones granulares */
 export const PERMISO_BANDEJA_OPERAR: Permiso = 'bandeja.operar';
 export const PERMISO_CRM_ESCRIBIR: Permiso = 'crm.escribir';
+/** Crear, renombrar, recolorear, ordenar y borrar las etiquetas de la agencia (T-326). */
+export const PERMISO_ETIQUETAS_ADMINISTRAR: Permiso = 'etiquetas.administrar';
 export const PERMISO_COTIZACION_ESCRIBIR: Permiso = 'cotizacion.escribir';
 
 /** Permisos del archivo de viaje (ADR-0024 §3.7, T-249) */
@@ -29,6 +31,7 @@ export const PERMISOS_MUTACION_T089: readonly Permiso[] = [
   PERMISO_BANDEJA_OPERAR,
   PERMISO_CRM_ESCRIBIR,
   PERMISO_COTIZACION_ESCRIBIR,
+  PERMISO_ETIQUETAS_ADMINISTRAR,
 ] as const;
 
 // =============================================================================
@@ -36,13 +39,22 @@ export const PERMISOS_MUTACION_T089: readonly Permiso[] = [
 // =============================================================================
 
 export interface EtiquetaPermiso {
-  clave: Permiso;
+  clave: ClaveConEtiqueta;
   nombre: string;
   descripcion: string;
   categoria: 'bandeja' | 'crm' | 'cotizacion' | 'catalogo' | 'archivo' | 'administracion';
 }
 
-export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
+/**
+ * Los tres permisos de cobro (ADR-0034) entran en `PERMISOS` con la migración de T-329. Mientras esa
+ * migración no esté en `main`, no son parte de `Permiso`: se nombran aquí para que el mapa ya tenga su
+ * texto y compile ANTES y DESPUÉS del cambio del contrato. Con la unión el `Record` sigue siendo
+ * exhaustivo: un permiso nuevo sin etiqueta sigue siendo un error de compilación. Cuando `Permiso` ya
+ * los incluya, esta unión sobra y se quita (la limpia un PR posterior).
+ */
+type ClaveConEtiqueta = Permiso | 'cobro.ver' | 'cobro.registrar' | 'cobro.corregir';
+
+export const MAPA_ETIQUETAS_PERMISOS: Record<ClaveConEtiqueta, EtiquetaPermiso> = {
   'bandeja.operar': {
     clave: 'bandeja.operar',
     nombre: 'Operar bandeja',
@@ -99,8 +111,6 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
       'Permite confirmar, abonar y pagar reservas al proveedor, editar los pasajeros y cancelar el archivo.',
     categoria: 'archivo',
   },
-  // T-324: solo el texto del permiso, para que el mapa siga cubriendo el contrato. La pantalla de
-  // etiquetas es de T-326.
   'etiquetas.administrar': {
     clave: 'etiquetas.administrar',
     nombre: 'Administrar etiquetas',
@@ -108,8 +118,7 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
       'Permite crear, renombrar, cambiar el color, ordenar y borrar las etiquetas de conversación de la agencia.',
     categoria: 'bandeja',
   },
-  // T-329: solo el texto de los permisos, para que el mapa siga cubriendo el contrato. Las
-  // pantallas de cobro son de T-331 y T-332.
+  // Cobros (ADR-0034, T-329): solo el texto. Las pantallas de cobro son de T-331 y T-332.
   'cobro.ver': {
     clave: 'cobro.ver',
     nombre: 'Ver cobros',
@@ -302,6 +311,10 @@ export function puedeAdministrarCatalogo(sesion: SesionActual | null | undefined
   return tienePermiso(sesion, PERMISO_CATALOGO_ADMINISTRAR);
 }
 
+export function puedeAdministrarEtiquetas(sesion: SesionActual | null | undefined): boolean {
+  return tienePermiso(sesion, PERMISO_ETIQUETAS_ADMINISTRAR);
+}
+
 export function puedeAdministrarUsuarios(sesion: SesionActual | null | undefined): boolean {
   return tienePermiso(sesion, PERMISO_USUARIOS_ADMINISTRAR);
 }
@@ -324,6 +337,7 @@ export interface ResultadoPermisos {
   puedeEscribirCrm: boolean;
   puedeEscribirCotizacion: boolean;
   puedeAdministrarCatalogo: boolean;
+  puedeAdministrarEtiquetas: boolean;
   puedeAdministrarUsuarios: boolean;
   puedeAdministrarRoles: boolean;
   evaluarAccion: (permiso: Permiso) => EstadoAccionMutacion;
@@ -380,6 +394,7 @@ export function usePermisos(sesionInicial?: SesionActual | null): ResultadoPermi
     puedeEscribirCrm: puedeEscribirCrm(sesion),
     puedeEscribirCotizacion: puedeEscribirCotizacion(sesion),
     puedeAdministrarCatalogo: puedeAdministrarCatalogo(sesion),
+    puedeAdministrarEtiquetas: puedeAdministrarEtiquetas(sesion),
     puedeAdministrarUsuarios: puedeAdministrarUsuarios(sesion),
     puedeAdministrarRoles: puedeAdministrarRoles(sesion),
     evaluarAccion: evaluar,
