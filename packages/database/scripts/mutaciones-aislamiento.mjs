@@ -19,6 +19,7 @@
  */
 import { Client } from 'pg';
 import { execFileSync } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { evaluarGuarda } from './guarda-base-desechable.mjs';
 
@@ -497,6 +498,16 @@ for (const r of resultados) console.log(`${ETIQUETA[r.estado]} ${r.nombre}`);
 console.log(
   `\nEstado final de tablas_sin_aislamiento: ${rows.length === 0 ? 'vacia (sana)' : JSON.stringify(rows)}`,
 );
+
+// El resumen también va al del job (GitHub lo muestra en la página de la corrida): un N/A o un
+// ERROR no deben vivir solo en el log, que nadie abre cuando todo salió en verde.
+if (process.env.GITHUB_STEP_SUMMARY) {
+  const lineas = resultados.map((r) => `| ${r.estado} | ${r.nombre} | ${r.salida.replace(/\|/g, '/')} |`);
+  appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    ['### Mutaciones de aislamiento', '', '| Estado | Mutación | Detalle |', '|---|---|---|', ...lineas, ''].join('\n'),
+  );
+}
 
 const cuenta = (e) => resultados.filter((r) => r.estado === e).length;
 if (cuenta('VERDE') > 0 || cuenta('ERROR') > 0 || rows.length > 0) {
