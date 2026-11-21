@@ -25,3 +25,4 @@ export * from './reportes.js';
 export * from './eventos.js';
 export * from './archivos.js';
 export * from './notificaciones.js';
+export * from './cobros.js';
