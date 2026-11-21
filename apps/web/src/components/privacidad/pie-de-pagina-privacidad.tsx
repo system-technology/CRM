@@ -21,7 +21,7 @@ export function PieDePaginaPrivacidad({ conTema = false }: { conTema?: boolean }
           <p className="font-semibold text-neutral-700 dark:text-neutral-300">
             ViajaPro — CRM para agencias de turismo
           </p>
-          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[11px] text-neutral-600 dark:text-neutral-400">
             Tratamiento de datos personales conforme a la Ley 1581 de 2012 (Habeas Data / SIC).
           </p>
         </div>
