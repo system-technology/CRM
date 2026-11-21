@@ -92,6 +92,22 @@ export abstract class ContadorDeFallosDeCodigo {
 }
 
 /**
+ * Reservar-antes-de-comprobar, para el tope de ingreso: el intento se inscribe (y se confirma)
+ * ANTES de contar, y el recuento incluye la propia fila. Así una ráfaga en paralelo no puede leer
+ * todas «menos de 10» y probar todas la contraseña.
+ */
+export abstract class ReservaDeIntentos {
+  abstract reservar(
+    clave: string,
+    maximo: number,
+    ventanaSegundos: number,
+    prefijoDelBarrido: string,
+  ): Promise<{ cabe: boolean; reservaId: string }>;
+  /** Borra una reserva por su id. */
+  abstract liberar(reservaId: string): Promise<void>;
+}
+
+/**
  * Cuenta los fallos de verificación por correo y, agotado el tope, hace que la ruta rechace
  * también el código correcto hasta que venza la ventana (24 h desde cada fallo).
  *

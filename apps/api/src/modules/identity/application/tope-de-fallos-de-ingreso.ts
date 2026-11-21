@@ -11,8 +11,8 @@
  */
 import {
   claveDeLimite,
-  ContadorDeFallosDeCodigo,
   PREFIJO_DE_FALLOS_DE_INGRESO,
+  ReservaDeIntentos,
 } from './limitador-de-envios.js';
 
 export const TOPE_DE_FALLOS_DE_INGRESO = { maximo: 10, ventanaSegundos: 15 * 60 } as const;
@@ -26,7 +26,7 @@ export type SujetoDelTope =
  */
 export class TopeDeFallosDeIngreso {
   constructor(
-    private readonly contador: ContadorDeFallosDeCodigo,
+    private readonly contador: ReservaDeIntentos,
     private readonly secreto: string,
   ) {}
 
@@ -34,18 +34,22 @@ export class TopeDeFallosDeIngreso {
     return claveDeLimite(this.secreto, sujeto.tipo, sujeto.valor, PREFIJO_DE_FALLOS_DE_INGRESO);
   }
 
-  /** `true` si el sujeto agotó su tope. No escribe nada. */
-  async estaBloqueado(sujeto: SujetoDelTope): Promise<boolean> {
-    return !(await this.contador.quedaCupo(this.clave(sujeto), TOPE_DE_FALLOS_DE_INGRESO.maximo));
-  }
-
-  /** Cuenta un fallo: siempre el mismo INSERT, barrido y recuento, esté o no bloqueado. */
-  async registrarFallo(sujeto: SujetoDelTope): Promise<void> {
-    await this.contador.consumir(
+  /**
+   * Reserva el intento ANTES de comprobar. `bloqueado` si, contando la propia reserva, hay más de
+   * 10 en la ventana. Bloqueado o no, la escritura es la misma (INSERT, barrido, recuento).
+   */
+  async reservar(sujeto: SujetoDelTope): Promise<{ bloqueado: boolean; reservaId: string }> {
+    const r = await this.contador.reservar(
       this.clave(sujeto),
       TOPE_DE_FALLOS_DE_INGRESO.maximo,
       TOPE_DE_FALLOS_DE_INGRESO.ventanaSegundos,
       PREFIJO_DE_FALLOS_DE_INGRESO,
     );
+    return { bloqueado: !r.cabe, reservaId: r.reservaId };
+  }
+
+  /** Devuelve el cupo: el ingreso salió bien, o el intento no llegó a probar la contraseña. */
+  liberar(reservaId: string): Promise<void> {
+    return this.contador.liberar(reservaId);
   }
 }
