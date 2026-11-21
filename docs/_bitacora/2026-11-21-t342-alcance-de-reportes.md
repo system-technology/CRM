@@ -55,15 +55,18 @@ la casa (campo nuevo **opcional de forma transitoria**, y la web en un PR encade
 declara y valida `ResumenDeReportesPorAlcance`. Cuando T-343 lea `alcance`, el alias se borra:
 **T-513**.
 
-## Qué NO se verificó
+## Qué se verificó y dónde
 
-- **Las e2e no se corrieron en local.** Esta sesión no puede levantar Postgres; las corre el CI.
-  Sin verificar en local, pendiente del CI: `reportes.e2e-spec.ts` (dos asesores y dos agencias),
-  `seguimientos-por-asesor.e2e-spec.ts` (403 en vez de silencio) y
-  `respuesta-grupo-coherente.e2e-spec.ts`.
-- Sí se corrieron aquí, en verde: `typecheck` y `lint` del monorepo, las 1590 pruebas unitarias de
-  la API, las 199 de contratos y las 1821 de la web.
-- La pantalla no se probó: la web no lee `alcance` todavía (T-343, T-485).
+- **En local, en verde:** `typecheck` y `lint` del monorepo, las 1590 pruebas unitarias de la API,
+  las 199 de contratos, las 1821 de la web, `verificar-fronteras.mjs` y `comprobar-enlaces.mjs`.
+- **Las e2e NO se corrieron en local**: esta sesión no puede levantar Postgres. **Las corrió el CI
+  del PR #417 y pasaron**: `reportes.e2e-spec.ts` (14 pruebas, dos asesores y dos agencias),
+  `seguimientos-por-asesor.e2e-spec.ts` (11, 403 en vez de silencio) y el resto de la suite. La
+  primera vuelta falló por el fixture, no por el código: las conversaciones son únicas por
+  `(tenant_id, canal_id, contacto_id)` y las tres compartían contacto (`f4a968f` lo corrige).
+- **Sin verificar:** la pantalla. La web no lee `alcance` todavía (T-343, T-485).
+- El check **Carril y tarea** (no requerido) sale en rojo por `ESTADO.md`, la bitácora y
+  `tasks.yaml`, que son del carril `i`: el rastro de R14 va en el mismo PR a propósito.
 
 ## Cola que deja
 

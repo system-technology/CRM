@@ -7374,7 +7374,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: backend
-    notes: "Implementada en la rama a/T-342-alcance-de-reporte: alcanceDeReporte en shared/autorizacion, los tres puertos de reportes reciben AlcanceDeReporte, contrato ResumenDeReportesPorAlcance (unión discriminada, ramas estrictas) validado en el servidor, 403 en reportes y en seguimientos con asesorId ajeno (retira el silencio de #395), retirada del gate de conversaciones.ver_todas del resumen, atribución de M9 por mensajes.autor_id y escritura de cotizaciones.creado_por (la columna existía y nadie la escribía: sin eso el resumen propio salía en cero). e2e con dos asesores y dos agencias, SIN verificar en local (no hay Postgres en la sesión): pendiente del CI. Cola que deja: T-513 y T-514."
+    notes: "Implementada en la rama a/T-342-alcance-de-reporte: alcanceDeReporte en shared/autorizacion, los tres puertos de reportes reciben AlcanceDeReporte, contrato ResumenDeReportesPorAlcance (unión discriminada, ramas estrictas) validado en el servidor, 403 en reportes y en seguimientos con asesorId ajeno (retira el silencio de #395), retirada del gate de conversaciones.ver_todas del resumen, atribución de M9 por mensajes.autor_id y escritura de cotizaciones.creado_por (la columna existía y nadie la escribía: sin eso el resumen propio salía en cero). e2e con dos asesores y dos agencias: no se corrieron en local (no hay Postgres en la sesión), las corrió el CI del PR #417 y pasaron, con los ocho checks obligatorios en verde. Cola que deja: T-513 y T-514."
   - id: T-343
     title: "F4: dashboard del asesor, móvil primero"
     type: feature
