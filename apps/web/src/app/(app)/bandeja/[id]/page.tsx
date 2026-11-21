@@ -1626,7 +1626,8 @@ export default function BandejaConversacionPage() {
                     ...prev,
                     contactoNombre: contactoActualizado.nombre,
                     contactoTelefono: contactoActualizado.telefono,
-                    etiquetas: contactoActualizado.etiquetas,
+                    // T-325: `detalle.etiquetas` ya no son las del contacto sino las de la agencia
+                    // puestas en la conversación (id, nombre, color): editar al contacto no las toca.
                   }
                 : null,
             );

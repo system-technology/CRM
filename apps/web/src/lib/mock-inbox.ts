@@ -98,6 +98,33 @@ const ETIQUETAS_OPCIONES = [
   ['Pendiente Comprobante'],
 ];
 
+/**
+ * T-325: las etiquetas de una conversación ya no son texto libre sino las de la agencia (id, nombre y
+ * color de la paleta). Aquí se arman a partir de nombres, con un id estable por nombre.
+ */
+const COLORES_MOCK = [
+  'azul',
+  'verde',
+  'ambar',
+  'turquesa',
+  'rosa',
+  'naranja',
+  'dorado',
+  'gris',
+] as const;
+const IDS_DE_ETIQUETAS_MOCK = new Map<string, string>();
+function etiquetasDeMock(nombres: readonly string[]) {
+  return nombres.map((nombre) => {
+    if (!IDS_DE_ETIQUETAS_MOCK.has(nombre)) IDS_DE_ETIQUETAS_MOCK.set(nombre, nombre);
+    const posicion = [...IDS_DE_ETIQUETAS_MOCK.keys()].indexOf(nombre);
+    return {
+      id: generarUuid(posicion + 1, 3),
+      nombre,
+      color: COLORES_MOCK[posicion % COLORES_MOCK.length] ?? 'gris',
+    };
+  });
+}
+
 function generarUuid(index: number, grupo: number = 1): string {
   const hexIdx = index.toString(16).padStart(12, '0');
   const hexGrp = grupo.toString(16).padStart(4, '0');
@@ -150,7 +177,7 @@ function generar500Conversaciones(): ConversacionResumen[] {
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: 1,
       slaVenceEn: new Date(ahora + 2 * 3600000).toISOString(),
-      etiquetas: ['PruebaExtrema'],
+      etiquetas: etiquetasDeMock(['PruebaExtrema']),
     }),
   );
 
@@ -175,7 +202,7 @@ function generar500Conversaciones(): ConversacionResumen[] {
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: 2,
       slaVenceEn: new Date(ahora + 30 * 60000).toISOString(),
-      etiquetas: ['VIP', 'NombreLargo'],
+      etiquetas: etiquetasDeMock(['VIP', 'NombreLargo']),
     }),
   );
 
@@ -234,7 +261,7 @@ function generar500Conversaciones(): ConversacionResumen[] {
         ? MENSAJES_ASESOR[(i - 1) % MENSAJES_ASESOR.length]
         : (MENSAJES_DEL_VIAJE[i] ?? MENSAJES_EJEMPLO[(i - 1) % MENSAJES_EJEMPLO.length])) ||
       'Consulta sobre paquete turístico';
-    const etiquetas = ETIQUETAS_OPCIONES[i % ETIQUETAS_OPCIONES.length] || [];
+    const etiquetas = etiquetasDeMock(ETIQUETAS_OPCIONES[i % ETIQUETAS_OPCIONES.length] || []);
 
     const resumen = {
       id: generarUuid(i, 1),
