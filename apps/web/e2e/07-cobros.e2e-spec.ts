@@ -14,10 +14,6 @@ import { URL_API } from './auxiliares';
  */
 test.describe.configure({ mode: 'serial' });
 
-/** Montos en la unidad minima de COP, que es el PESO (R8): 1.500.000 son un millon y medio. */
-const PRIMER_PAGO = { escrito: '1.500.000', pintado: '1.500.000' };
-const SEGUNDO_PAGO = { escrito: '500000', pintado: '500.000' };
-
 let archivoId = '';
 let totalPintado = '';
 
@@ -81,6 +77,32 @@ async function cifra(page: Page, etiqueta: string): Promise<string> {
   return texto.replace(/[^\d.,]/g, '');
 }
 
+/**
+ * Una parte del saldo que queda por cobrar, escrita como la escribiria la asesora (`620.000`).
+ *
+ * Derivada del saldo REAL que devuelve el servidor, nunca una constante: un monto fijo mayor que
+ * el total de la cotizacion de la semilla seria un sobrepago y el servidor lo rechazaria, que es
+ * justo lo que paso la primera vez que corrio esta prueba.
+ */
+async function parteDelSaldo(
+  page: Page,
+  divisor: number,
+): Promise<{ escrito: string; pintado: string }> {
+  const cobro = (await json(page, `/api/v1/archivos/${archivoId}/cobro`)) as {
+    moneda: string;
+    saldo: { unidades: string };
+  };
+  // En COP la unidad minima es el peso (R8), asi que las unidades se escriben tal cual.
+  expect(cobro.moneda, 'la agencia de la semilla cotiza en pesos').toBe('COP');
+  const saldo = Number(cobro.saldo.unidades);
+  expect(saldo, 'tiene que quedar saldo por cobrar para poder pagar una parte').toBeGreaterThan(
+    divisor * 100,
+  );
+  const unidades = Math.floor(saldo / divisor);
+  const conMiles = unidades.toLocaleString('es-CO');
+  return { escrito: conMiles, pintado: conMiles };
+}
+
 async function registrarPago(page: Page, escrito: string): Promise<void> {
   await page.getByTestId('abrir-registrar-pago').click();
   const dialogo = page.getByRole('dialog');
@@ -96,7 +118,17 @@ async function registrarPago(page: Page, escrito: string): Promise<void> {
   await expect(dialogo.getByTestId('fecha-del-pago')).toHaveValue(/^\d{2}\/\d{2}\/\d{4}$/);
   await dialogo.getByRole('button', { name: 'Registrar pago', exact: true }).click();
 
-  await expect(dialogo).toHaveCount(0, { timeout: 20_000 });
+  // Si el dialogo no se cierra es que el pago se rechazo: el fallo dice POR QUE, no solo que
+  // seguia abierto.
+  try {
+    await expect(dialogo).toHaveCount(0, { timeout: 20_000 });
+  } catch {
+    const motivo = await page
+      .getByTestId('error-registrar-pago')
+      .innerText()
+      .catch(() => '(sin mensaje en el dialogo)');
+    throw new Error(`El pago de ${escrito} no se registro. La pantalla dijo: ${motivo}`);
+  }
 }
 
 test('el archivo de viaje muestra total, pagado, saldo e historial vacio', async ({ page }) => {
@@ -121,23 +153,25 @@ test('registrar un pago baja el saldo y lo deja en el historial', async ({ page 
   await page.goto(`/viajes?id=${archivoId}`);
   await expect(page.getByTestId('panel-de-cobro')).toBeVisible({ timeout: 30_000 });
 
-  await registrarPago(page, PRIMER_PAGO.escrito);
+  // Un cuarto de lo que falta por cobrar: un pago parcial de verdad, nunca un sobrepago.
+  const pago = await parteDelSaldo(page, 4);
+  await registrarPago(page, pago.escrito);
 
   // La confirmacion usa el mismo verbo que el boton.
   const confirmacion = page.getByTestId('pago-registrado');
   await expect(confirmacion).toBeVisible();
   await expect(confirmacion).toContainText('Pago registrado');
-  await expect(confirmacion).toContainText(PRIMER_PAGO.pintado);
+  await expect(confirmacion).toContainText(pago.pintado);
 
   // La cifra que se pinta es la que se escribio: ni un cero de mas (R8, en COP la unidad es el peso).
-  expect(await cifra(page, 'Pagado')).toBe(PRIMER_PAGO.pintado);
+  expect(await cifra(page, 'Pagado')).toBe(pago.pintado);
   expect(await cifra(page, 'Falta por cobrar')).not.toBe(totalPintado);
 
   const historial = page.getByTestId('historial-de-pagos');
   await expect(historial).toBeVisible();
   await expect(historial.getByRole('listitem')).toHaveCount(1);
   await expect(historial).toContainText('Transferencia');
-  await expect(historial).toContainText(PRIMER_PAGO.pintado);
+  await expect(historial).toContainText(pago.pintado);
 
   // Al recargar sigue ahi: lo guardo el servidor, no la pantalla.
   await page.reload();
@@ -178,7 +212,8 @@ test('a 390 px se ve el saldo y se registra un pago sin desplazamiento lateral',
   expect(cajaBoton!.height).toBeGreaterThanOrEqual(44);
 
   const pagadoAntes = await cifra(page, 'Pagado');
-  await registrarPago(page, SEGUNDO_PAGO.escrito);
+  const pago = await parteDelSaldo(page, 4);
+  await registrarPago(page, pago.escrito);
   await sinDesborde('tras registrar el pago');
 
   await expect(page.getByTestId('pago-registrado')).toBeVisible();
