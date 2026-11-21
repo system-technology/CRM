@@ -7057,7 +7057,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: [T-315]
     acceptance:
       - "La campana y la suma de sus pestañas coinciden y sus avisos apuntan a archivos que existen"
@@ -7065,6 +7065,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T04:10:00.000Z
+    evidence: "Integrada en main por el PR #385 (912f412) con los 14 checks en verde, incluido navegador. La campana (distintivo, encabezado y pestañas) sale de una sola función, resumirNotificaciones, y «Todas» es la suma de las demás; los avisos a /viajes?id= se validan contra listarArchivos y solo se ocultan cuando el archivo no existe con certeza (lista completa y recarga confirmada); «Ir a ingresar» con ?redirigir= validado en not-found, error y el error de la guardia con la API caída (solo cambia la rama estado==='error' de guarda-sesion.tsx; el ciclo y rutas-publicas.ts no se tocan). auditor-seguridad (una pasada) sin bloqueantes; su hallazgo funcional se corrigió en el mismo PR; la sesión madre leyó el diff de la guardia. VISTO en Chrome emulado a 390, 768, 820, 1024, 1180 y 1440 de ancho: desborde horizontal 0, distintivo = suma de pestañas, botones de salida de 44 px o más. SIN ver en navegador: el error global (error.tsx; solo su prueba unitaria) y el comportamiento con la API real y sesión válida; tablet solo con emulación. Cola: T-429 a T-435."
   - id: T-323
     title: 'B0: diseño y alcance de las etiquetas de la agencia en la bandeja'
     type: docs
@@ -8432,3 +8434,194 @@ tasks:
     source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
     created_at: 2026-11-21T03:00:00.000Z
     owner: backend
+  - id: T-428
+    title: "Automatizar la regla R14: un check del CI avisa cuando un PR toca apps/ o packages/ sin tocar docs/ ni roadmap/tasks.yaml"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Un job del CI comenta o marca en amarillo (no bloquea al principio) cuando un PR que cambia apps/ o packages/ no cambia docs/ ni roadmap/tasks.yaml, con la lista de lo que falta (hecho, siguiente, ADR si hay decisión estructural)"
+      - "Exenciones explícitas y escritas (PR solo de dependencias, de formato, de revertir); la prueba del check cubre un PR con y sin documentación"
+      - "Ruta protegida (.github/, scripts/): auditor-seguridad y aprobación de la sesión madre antes de integrar"
+    source: "regla R14 del propietario (2026-11-21), pedida por la sesión madre"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: devops
+  - id: T-429
+    title: "Decidir si /LOGIN en mayúsculas cuenta como ruta de acceso"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "esRutaDeAcceso decide por escrito si ignora mayúsculas y minúsculas; con la decisión, spec que cubre /LOGIN y /Ingresar como destino de redirigir"
+    source: "cola de T-322 (2026-11-21), BAJO (auditoría)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-430
+    title: "Pruebas del enlace «Ir a ingresar»: vectores %2f%2f, U+2215 y ancho completo, y el recorrido href → sanitizarRutaRedireccion"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "errores-sistema.spec.ts gana los vectores %2f%2f, U+2215 y barra de ancho completo, y una prueba que va del href generado hasta sanitizarRutaRedireccion de formulario-ingreso.tsx y comprueba que el origen resultante es el propio"
+    source: "cola de T-322 (2026-11-21), BAJO (auditoría)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: qa
+  - id: T-431
+    title: "La campana avisa cuando hay más avisos de los que muestra (límite de 50)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Con más de 50 avisos la campana muestra «50+» o «Ver todos» en lugar de contar solo los visibles; la cifra del servidor noLeidas deja de ignorarse o se explica por qué"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-432
+    title: "Validar también los avisos que apuntan a /cotizaciones/ y /bandeja/ y unificar mock-viajes con mock-archivos"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Las notificaciones de demo que apuntan a una cotización o una conversación que no existe se validan como ya se validan las de archivos, o se corrigen sus ids"
+      - "mock-viajes y mock-archivos dejan de ser dos fuentes: una sola lista de archivos de demo para Archivos de viaje, campana y paleta"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-433
+    title: "El panel de la campana cumple 44 px táctiles y no recorta «Operativas» en celular, tablet y escritorio"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Las pestañas del panel (23 px de alto hoy) y sus botones de acción (36 px) miden 44 px o más; la tira de pestañas no recorta «Operativas» (mide 622 px y el panel deja 510; en celular 364): wrap, panel más ancho en tablet o selector, según decida diseño"
+      - "Capturas a 390, 768-1180 en ambas orientaciones y 1440; se coordina con la sesión de rediseño de interfaz porque el panel es compartido"
+    source: "cola de T-322 (2026-11-21): defecto medido por el agente en 6 anchos"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: diseno-ux
+  - id: T-434
+    title: "La vista de error de la guardia se centra, con marco y foco, en tablet y escritorio"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "El estado «No pudimos verificar tu sesión» queda centrado y con altura propia en tablet y escritorio, con el mismo texto y las dos salidas; sin tocar el ciclo de verificación de GuardaSesion (ADR-0032)"
+      - "Se ve en navegador el error global (error.tsx), que no se pudo forzar en T-322"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: diseno-ux
+  - id: T-435
+    title: "Foco de los botones del panel de la campana con anillo de color y contraste medido"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "El foco de los botones de acción del panel usa el anillo de foco del sistema en lugar de un contorno sólido de 2 px, con contraste medido en claro y oscuro"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-480
+    title: "Reportes de cobros: saldo por cobrar por asesor y moneda, cobrado en el periodo por medio de pago y correcciones"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-330, T-342]
+    acceptance:
+      - "Tres reportes de cobros definidos y construidos con el alcance propio o de agencia que impone el servidor (T-342); el estado de pago es del archivo de viaje (ADR-0034) y las funciones puras del saldo viven en packages/domain"
+      - "Dinero en enteros con su moneda ISO-4217 (R8), sin mezclar monedas en una cifra"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21); docs/08-roadmap/11-reportes-por-nivel-catalogo.md §9"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: analista-datos
+  - id: T-481
+    title: "Ventas por mayorista a partir de bookings.mayorista_nombre y decisión sobre lo que queda de T-149"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "El reporte de ventas por mayorista se define con su fórmula y fuente (bookings.mayorista_nombre) y se decide por escrito qué queda de T-149"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: analista-datos
+  - id: T-482
+    title: "Re-basar T-148 (salidas próximas) sobre travel_files"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "La definición de salidas próximas deja de depender de bookings y usa travel_files, con el mismo alcance por nivel que el resto de reportes"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: analista-datos
+  - id: T-483
+    title: "Exportar CSV en el servidor, con permiso y auditoría, cuando lleve datos personales"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-345]
+    acceptance:
+      - "Hoy los CSV se generan en el navegador y el servidor no registra que alguien exportó; una exportación con nombres o teléfonos se hace en el servidor con permiso y registro del actor, sin el contenido (R10)"
+      - "Solo con alcance de agencia (pregunta 13 del catálogo de reportes por nivel)"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: backend
+  - id: T-484
+    title: "Cerrar por rol y con dueño los hallazgos H4 a H8 del catálogo de reportes por nivel"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "GET /crm/tablero, /crm/contactos y /crm/contactos/:id/ficha devuelven datos de toda la agencia a cualquier miembro y POST /crm/oportunidades acepta el asesorId de cualquier asesor de la agencia: se decide en T-340 qué ve y qué asigna cada nivel y se parte la corrección en tareas con auditor-seguridad"
+      - "H5 (tasks.yaml desfasado en T-131, T-132 y parte de T-136) se resuelve con evidencia de commit o archivo y dueño dueno-de-producto"
+    source: "catálogo de reportes por nivel §6 y revisión del cierre H1/H2 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: dueno-de-producto
+  - id: T-485
+    title: "Web: «Esta vista es de administración» en Reportes y seguimientos propios tras el cierre H1/H2"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "lib/reportes-api.ts traduce el 403 PERMISO_DENEGADO de /reportes/resumen a «Esta vista es de administración» (reportes/page.tsx:121 y 123, reportes-reales.tsx:66 y 69, reportes-permisos.spec.tsx); el menú Reportes sigue visible a todos (D3)"
+      - "Seguimientos y ficha del contacto muestran solo lo del asesor sin ver_todas, con el texto que lo explique; verificado a 390, tablet y 1440 px; PR web mínimo tras la ventana de diseño"
+    source: "cierre provisional H1/H2 (PR #395, 2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
