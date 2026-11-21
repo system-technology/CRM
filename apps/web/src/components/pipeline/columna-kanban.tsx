@@ -11,6 +11,8 @@ interface ColumnaKanbanProps {
   onDropOportunidad: (oportunidadId: string, nuevaEtapa: EtapaDefinida) => void;
   /** Todas las etapas del tablero, para el menú «mover a» de cada tarjeta. */
   etapas: EtapaDefinida[];
+  /** Oportunidad pedida por la URL, si cae en esta columna (T-318). */
+  oportunidadEnfocadaId?: string | null;
 }
 
 /** Para las etapas que la agencia inventó y el vocabulario común no nombra. */
@@ -47,6 +49,7 @@ export function ColumnaKanban({
   etapas,
   onSolicitarMover,
   onDropOportunidad,
+  oportunidadEnfocadaId = null,
 }: ColumnaKanbanProps) {
   const [arrastrandoEncima, setArrastrandoEncima] = useState(false);
 
@@ -125,6 +128,7 @@ export function ColumnaKanban({
               etapas={etapas}
               onSolicitarMover={onSolicitarMover}
               indice={idx}
+              enfocada={op.id === oportunidadEnfocadaId}
             />
           ))
         )}
