@@ -37,7 +37,7 @@ export function FormularioIngreso() {
 
   const [paso, setPaso] = useState<PasoIngreso>('credenciales');
   // Sin valores reales de relleno preestablecidos (T-033)
-  const [correo, setCorreo] = useState('');
+  const [identificador, setIdentificador] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [mostrarClave, setMostrarClave] = useState(false);
   const [codigoOtp, setCodigoOtp] = useState('');
@@ -55,7 +55,7 @@ export function FormularioIngreso() {
 
     try {
       const resSesion = await authApi.iniciarSesionApi({
-        correo: correo.trim(),
+        identificador: identificador.trim(),
         contrasena,
       });
       setSesion(resSesion);
@@ -74,7 +74,7 @@ export function FormularioIngreso() {
       const errorObj = err as AuthApiError;
       setError(
         errorObj.message ||
-          'Credenciales no reconocidas. Verifica tu correo y contraseña o contacta al administrador.',
+          'Credenciales no reconocidas. Revisa tu correo o usuario y tu contraseña, o contacta al administrador.',
       );
     } finally {
       setCargando(false);
@@ -324,24 +324,28 @@ export function FormularioIngreso() {
               >
                 <div>
                   <label
-                    htmlFor="campo-correo"
+                    htmlFor="campo-identificador"
                     className="mb-1 block text-xs font-semibold text-neutral-800 dark:text-neutral-200"
                   >
-                    Correo electrónico
+                    Correo o usuario
                   </label>
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                       <Mail className="h-4 w-4 text-neutral-400" aria-hidden="true" />
                     </div>
                     <input
-                      id="campo-correo"
-                      name="correo"
-                      type="email"
+                      id="campo-identificador"
+                      name="usuario"
+                      type="text"
+                      inputMode="email"
                       required
-                      autoComplete="email"
-                      value={correo}
-                      onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="asesor@tuagencia.com"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      value={identificador}
+                      onChange={(e) => setIdentificador(e.target.value)}
+                      placeholder="tu usuario o asesor@tuagencia.com"
                       className="block min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2 pr-3 pl-9 text-xs text-neutral-900 transition-all placeholder:text-neutral-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>

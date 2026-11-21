@@ -180,6 +180,7 @@ describe('BloqueEquipo (T-027)', () => {
           id: '1',
           nombre: 'Laura Restrepo',
           email: 'laura@agencia.co',
+          apodo: null,
           rolClave: null,
           rolNombre: 'Coordinadora de grupos',
           estado: 'ACTIVO',
@@ -196,6 +197,58 @@ describe('BloqueEquipo (T-027)', () => {
       expect(screen.getByText('LR').closest('tr')?.textContent).toContain('laura@agencia.co');
       fireEvent.click(screen.getByRole('button', { name: /Invitar Asesor/i }));
       expect(screen.queryByLabelText(/Teléfono WhatsApp/i)).toBeNull();
+    });
+  });
+  describe('usuario de ingreso (ADR-0031)', () => {
+    const abrir = async () => {
+      render(<BloqueEquipo />);
+      await waitFor(() => {
+        expect(
+          screen.getAllByRole('button', { name: /Editar usuario de/i }).length,
+        ).toBeGreaterThan(0);
+      });
+      const boton = screen.getAllByRole('button', { name: /Editar usuario de/i })[0];
+      if (!boton) throw new Error('sin boton');
+      fireEvent.click(boton);
+    };
+
+    it('guarda el usuario y avisa sin jerga', async () => {
+      const espia = vi.spyOn(equipoApi, 'cambiarApodoMiembroApi').mockResolvedValueOnce();
+      await abrir();
+      fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'ialvear' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => {
+        expect(screen.getByText(/ya puede entrar con su usuario/)).toBeDefined();
+      });
+      expect(espia).toHaveBeenCalledWith(expect.any(String), 'ialvear');
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('con el usuario vacio lo quita (null)', async () => {
+      const espia = vi.spyOn(equipoApi, 'cambiarApodoMiembroApi').mockResolvedValueOnce();
+      await abrir();
+      fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: '  ' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(espia).toHaveBeenCalledWith(expect.any(String), null));
+    });
+
+    it('un 409 muestra un mensaje claro y deja el dialogo abierto', async () => {
+      vi.spyOn(equipoApi, 'cambiarApodoMiembroApi').mockRejectedValueOnce(
+        new equipoApi.ErrorMiembrosApi(
+          'APODO_NO_DISPONIBLE',
+          equipoApi.mensajeDeErrorDeApodo(409, 'APODO_NO_DISPONIBLE'),
+          409,
+        ),
+      );
+      await abrir();
+      fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'ocupado' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('error-usuario-de-ingreso').textContent).toMatch(
+          /ya está en uso/,
+        );
+      });
+      expect(screen.getByRole('dialog')).toBeDefined();
     });
   });
 });

@@ -32,10 +32,11 @@ describe('FormularioIngreso (0c.29)', () => {
     expect(screen.getByRole('heading', { level: 1, name: /viajapro/i }).textContent).toBe(
       'ViajaPro',
     );
-    const correo = screen.getByLabelText<HTMLInputElement>(/correo electrónico/i);
-    expect(correo.type).toBe('email');
-    expect(correo.autocomplete).toBe('email');
-    expect(correo.value).toBe('');
+    const identificador = screen.getByLabelText<HTMLInputElement>(/correo o usuario/i);
+    expect(identificador.type).toBe('text');
+    expect(identificador.autocomplete).toBe('username');
+    expect(identificador.getAttribute('autocapitalize')).toBe('none');
+    expect(identificador.value).toBe('');
     const clave = screen.getByLabelText<HTMLInputElement>(/^contraseña$/i);
     expect(clave.type).toBe('password');
     expect(clave.autocomplete).toBe('current-password');
@@ -71,7 +72,7 @@ describe('FormularioIngreso (0c.29)', () => {
     vi.spyOn(authApi, 'iniciarSesionApi').mockRejectedValueOnce(
       new authApi.AuthApiError(
         'CREDENCIALES_INVALIDAS',
-        'Correo o contraseña incorrectos. Verifica tus credenciales.',
+        'Los datos no coinciden. Revisa tu correo o usuario y tu contraseña.',
         401,
       ),
     );
@@ -84,7 +85,7 @@ describe('FormularioIngreso (0c.29)', () => {
     await waitFor(() => {
       const alerta = screen.getByRole('alert');
       expect(alerta.getAttribute('aria-live')).toBe('assertive');
-      expect(alerta.textContent).toContain('Correo o contraseña incorrectos');
+      expect(alerta.textContent).toContain('Los datos no coinciden');
     });
   });
 
@@ -285,7 +286,7 @@ describe('FormularioIngreso (0c.29)', () => {
 
     render(<FormularioIngreso />);
 
-    fireEvent.change(screen.getByLabelText(/correo electrónico/i), {
+    fireEvent.change(screen.getByLabelText(/correo o usuario/i), {
       target: { value: 'asesor@viajapro.com' },
     });
     fireEvent.change(screen.getByLabelText(/^contraseña$/i), {
