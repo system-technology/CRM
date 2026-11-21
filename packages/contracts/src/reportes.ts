@@ -42,6 +42,21 @@
  *     `conversacionesRespondidas` + `sinResponder` = `conversacionesNuevas`, y el tiempo se mide
  *     desde el primer mensaje entrante del viajero hasta la primera respuesta.
  * Las tasas y promedios son `null` (no 0) cuando no hay base para calcularlos.
+ *
+ * **Solo con alcance AGENCIA (T-531, T-532).** `porAsesor` y `ventasPorDestino` existen únicamente
+ * en `ResumenDeAgencia`: en la respuesta `PROPIO` su presencia falla la validación de salida
+ * (`strict()`), no se recorta en silencio.
+ *   · `porAsesor`: las cifras de cada asesor de la agencia en UNA respuesta, con la misma
+ *     atribución de ADR-0035 §2 que el filtro `?asesorId=` (cotizaciones por quien las creó,
+ *     oportunidades por su asesor de hoy, respuesta por quien respondió). Solo viene con
+ *     `asesorId: null` (toda la agencia); filtrada por un asesor, sería una lista de uno que ya es
+ *     la respuesta entera. Solo trae a los asesores con algo atribuido en el periodo: quien no
+ *     tiene nada no aparece (la web lo completa con el equipo); las filas sin asesor
+ *     (`creado_por` o `asesor_id` nulos) cuentan en el total de la agencia y en ninguna fila de
+ *     asesor. Margen solo con `cotizacion.ver_neto_y_margen`.
+ *   · `ventasPorDestino`: las mismas ventas que `ventasPorMoneda` (misma cohorte: cambio a
+ *     ACEPTADA en el rango), una fila por destino Y moneda; nunca se suma entre monedas (R8).
+ *     Respeta el filtro de asesor si lo hay. El destino es el de la versión que vio el cliente.
  */
 
 import { z } from 'zod';
@@ -200,6 +215,25 @@ export const PorCobrar = z.object({
 });
 export type PorCobrar = z.infer<typeof PorCobrar>;
 
+/** Una fila de `ventasPorDestino`: la misma forma que una de `ventasPorMoneda`, más el destino. */
+export const VentasDeUnDestino = VentasDeUnaMoneda.extend({ destino: z.string() });
+export type VentasDeUnDestino = z.infer<typeof VentasDeUnDestino>;
+
+/**
+ * Las cifras de UN asesor dentro de la respuesta de agencia (T-531). Lo mismo que traería esa
+ * misma consulta con `?asesorId=<asesor>`, sin el desglose por etapa (que sale una vez, arriba).
+ */
+export const ResumenDeUnAsesor = z
+  .object({
+    asesorId: Id,
+    cotizaciones: ResumenDeCotizaciones,
+    ventasPorMoneda: z.array(VentasDeUnaMoneda),
+    oportunidades: ResumenDeOportunidades.omit({ porEtapa: true }),
+    respuesta: ResumenDeRespuesta,
+  })
+  .strict();
+export type ResumenDeUnAsesor = z.infer<typeof ResumenDeUnAsesor>;
+
 /** Las cifras, iguales en los dos alcances. Lo que cambia es QUÉ FILAS las componen. */
 const CIFRAS_DEL_RESUMEN = {
   periodo: z.object({ desde: Instante, hasta: Instante }),
@@ -236,7 +270,15 @@ export type ResumenPropio = z.infer<typeof ResumenPropio>;
 
 /** Lo que ve quien SÍ lo tiene. `asesorId` es el filtro aplicado, o `null` si es toda la agencia. */
 export const ResumenDeAgencia = z
-  .object({ ...CIFRAS_DEL_RESUMEN, alcance: z.literal('AGENCIA'), asesorId: Id.nullable() })
+  .object({
+    ...CIFRAS_DEL_RESUMEN,
+    alcance: z.literal('AGENCIA'),
+    asesorId: Id.nullable(),
+    /** T-531. Solo con `asesorId: null`; ver la cabecera del archivo. Opcional por clientes anteriores. */
+    porAsesor: z.array(ResumenDeUnAsesor).optional(),
+    /** T-532. Una fila por destino y moneda. Opcional por clientes anteriores. */
+    ventasPorDestino: z.array(VentasDeUnDestino).optional(),
+  })
   .strict();
 export type ResumenDeAgencia = z.infer<typeof ResumenDeAgencia>;
 

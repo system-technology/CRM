@@ -10,6 +10,8 @@
  *   · `sinCobrosA`   — `reportes.ver_agencia` pero SIN `cobro.ver` (T-537): ve toda la agencia en
  *     todo menos en el dinero por cobrar, que su propia pantalla de cobros le niega.
  *   · `duenoB`       — los mismos permisos, en la agencia B.
+ *   · `duenoC`, `anaC` — agencia C (T-531, T-532): el dueño y una asesora, con tres paquetes de
+ *     destino y moneda distintos (San Andrés en COP y en USD, Cartagena en COP).
  *
  * Lo que afirma:
  *   · un asesor ve LO SUYO y nada del compañero: ni sus ventas, ni su embudo, ni sus tiempos, ni
@@ -22,7 +24,10 @@
  *     `cobro.ver` (T-537: un reporte nunca enseña más que la pantalla del mismo dato);
  *   · las cifras de A salen de los datos de A y nada más: las de B (más caras, para que se note)
  *     no se cuelan, y un `asesorId` de la otra agencia no trae nada;
- *   · un periodo sin datos devuelve ceros y razones `null`, y el rango se valida en el borde.
+ *   · un periodo sin datos devuelve ceros y razones `null`, y el rango se valida en el borde;
+ *   · `porAsesor` (T-531) trae en UNA respuesta lo mismo que cada consulta con `?asesorId=`, y
+ *     `ventasPorDestino` (T-532) una fila por destino y moneda sin sumar monedas; ninguna de las
+ *     dos existe con alcance propio, ni con el margen sin su permiso, ni cruza agencias.
  *
  * **Fixtures propios.** Las versiones son inmutables y solo la purga las borra, así que esta
  * prueba crea dos agencias `fixture-aislamiento-` y las borra al terminar. Las cotizaciones se
@@ -37,7 +42,11 @@ import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaClient } from '@prisma/client';
-import { CotizacionGuardada, ResumenDeReportesPorAlcance } from '@viajapro/contracts';
+import {
+  CotizacionGuardada,
+  type ResumenDeAgencia,
+  ResumenDeReportesPorAlcance,
+} from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -48,6 +57,7 @@ import { mensajeConTexto } from '../../shared/cifrado/cifrado-de-prueba.js';
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
 const TENANT_B = idDeTenant();
+const TENANT_C = idDeTenant();
 const DOMINIO = '@fixture-identidad.test';
 const CLAVE = 'una-clave-larga-de-prueba-1';
 const ORIGEN_WEB = 'http://localhost:3000';
@@ -62,6 +72,8 @@ const correo = {
   operacionesA: `fixture-aislamiento-rep-oper-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   sinCobrosA: `fixture-aislamiento-rep-sincob-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   duenoB: `fixture-aislamiento-rep-dueno-b-${randomBytes(3).toString('hex')}${DOMINIO}`,
+  duenoC: `fixture-aislamiento-rep-dueno-c-${randomBytes(3).toString('hex')}${DOMINIO}`,
+  anaC: `fixture-aislamiento-rep-ana-c-${randomBytes(3).toString('hex')}${DOMINIO}`,
 };
 type Quien = keyof typeof correo;
 const QUIENES = Object.keys(correo) as Quien[];
@@ -313,6 +325,45 @@ beforeAll(async () => {
   await persona('valentinaA', TENANT_A, a.asesor);
   await persona('betoA', TENANT_A, a.asesorConMargen);
   await persona('duenoB', TENANT_B, b.deAgenciaConMargen);
+  const c = await crearAgencia(TENANT_C, 'C', 1_000_000n);
+  await persona('duenoC', TENANT_C, c.deAgenciaConMargen);
+  await persona('anaC', TENANT_C, c.asesor);
+  // T-532: dos paquetes más. «San Andrés» ya existe en COP; aquí también en USD (mismo destino,
+  // otra moneda: si algún día se sumaran, el total de un solo renglón delataría el error), y
+  // «Cartagena» en COP.
+  const paqueteExtra = async (destino: string, moneda: 'COP' | 'USD', ventaUnidades: bigint) => {
+    const paquete = await admin.paquete.create({
+      data: {
+        tenantId: TENANT_C,
+        nombre: `Paquete ${destino} ${moneda} fixture`,
+        destino,
+        dias: 4,
+        noches: 3,
+        planAlimentacion: 'TODO_INCLUIDO',
+      },
+    });
+    const vigencia = await admin.vigencia.create({
+      data: {
+        tenantId: TENANT_C,
+        paqueteId: paquete.id,
+        desde: new Date('2027-03-01'),
+        hasta: new Date('2027-03-31'),
+      },
+    });
+    await admin.tarifa.create({
+      data: {
+        tenantId: TENANT_C,
+        vigenciaId: vigencia.id,
+        nombre: 'Adulto',
+        netoUnidades: (ventaUnidades * 5n) / 6n,
+        ventaUnidades,
+        monedaIso: moneda,
+      },
+    });
+    return paquete.id;
+  };
+  const sanAndresUsd = await paqueteExtra('San Andrés', 'USD', 50_000n);
+  const cartagena = await paqueteExtra('Cartagena', 'COP', 2_000_000n);
 
   // Oportunidades, con asesor: Valentina 2 abiertas y 1 ganada; Beto 1 perdida; B una abierta.
   const etapasA = {
@@ -438,6 +489,12 @@ beforeAll(async () => {
   aceptadaDeBeto = await cotizar(TENANT_A, a, 'betoA', 1, 'ACEPTADA');
   const aceptadaDeB = await cotizar(TENANT_B, b, 'duenoB', 1, 'ACEPTADA');
 
+  // T-531, T-532 (agencia C): cuatro ventas aceptadas, de dos asesores, en tres destino/moneda.
+  await cotizar(TENANT_C, c, 'duenoC', 2, 'ACEPTADA'); // San Andrés COP 2 000 000
+  await cotizar(TENANT_C, c, 'anaC', 1, 'ACEPTADA'); // San Andrés COP 1 000 000
+  await cotizar(TENANT_C, { ...c, paquete: sanAndresUsd }, 'duenoC', 1, 'ACEPTADA'); // USD 50 000
+  await cotizar(TENANT_C, { ...c, paquete: cartagena }, 'anaC', 1, 'ACEPTADA'); // Cartagena 2 000 000
+
   // T-528: cotizaciones ENVIADAS que siguen esperando, con antigüedades distintas. Se envían hoy
   // y se retrasa `enviada_en` FUERA del rango del reporte: así cambian los tramos de «hoy» sin
   // tocar la cohorte de `enviadas` del periodo, que se cuenta por `enviada_en`.
@@ -500,7 +557,7 @@ afterAll(async () => {
         borrarTenants: Limpiador;
       };
       await adminPg.query('BEGIN');
-      await modulo.borrarTenants(adminPg, [TENANT_A, TENANT_B]);
+      await modulo.borrarTenants(adminPg, [TENANT_A, TENANT_B, TENANT_C]);
       await adminPg.query('COMMIT');
       await adminPg.query('DELETE FROM identidades WHERE id = ANY($1::uuid[])', [
         Object.values(identidadId).filter((id) => id !== ''),
@@ -943,5 +1000,187 @@ describe('el saldo por cobrar exige `cobro.ver` (T-537)', () => {
       porMoneda: [{ moneda: 'COP', archivos: 2, saldo: { unidades: '3200000', moneda: 'COP' } }],
       truncado: false,
     });
+  });
+});
+
+/** La respuesta de agencia, o falla: estas pruebas no tienen nada que decir de la propia. */
+function deAgencia(r: { json: ResumenDeReportesPorAlcance }): ResumenDeAgencia {
+  if (r.json.alcance !== 'AGENCIA') throw new Error('Se esperaba el alcance de agencia');
+  return r.json;
+}
+
+describe('cifras por asesor en una sola respuesta (T-531)', () => {
+  it('cada fila es EXACTAMENTE lo que daría la consulta filtrada por ese asesor', async () => {
+    const agencia = deAgencia(await reporte('duenoA'));
+    const filas = agencia.porAsesor ?? [];
+    // Solo los dos asesores con actividad: ni el dueño ni operaciones, que no cotizaron nada.
+    expect(filas.map((f) => f.asesorId).sort()).toEqual(
+      [usuarioId.valentinaA, usuarioId.betoA].sort(),
+    );
+
+    for (const quien of ['valentinaA', 'betoA'] as const) {
+      const fila = filas.find((f) => f.asesorId === usuarioId[quien]);
+      const individual = deAgencia(
+        await reporte('duenoA', { ...RANGO, asesorId: usuarioId[quien] }),
+      );
+      const { porEtapa: _porEtapa, ...oportunidades } = individual.oportunidades;
+      // Cotizaciones (con neto y margen: el dueño tiene el permiso), ventas, oportunidades y
+      // respuesta, con la misma atribución que el filtro (ADR-0035 §2).
+      expect(fila).toEqual({
+        asesorId: usuarioId[quien],
+        cotizaciones: individual.cotizaciones,
+        ventasPorMoneda: individual.ventasPorMoneda,
+        oportunidades,
+        respuesta: individual.respuesta,
+      });
+    }
+    // Y no son filas vacías: lo que se comparó es dinero y tiempos reales.
+    const vale = filas.find((f) => f.asesorId === usuarioId.valentinaA);
+    expect(vale?.ventasPorMoneda[0]?.ventas).toEqual({ unidades: '2400000', moneda: 'COP' });
+    expect(vale?.respuesta.conversacionesNuevas).toBe(2);
+    expect(vale?.respuesta.sinResponder).toBe(1);
+    expect(vale?.oportunidades).toMatchObject({ creadas: 3, ganadas: 1, perdidas: 0, abiertas: 2 });
+  });
+
+  it('la agencia entera sigue siendo la suma: lo de los asesores cuadra con el total', async () => {
+    const agencia = deAgencia(await reporte('duenoA'));
+    const filas = agencia.porAsesor ?? [];
+    const suma = (f: (x: (typeof filas)[number]) => number): number =>
+      filas.reduce((acc, x) => acc + f(x), 0);
+    expect(suma((x) => x.cotizaciones.creadas)).toBe(agencia.cotizaciones.creadas);
+    expect(suma((x) => x.cotizaciones.enviadas)).toBe(agencia.cotizaciones.enviadas);
+    expect(suma((x) => x.oportunidades.creadas)).toBe(agencia.oportunidades.creadas);
+    expect(suma((x) => x.respuesta.conversacionesNuevas)).toBe(
+      agencia.respuesta.conversacionesNuevas,
+    );
+  });
+
+  it('va ordenada por asesor, sin depender del plan de la base', async () => {
+    const ids = (deAgencia(await reporte('duenoA')).porAsesor ?? []).map((f) => f.asesorId);
+    expect(ids).toEqual([...ids].sort());
+  });
+
+  it('sin cotizacion.ver_neto_y_margen ninguna fila trae neto ni margen', async () => {
+    const r = await reporte('operacionesA');
+    expect(deAgencia(r).porAsesor).toHaveLength(2);
+    expect(r.texto).not.toMatch(/neto|margen/i);
+  });
+
+  it('con un filtro de asesor no hay lista por asesor: sería una lista de uno', async () => {
+    const r = await reporte('duenoA', { ...RANGO, asesorId: usuarioId.betoA });
+    expect(deAgencia(r).porAsesor).toBeUndefined();
+    expect(r.texto).not.toContain('porAsesor');
+  });
+
+  it('con alcance propio la clave no existe y no se cuela el compañero', async () => {
+    for (const quien of ['valentinaA', 'betoA'] as const) {
+      const r = await reporte(quien);
+      expect(r.json.alcance).toBe('PROPIO');
+      expect(r.texto).not.toContain('porAsesor');
+      expect(r.texto).not.toContain('ventasPorDestino');
+      const otro = quien === 'valentinaA' ? usuarioId.betoA : usuarioId.valentinaA;
+      expect(r.texto).not.toContain(otro);
+    }
+  });
+
+  it('otra agencia solo ve a sus asesores: ni un id de A en la respuesta de B', async () => {
+    const r = await reporte('duenoB');
+    const filas = deAgencia(r).porAsesor ?? [];
+    expect(filas.map((f) => f.asesorId)).toEqual([usuarioId.duenoB]);
+    expect(filas[0]?.ventasPorMoneda[0]?.ventas).toEqual({ unidades: '2100000', moneda: 'COP' });
+    for (const quien of ['duenoA', 'valentinaA', 'betoA', 'operacionesA'] as const) {
+      expect(r.texto).not.toContain(usuarioId[quien]);
+    }
+  });
+
+  it('un periodo sin datos devuelve listas vacías, no filas en cero', async () => {
+    const r = await reporte('duenoA', {
+      desde: '2020-01-01T00:00:00.000Z',
+      hasta: '2020-02-01T00:00:00.000Z',
+    });
+    expect(deAgencia(r).porAsesor).toEqual([]);
+    expect(deAgencia(r).ventasPorDestino).toEqual([]);
+  });
+});
+
+describe('ventas del periodo por destino y moneda (T-532)', () => {
+  it('una fila por destino y moneda, sin sumar monedas y de mayor a menor venta (R8)', async () => {
+    const r = await reporte('duenoC');
+    const filas = (deAgencia(r).ventasPorDestino ?? []).map((f) => [
+      f.destino,
+      f.moneda,
+      f.cotizacionesAceptadas,
+      f.ventas.unidades,
+    ]);
+    expect(filas).toEqual([
+      ['San Andrés', 'COP', 2, '3000000'],
+      ['Cartagena', 'COP', 1, '2000000'],
+      ['San Andrés', 'USD', 1, '50000'],
+    ]);
+    // El mismo destino en dos monedas son dos renglones; ninguno vale 3 050 000.
+    expect(r.texto).not.toContain('3050000');
+  });
+
+  it('reparte las MISMAS ventas que ventasPorMoneda: por destino suman lo mismo, moneda a moneda', async () => {
+    const agencia = deAgencia(await reporte('duenoC'));
+    for (const porMoneda of agencia.ventasPorMoneda) {
+      const delDestino = (agencia.ventasPorDestino ?? [])
+        .filter((f) => f.moneda === porMoneda.moneda)
+        .reduce((acc, f) => acc + BigInt(f.ventas.unidades), 0n);
+      expect(delDestino.toString()).toBe(porMoneda.ventas.unidades);
+    }
+    expect(agencia.ventasPorMoneda.map((v) => v.moneda).sort()).toEqual(['COP', 'USD']);
+  });
+
+  it('respeta el filtro de asesor de la agencia', async () => {
+    const ana = deAgencia(await reporte('duenoC', { ...RANGO, asesorId: usuarioId.anaC }));
+    expect(
+      (ana.ventasPorDestino ?? []).map((f) => [f.destino, f.moneda, f.ventas.unidades]),
+    ).toEqual([
+      ['Cartagena', 'COP', '2000000'],
+      ['San Andrés', 'COP', '1000000'],
+    ]);
+    const dueno = deAgencia(await reporte('duenoC', { ...RANGO, asesorId: usuarioId.duenoC }));
+    expect(
+      (dueno.ventasPorDestino ?? []).map((f) => [f.destino, f.moneda, f.ventas.unidades]),
+    ).toEqual([
+      ['San Andrés', 'COP', '2000000'],
+      ['San Andrés', 'USD', '50000'],
+    ]);
+  });
+
+  it('las cifras por asesor tampoco suman monedas: el dueño tiene una fila COP y una USD', async () => {
+    const filas = deAgencia(await reporte('duenoC')).porAsesor ?? [];
+    const dueno = filas.find((f) => f.asesorId === usuarioId.duenoC);
+    expect(dueno?.ventasPorMoneda.map((v) => [v.moneda, v.ventas.unidades])).toEqual([
+      ['COP', '2000000'],
+      ['USD', '50000'],
+    ]);
+  });
+
+  it('el neto y el margen por destino salen solo con su permiso', async () => {
+    const con = await reporte('duenoC');
+    for (const fila of deAgencia(con).ventasPorDestino ?? []) {
+      expect(fila.margen).not.toBeUndefined();
+      expect(fila.neto).not.toBeUndefined();
+    }
+    // Operaciones ve la agencia, pero esa agencia es la A: el permiso se prueba con su respuesta.
+    const sin = await reporte('operacionesA');
+    expect(deAgencia(sin).ventasPorDestino).toHaveLength(1);
+    expect(sin.texto).not.toMatch(/neto|margen/i);
+  });
+
+  it('con alcance propio la clave no existe', async () => {
+    const r = await reporte('anaC');
+    expect(r.json.alcance).toBe('PROPIO');
+    expect(r.texto).not.toContain('ventasPorDestino');
+  });
+
+  it('una agencia no ve los destinos de otra', async () => {
+    const b = await reporte('duenoB');
+    expect((deAgencia(b).ventasPorDestino ?? []).map((f) => f.destino)).toEqual(['San Andrés']);
+    expect(b.texto).not.toContain('Cartagena');
+    const a = await reporte('duenoA');
+    expect(a.texto).not.toContain('Cartagena');
   });
 });

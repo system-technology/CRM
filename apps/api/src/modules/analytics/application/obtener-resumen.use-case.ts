@@ -28,7 +28,12 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { type ConsultarResumenDeReportes, ResumenDeReportesPorAlcance } from '@viajapro/contracts';
-import { alcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
+import {
+  type AlcanceDeAgenciaEntera,
+  alcanceDeReporte,
+  esAgencia,
+  esAgenciaEntera,
+} from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   PuertoCobrosParaReportes,
   PuertoCotizacionesParaReportes,
@@ -37,7 +42,7 @@ import {
   TOPE_DE_ARCHIVOS_PARA_COBRAR,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { armarResumen } from '../domain/resumen.js';
+import { armarResumen, resumenesPorAsesor } from '../domain/resumen.js';
 
 @Injectable()
 export class ObtenerResumenDeReportes {
@@ -64,18 +69,55 @@ export class ObtenerResumenDeReportes {
     // respuesta.
     const ahora = new Date();
 
-    const [cotizaciones, etapas, respuesta, abiertas, cobros] = await Promise.all([
-      this.cotizaciones.resumir(tenantId, rango, alcance, incluirMargen),
-      this.oportunidades.porEtapa(tenantId, rango, alcance),
-      this.respuesta.resumir(tenantId, rango, alcance),
-      this.cotizaciones.abiertas(tenantId, alcance, ahora),
-      incluirPorCobrar
-        ? this.cobros.porCobrar(tenantId, alcance, TOPE_DE_ARCHIVOS_PARA_COBRAR)
-        : undefined,
-    ]);
+    // T-531 y T-532: solo el alcance de agencia. `porAsesor` solo con la agencia entera (con un
+    // filtro de asesor sería una lista de uno, que ya es la respuesta). Los puertos los exigen por
+    // TIPO (`AlcanceDeAgenciaEntera`): un alcance propio no compila.
+    const agenciaEntera = esAgenciaEntera(alcance) ? alcance : null;
+    const agencia = esAgencia(alcance) ? alcance : null;
+
+    const [cotizaciones, etapas, respuesta, abiertas, cobros, porAsesor, ventasPorDestino] =
+      await Promise.all([
+        this.cotizaciones.resumir(tenantId, rango, alcance, incluirMargen),
+        this.oportunidades.porEtapa(tenantId, rango, alcance),
+        this.respuesta.resumir(tenantId, rango, alcance),
+        this.cotizaciones.abiertas(tenantId, alcance, ahora),
+        incluirPorCobrar
+          ? this.cobros.porCobrar(tenantId, alcance, TOPE_DE_ARCHIVOS_PARA_COBRAR)
+          : undefined,
+        agenciaEntera === null
+          ? undefined
+          : this.porAsesor(tenantId, rango, agenciaEntera, incluirMargen),
+        agencia === null
+          ? undefined
+          : this.cotizaciones.ventasPorDestino(tenantId, rango, agencia, incluirMargen),
+      ]);
 
     return ResumenDeReportesPorAlcance.parse(
-      armarResumen({ alcance, rango, cotizaciones, etapas, respuesta, abiertas, cobros }),
+      armarResumen({
+        alcance,
+        rango,
+        cotizaciones,
+        etapas,
+        respuesta,
+        abiertas,
+        cobros,
+        agencia: { porAsesor, ventasPorDestino },
+      }),
     );
+  }
+
+  /** Los tres agregados por asesor, en paralelo (una consulta por contexto, no una por asesor). */
+  private async porAsesor(
+    tenantId: string,
+    rango: { desde: Date; hasta: Date },
+    alcance: AlcanceDeAgenciaEntera,
+    incluirMargen: boolean,
+  ) {
+    const [cotizaciones, oportunidades, respuestas] = await Promise.all([
+      this.cotizaciones.resumirPorAsesor(tenantId, rango, alcance, incluirMargen),
+      this.oportunidades.porAsesor(tenantId, rango, alcance),
+      this.respuesta.porAsesor(tenantId, rango, alcance),
+    ]);
+    return resumenesPorAsesor({ cotizaciones, oportunidades, respuestas });
   }
 }

@@ -34,6 +34,24 @@ export type AlcanceDeReporte =
   /** Solo las del usuario de la sesión. `asesorId` nunca sale de un parámetro del cliente. */
   | { readonly nivel: 'PROPIO'; readonly asesorId: string };
 
+/** Alcance de agencia, con o sin filtro de asesor. */
+export type AlcanceDeAgenciaConFiltro = Extract<AlcanceDeReporte, { readonly nivel: 'AGENCIA' }>;
+
+/**
+ * Toda la agencia, sin filtro de asesor. Es el único alcance con el que se piden los agregados
+ * POR ASESOR (T-531): un puerto que reparte por asesor y recibe este tipo no compila con un
+ * alcance propio ni con un asesor ya filtrado.
+ */
+export type AlcanceDeAgenciaEntera = { readonly nivel: 'AGENCIA'; readonly asesorId: null };
+
+export function esAgenciaEntera(alcance: AlcanceDeReporte): alcance is AlcanceDeAgenciaEntera {
+  return alcance.nivel === 'AGENCIA' && alcance.asesorId === null;
+}
+
+export function esAgencia(alcance: AlcanceDeReporte): alcance is AlcanceDeAgenciaConFiltro {
+  return alcance.nivel === 'AGENCIA';
+}
+
 export function alcanceDeReporte(
   contexto: Pick<ContextoPeticion, 'usuarioId' | 'permisos'>,
   asesorSolicitado: string | undefined,

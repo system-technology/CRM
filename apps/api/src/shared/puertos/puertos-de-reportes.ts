@@ -15,7 +15,11 @@
  * filas (§2): `cotizaciones.creado_por`, `oportunidades.asesor_id`, `mensajes.autor_id`.
  */
 import type { CodigoMoneda, SumasDeCobro } from '@viajapro/domain';
-import type { AlcanceDeReporte } from '../autorizacion/alcance-de-reporte.js';
+import type {
+  AlcanceDeAgenciaConFiltro,
+  AlcanceDeAgenciaEntera,
+  AlcanceDeReporte,
+} from '../autorizacion/alcance-de-reporte.js';
 
 export interface RangoDeReporte {
   /** Inclusivo. */
@@ -50,6 +54,19 @@ export interface CotizacionesAgregadas {
   ventasPorMoneda: VentaAgregada[];
 }
 
+/** Las cotizaciones de UN asesor (`creado_por`, ADR-0035 §2): lo que `resumir` daría con su filtro. */
+export interface CotizacionesDeUnAsesor extends CotizacionesAgregadas {
+  asesorId: string;
+}
+
+/**
+ * Ventas de un destino en una moneda (T-532): la forma de `VentaAgregada` más el destino de la
+ * versión que vio el cliente. Una fila por destino Y moneda, nunca sumadas entre monedas (R8).
+ */
+export interface VentaPorDestinoAgregada extends VentaAgregada {
+  destino: string;
+}
+
 /**
  * Cotizaciones vivas HOY (T-528), no del rango: una foto del trabajo que espera respuesta. Los
  * tramos cuentan solo las ENVIADAS, por días completos desde `enviada_en`.
@@ -75,6 +92,29 @@ export abstract class PuertoCotizacionesParaReportes {
   ): Promise<CotizacionesAgregadas>;
 
   /**
+   * T-531: lo mismo que `resumir`, repartido por asesor en UNA consulta en vez de una por asesor.
+   * Una entrada por asesor con cotizaciones atribuidas en el rango; las filas sin `creado_por` no
+   * entran en ninguna. Solo con la agencia entera: el tipo impide pedirlo con un alcance propio.
+   */
+  abstract resumirPorAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeAgenciaEntera,
+    incluirMargen: boolean,
+  ): Promise<CotizacionesDeUnAsesor[]>;
+
+  /**
+   * T-532: las ventas del rango (misma cohorte que `resumir`) por destino y moneda. Con el filtro
+   * de asesor del alcance de agencia, si lo hay.
+   */
+  abstract ventasPorDestino(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeAgenciaConFiltro,
+    incluirMargen: boolean,
+  ): Promise<VentaPorDestinoAgregada[]>;
+
+  /**
    * Sin rango a propósito: es el estado de HOY. `ahora` entra como argumento y no se lee el reloj
    * en la consulta, para que la prueba fije el instante (R9: el cálculo es en UTC).
    */
@@ -95,6 +135,14 @@ export interface EtapaConOportunidades {
   cantidad: number;
 }
 
+/** Oportunidades CREADAS en el rango asignadas hoy a un asesor, ya clasificadas por etapa. */
+export interface OportunidadesDeUnAsesor {
+  asesorId: string;
+  creadas: number;
+  ganadas: number;
+  perdidas: number;
+}
+
 /** Lo que `analytics` le pide a `crm`. Una entrada por etapa de la agencia, también las vacías. */
 export abstract class PuertoOportunidadesParaReportes {
   abstract porEtapa(
@@ -102,6 +150,13 @@ export abstract class PuertoOportunidadesParaReportes {
     rango: RangoDeReporte,
     alcance: AlcanceDeReporte,
   ): Promise<EtapaConOportunidades[]>;
+
+  /** T-531: lo mismo repartido por asesor (`oportunidades.asesor_id`) en una consulta. */
+  abstract porAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeAgenciaEntera,
+  ): Promise<OportunidadesDeUnAsesor[]>;
 }
 
 export interface RespuestaAgregada {
@@ -114,6 +169,11 @@ export interface RespuestaAgregada {
   sinResponder: number;
 }
 
+/** La respuesta atribuida a un asesor (ADR-0035 §2, M9): lo que `resumir` daría con su filtro. */
+export interface RespuestaDeUnAsesor extends RespuestaAgregada {
+  asesorId: string;
+}
+
 /** Lo que `analytics` le pide a `inbox`. */
 export abstract class PuertoRespuestaParaReportes {
   abstract resumir(
@@ -121,6 +181,13 @@ export abstract class PuertoRespuestaParaReportes {
     rango: RangoDeReporte,
     alcance: AlcanceDeReporte,
   ): Promise<RespuestaAgregada>;
+
+  /** T-531: lo mismo repartido por asesor, en una consulta. Una entrada por asesor con algo. */
+  abstract porAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeAgenciaEntera,
+  ): Promise<RespuestaDeUnAsesor[]>;
 }
 
 /**

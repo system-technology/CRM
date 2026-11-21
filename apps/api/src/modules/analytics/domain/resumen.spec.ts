@@ -14,6 +14,8 @@ import {
   porcentaje,
   porcentajeDeMargen,
   porCobrarPorMoneda,
+  resumenesPorAsesor,
+  ventasDeUnDestino,
   ventasDeUnaMoneda,
 } from './resumen.js';
 
@@ -452,5 +454,181 @@ describe('porCobrarPorMoneda (T-528)', () => {
       truncado: false,
     });
     expect(r.porMoneda[0]?.saldo.unidades).toBe('9007199254740993');
+  });
+});
+
+describe('resumenesPorAsesor (T-531)', () => {
+  const ANA = '01932000-0000-7000-8000-00000000000a';
+  const BETO = '01932000-0000-7000-8000-00000000000b';
+  const LUZ = '01932000-0000-7000-8000-00000000000c';
+
+  const cotizacionesDe = (asesorId: string, parcial: Partial<CotizacionesAgregadas> = {}) => ({
+    asesorId,
+    ...sinCotizaciones,
+    ...parcial,
+  });
+
+  it('un asesor aparece si tiene algo en CUALQUIERA de los tres agregados, y va ordenado', () => {
+    const r = resumenesPorAsesor({
+      cotizaciones: [cotizacionesDe(BETO, { creadas: 2 })],
+      oportunidades: [{ asesorId: ANA, creadas: 1, ganadas: 0, perdidas: 0 }],
+      respuestas: [{ asesorId: LUZ, ...vacia, conversacionesNuevas: 1, sinResponder: 1 }],
+    });
+    expect(r.map((f) => f.asesorId)).toEqual([ANA, BETO, LUZ]);
+  });
+
+  it('lo que un asesor no tiene en un agregado es cero y las razones son null, no 0 %', () => {
+    const [fila] = resumenesPorAsesor({
+      cotizaciones: [],
+      oportunidades: [{ asesorId: ANA, creadas: 2, ganadas: 0, perdidas: 0 }],
+      respuestas: [],
+    });
+    expect(fila).toEqual({
+      asesorId: ANA,
+      cotizaciones: { creadas: 0, enviadas: 0, aceptadas: 0, tasaAceptacion: null },
+      ventasPorMoneda: [],
+      oportunidades: { creadas: 2, ganadas: 0, perdidas: 0, abiertas: 2, tasaConversion: null },
+      respuesta: {
+        conversacionesNuevas: 0,
+        conversacionesRespondidas: 0,
+        promedioMinutos: null,
+        medianaMinutos: null,
+        p90Minutos: null,
+        sinResponder: 0,
+        tasaRespuesta: null,
+      },
+    });
+  });
+
+  it('usa las mismas fórmulas que el resumen entero: tasas, conversión y abiertas', () => {
+    const [fila] = resumenesPorAsesor({
+      cotizaciones: [cotizacionesDe(ANA, { enviadas: 4, aceptadas: 1, aceptadasSinFecha: 1 })],
+      oportunidades: [{ asesorId: ANA, creadas: 5, ganadas: 1, perdidas: 2 }],
+      respuestas: [
+        {
+          asesorId: ANA,
+          ...vacia,
+          conversacionesNuevas: 3,
+          conversacionesRespondidas: 2,
+          sinResponder: 1,
+          medianaMinutos: 12.5,
+        },
+      ],
+    });
+    expect(fila?.cotizaciones).toEqual({
+      creadas: 0,
+      enviadas: 4,
+      aceptadas: 1,
+      aceptadasSinFecha: 1,
+      tasaAceptacion: 25,
+    });
+    expect(fila?.oportunidades).toMatchObject({ abiertas: 2, tasaConversion: 33.3 });
+    expect(fila?.respuesta).toMatchObject({ tasaRespuesta: 66.7, medianaMinutos: 12.5 });
+  });
+
+  it('las ventas de un asesor van por moneda, con margen solo si el agregado lo trae', () => {
+    const r = resumenesPorAsesor({
+      cotizaciones: [
+        cotizacionesDe(ANA, {
+          ventasPorMoneda: [
+            { moneda: 'COP', cotizacionesAceptadas: 1, ventaUnidades: 9_007_199_254_740_993n },
+            { moneda: 'USD', cotizacionesAceptadas: 2, ventaUnidades: 120_000n },
+          ],
+        }),
+        cotizacionesDe(BETO, {
+          ventasPorMoneda: [
+            {
+              moneda: 'COP',
+              cotizacionesAceptadas: 1,
+              ventaUnidades: 1_200_000n,
+              margen: {
+                netoUnidades: 1_000_000n,
+                margenUnidades: 200_000n,
+                ventaConNetoUnidades: 1_200_000n,
+                cotizacionesSinNeto: 0,
+              },
+            },
+          ],
+        }),
+      ],
+      oportunidades: [],
+      respuestas: [],
+    });
+    // Más allá del entero seguro de JS, y sin mezclar el COP con el USD (R8).
+    expect(r[0]?.ventasPorMoneda.map((v) => v.ventas.unidades)).toEqual([
+      '9007199254740993',
+      '120000',
+    ]);
+    expect(JSON.stringify(r[0])).not.toMatch(/neto|margen/i);
+    expect(r[1]?.ventasPorMoneda[0]).toMatchObject({
+      margen: { unidades: '200000', moneda: 'COP' },
+      margenPorcentaje: 16.7,
+    });
+  });
+});
+
+describe('ventasDeUnDestino (T-532)', () => {
+  it('es la fila de una venta por moneda más el destino, con enteros como texto', () => {
+    expect(
+      ventasDeUnDestino({
+        destino: 'San Andrés',
+        moneda: 'COP',
+        cotizacionesAceptadas: 3,
+        ventaUnidades: 9_007_199_254_740_993n,
+      }),
+    ).toEqual({
+      destino: 'San Andrés',
+      moneda: 'COP',
+      cotizacionesAceptadas: 3,
+      ventas: { unidades: '9007199254740993', moneda: 'COP' },
+    });
+  });
+
+  it('un mismo destino en dos monedas son dos filas que armarResumen no suma', () => {
+    const r = armarResumen({
+      alcance: DE_AGENCIA,
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
+      agencia: {
+        ventasPorDestino: [
+          {
+            destino: 'Cartagena',
+            moneda: 'COP',
+            cotizacionesAceptadas: 1,
+            ventaUnidades: 5_000_000n,
+          },
+          { destino: 'Cartagena', moneda: 'USD', cotizacionesAceptadas: 1, ventaUnidades: 1_000n },
+        ],
+      },
+    });
+    if (r.alcance !== 'AGENCIA') throw new Error('debía ser de agencia');
+    expect(r.ventasPorDestino?.map((f) => [f.destino, f.moneda, f.ventas.unidades])).toEqual([
+      ['Cartagena', 'COP', '5000000'],
+      ['Cartagena', 'USD', '1000'],
+    ]);
+  });
+
+  it('con alcance propio armarResumen ignora ambas claves: no llegan a la respuesta', () => {
+    const r = armarResumen({
+      alcance: PROPIO,
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
+      agencia: {
+        porAsesor: [],
+        ventasPorDestino: [
+          { destino: 'Cartagena', moneda: 'COP', cotizacionesAceptadas: 1, ventaUnidades: 1n },
+        ],
+      },
+    });
+    expect(r.alcance).toBe('PROPIO');
+    expect(JSON.stringify(r)).not.toMatch(/porAsesor|ventasPorDestino/);
   });
 });

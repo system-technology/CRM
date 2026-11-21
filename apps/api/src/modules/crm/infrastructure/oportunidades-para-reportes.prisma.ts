@@ -11,9 +11,13 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
-import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
+import type {
+  AlcanceDeAgenciaEntera,
+  AlcanceDeReporte,
+} from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   type EtapaConOportunidades,
+  type OportunidadesDeUnAsesor,
   PuertoOportunidadesParaReportes,
   type RangoDeReporte,
 } from '../../../shared/puertos/puertos-de-reportes.js';
@@ -56,6 +60,53 @@ export class OportunidadesParaReportesPrisma extends PuertoOportunidadesParaRepo
         esPerdida: e.esPerdida,
         cantidad: porEtapa.get(e.id) ?? 0,
       }));
+    });
+  }
+
+  /**
+   * T-531: las mismas oportunidades que `porEtapa` (creadas en el rango, no eliminadas), repartidas
+   * por `asesor_id` con UNA agrupación por (asesor, etapa) y clasificadas por las banderas de la
+   * etapa (R12: no hay enum). Las oportunidades sin asesor no entran en ninguna fila.
+   */
+  async porAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    _alcance: AlcanceDeAgenciaEntera,
+  ): Promise<OportunidadesDeUnAsesor[]> {
+    return this.prisma.conTenant(async (tx) => {
+      const [etapas, conteos] = await Promise.all([
+        tx.etapaPipeline.findMany({
+          where: { tenantId },
+          select: { id: true, esGanada: true, esPerdida: true },
+        }),
+        tx.oportunidad.groupBy({
+          by: ['asesorId', 'etapaId'],
+          where: {
+            tenantId,
+            eliminadoEn: null,
+            asesorId: { not: null },
+            creadoEn: { gte: rango.desde, lt: rango.hasta },
+          },
+          _count: { _all: true },
+        }),
+      ]);
+      const banderas = new Map(etapas.map((e) => [e.id, e]));
+      const porAsesor = new Map<string, OportunidadesDeUnAsesor>();
+      for (const c of conteos) {
+        if (c.asesorId === null) continue;
+        const fila = porAsesor.get(c.asesorId) ?? {
+          asesorId: c.asesorId,
+          creadas: 0,
+          ganadas: 0,
+          perdidas: 0,
+        };
+        const etapa = banderas.get(c.etapaId);
+        fila.creadas += c._count._all;
+        if (etapa?.esGanada) fila.ganadas += c._count._all;
+        if (etapa?.esPerdida) fila.perdidas += c._count._all;
+        porAsesor.set(c.asesorId, fila);
+      }
+      return [...porAsesor.values()];
     });
   }
 }
