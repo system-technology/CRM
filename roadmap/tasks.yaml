@@ -11577,3 +11577,48 @@ tasks:
     source: "lo declaro la propia sesion de T-555 como limite de su evidencia al entregar #446, 2026-11-21"
     created_at: 2026-11-21T15:20:00.000Z
     owner: frontend
+  - id: T-560
+    title: "Web: el tema no se aplica al arrancar ni se puede cambiar fuera de la bandeja"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Los dos modos YA existen: globals.css redefine los tokens en .dark, 144 archivos usan variantes dark: y
+        selector-tema-densidad.tsx ofrece claro / oscuro / seguir al sistema con persistencia en viajapro_tema"
+      - "Lo que falta (1): el tema no se aplica en el arranque. apps/web/src/app/layout.tsx no lee la preferencia
+        ni pone la clase en <html>, asi que la primera pintura siempre es clara y hay parpadeo si el usuario
+        prefiere oscuro. Se resuelve con un script en linea antes de la hidratacion"
+      - "Lo que falta (2): el conmutador solo esta montado en barra-modulos.tsx (la bandeja). Desde el ingreso o
+        cualquier otra pantalla no hay forma de cambiar el tema"
+      - "Lo que falta (3): se respeta prefers-color-scheme del sistema en la PRIMERA visita, sin preferencia guardada"
+      - "Criterio de cierre: con el sistema en oscuro y sin preferencia guardada, la app abre en oscuro sin parpadeo;
+        el conmutador se alcanza desde cualquier pantalla privada; la eleccion sobrevive a recargar"
+    source: "revision visual del propietario, 2026-11-21: «podemos manejar ambos modos oscuro y claro?»"
+    created_at: 2026-11-21T15:40:00.000Z
+    owner: frontend
+  - id: T-561
+    title: "Web: contrastes por debajo del umbral legible en la barra lateral y en las pantallas de trabajo"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "El propietario lo reporto mirando la app el 2026-11-21: «el toque de contraste negro hace que se pierdan
+        un poco los textos», y al preguntarle senalo la barra lateral, las pantallas de trabajo y el conjunto. No es
+        una pantalla suelta: es sistematico, asi que se arregla en los tokens, no parche por parche"
+      - "NO se arregla a ojo: se MIDE. Calcular el ratio de contraste de cada par texto/fondo de los tokens de
+        globals.css, en claro Y en oscuro, y entregar la tabla de los que no llegan"
+      - "Umbral WCAG 2.1 AA: 4.5:1 para texto normal, 3:1 para texto grande (>=24px, o >=18.66px en negrita) y para
+        los bordes de controles. Lo que no llegue, se corrige subiendo o bajando el token"
+      - "La identidad no se toca: el acento sigue siendo azul y los estados siguen siendo ok/aviso/alerta. Se ajusta
+        la luminancia, no la familia de color"
+      - "Lo que cierra la tarea y evita que vuelva a degradarse: una prueba automatizada que recorra los pares de
+        tokens y FALLE si alguno baja del umbral. Hay que verla en rojo con los valores de hoy antes de corregir"
+      - "Ojo con los colores fijos que no pasan por tokens (formulario-ingreso.tsx usa #FDE68A y #C9A24B a mano):
+        inventariarlos, aunque arreglarlos pueda ir en otra tarea"
+    source: "revision visual del propietario, 2026-11-21"
+    created_at: 2026-11-21T15:42:00.000Z
+    owner: frontend
