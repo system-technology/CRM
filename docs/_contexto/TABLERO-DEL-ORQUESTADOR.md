@@ -22,6 +22,7 @@
 - **Sobre el medidor de consumo propio.** La madre saliente avisó de que un `0` al arrancar significa «todavía no hay dato», no «el instrumento está roto». **Confirmado aquí, y matizado:** `external_metadata.context_usage.used_tokens` marcó **`0` en dos lecturas separadas** (15:08 y 15:12 UTC), con trabajo real en medio. Así que **tampoco es solo retraso de un instante**. Se anota como **«sin dato todavía»** y se sigue midiendo en cada vuelta; no se construye ninguna teoría sobre esa lectura ni se usa para decidir que queda margen. `rate_limit_info` sí traía dato (`seven_day`, `allowed_warning`): es otra cosa, no el consumo de contexto.
 - **Sesiones hijas (2):**
   - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **#446 (T-555), ya integrado**. A las 15:25 se le reparte **T-556**.
+  - `session_01R81Xh6E99n8PmJd5Pso4ZS` — carril `i`, **T-562** (manual de usuario con capturas), repartida a las 15:46 UTC. **En Sonnet, no en Opus**: es redacción y capturas, no toca dinero ni aislamiento. Su **paso 0** es demostrar que puede arrancar la web en modo demo y capturar; si no puede, para y avisa **antes** de escribir el manual entero.
   - `session_01R81Xh2nwGXCyRsqwWGZ8sf` — carril `b`, **T-561** (contrastes medidos), repartida a las 15:44 UTC. **Segunda sesión viva en el carril `b`**: se le dijo expresamente que no toque `mock-reportes-resumen.ts`, que es de T-556. Tocan archivos distintos; el riesgo es que un PR quede `behind`, no un conflicto.
   - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`, **T-549**, repartida a las 15:10 UTC. Encargo acotado: el filtro de «sin responsable» **antes** del tope de filas, **por puerto y sin JOIN entre contextos (R4)**, con orden explícita de **parar y avisar** si exigiera ADR o migración.
   - `session_01R81Xh2DhFQmHXUmF7Mqedn` — carril `a`, ociosa desde que entregó #441. **No se reutilizó**: una sesión nueva con `source_url` sale más barata que una con el contexto viejo encima.
@@ -86,6 +87,22 @@ No hace falta construir el modo oscuro: hace falta **aplicarlo bien y que se lea
 - **Inventariado, sin tocar:** la portada de ingreso usa colores **fijos fuera de los tokens**
   (`#FDE68A`, `#C9A24B`, `bg-black/25` en `formulario-ingreso.tsx`), así que se ve igual en los dos modos. Es
   estética de marca, no un defecto de contraste: lo decide el propietario.
+
+## 1.4 Manual de usuario (T-562, pedido por el propietario el 2026-11-21)
+
+Quiere **un manual funcional de lo que ya existe, con fotos**, para poder enseñar el producto. Repartido.
+
+**Tres decisiones del encargo, para que no se rehagan:**
+- **El alcance sale de la sección «Es real (en `main`)» de `ESTADO.md`**, no de la memoria de nadie. Lo que sea
+  maqueta o no se haya probado contra la API real, o no entra, o entra diciéndolo. Esto lo va a ver una agencia:
+  un manual que explica una maqueta como si funcionara hace más daño que no tener manual.
+- **Todas las capturas serán de modo demostración**, porque en este entorno no se puede levantar Postgres. **El
+  propio manual tiene que decirlo**, para que nadie lo enseñe creyendo que son datos reales.
+- **El texto va antes que las fotos.** T-556 (el modo demo enseña un error en «Hoy») y T-561 (contrastes) cambian
+  lo que saldría en las capturas: tomarlas ahora sería tirar el trabajo. Se capturan cuando esas dos entren.
+
+**Hay dos sesiones en el carril `i`** (esta y la del relevo): tocan archivos distintos, pero el segundo PR quedará
+`behind` y habrá que ponerlo al día. Contar con esa vuelta.
 
 ## 2. Reglas operativas que no se olvidan
 
