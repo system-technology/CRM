@@ -99,6 +99,15 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
       'Permite confirmar, abonar y pagar reservas al proveedor, editar los pasajeros y cancelar el archivo.',
     categoria: 'archivo',
   },
+  // T-324: solo el texto del permiso, para que el mapa siga cubriendo el contrato. La pantalla de
+  // etiquetas es de T-326.
+  'etiquetas.administrar': {
+    clave: 'etiquetas.administrar',
+    nombre: 'Administrar etiquetas',
+    descripcion:
+      'Permite crear, renombrar, cambiar el color, ordenar y borrar las etiquetas de conversación de la agencia.',
+    categoria: 'bandeja',
+  },
   'usuarios.administrar': {
     clave: 'usuarios.administrar',
     nombre: 'Administrar equipo',
@@ -139,6 +148,8 @@ export function explicacionFaltaPermiso(permiso: Permiso): string {
       return 'Acceso restringido: se requiere el permiso «Ver archivos de viaje» (archivo.ver).';
     case 'archivo.operar':
       return 'Acción deshabilitada: se requiere el permiso «Operar archivos de viaje» (archivo.operar) para avanzar reservas, editar pasajeros o cancelar el archivo.';
+    case 'etiquetas.administrar':
+      return 'Acción deshabilitada: se requiere el permiso «Administrar etiquetas» (etiquetas.administrar) para crear, renombrar o borrar etiquetas.';
     case 'usuarios.administrar':
       return 'Acceso restringido: se requiere el permiso «Administrar equipo» (usuarios.administrar).';
     case 'roles.administrar':
