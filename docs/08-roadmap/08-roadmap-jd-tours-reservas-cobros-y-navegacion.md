@@ -143,6 +143,8 @@ problema («hoy cualquier miembro lee el resumen de toda la agencia»).
 nunca el cliente ni el menú: ocultar un ítem no es control de acceso. Dos asesores de la misma agencia no ven
 lo del otro, y el margen sigue protegido por `cotizacion.ver_neto_y_margen`.
 
+Catálogo por nivel, «Hoy» frente a Reportes y diseño a 390, 768 y 1280 px (T-339): [`11-reportes-por-nivel-de-acceso.md`](11-reportes-por-nivel-de-acceso.md).
+
 | Tarea | Paso | Dueño | Depende de |
 |---|---|---|---|
 | T-339 | F0: qué ve cada nivel (catálogo de reportes por rol), qué va en «Hoy» y qué en Reportes, móvil primero | `analista-datos`, `analista-producto`, `experto-turismo`, `diseno-ux` | — |
@@ -208,6 +210,25 @@ navegador**:
 6. ¿Retiene una **penalidad** cuando el cliente cancela? ¿Cómo la calcula?
 7. ¿Un mismo pago cubre **varios archivos** (dos viajes de la misma familia) o lo pagan **varios
    pasajeros** por separado?
+
+**Reportes por nivel, tras T-339.** Mientras no respondan, rigen los supuestos de
+[`11-reportes-por-nivel-de-acceso.md`](11-reportes-por-nivel-de-acceso.md) §9:
+
+1. ¿Qué mira cada asesor **al empezar el día**? ¿Qué le diría a usted «vas bien» o «vas mal»?
+2. ¿Un asesor puede ver **cuánto vendieron sus compañeros** (un ranking), o solo lo suyo?
+3. ¿Qué **tres cifras** quiere ver usted en el celular sin buscar?
+4. ¿Qué **exporta hoy** de su hoja, **cada cuánto** y para quién (contador, mayorista, socio)? ¿Con qué
+   columnas? ¿Lo hace desde el celular o desde el computador?
+5. ¿Quién debe ver los **cobros vencidos**: cada asesor los suyos, usted todos, o también una persona
+   de administración?
+6. Un archivo de viaje **¿de qué asesor es?**: ¿del que cotizó, del que cerró la venta o del que lo
+   atiende ahora? ¿Se pasan clientes de un asesor a otro?
+7. Si un asesor falta y su cliente escribe, ¿otro asesor necesita ver el **saldo** de ese archivo?
+8. ¿Tiene una persona de **operaciones o administración** que deba ver salidas, pasajeros y cobros,
+   pero no las ventas ni el margen?
+9. ¿Compara **meses** (este frente al anterior) o tiene **metas de venta** por asesor?
+10. ¿Alguna lista con **nombres o teléfonos** de clientes sale de la agencia (a un contador, a un
+    mayorista)? (Si sí, esa exportación exige permiso y queda registrada, R10.)
 
 ## 5. Riesgos y qué no se hace
 
