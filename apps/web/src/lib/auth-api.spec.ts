@@ -75,19 +75,33 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
       expect(mapearErrorAcceso('X', 'La agencia ya no existe.')).toBe('La agencia ya no existe.');
     });
 
-    it('ENTRADA_INVALIDA dice QUÉ campo revisar, no «datos inválidos» a secas', () => {
+    it('ENTRADA_INVALIDA distingue lo que FALTA de lo que está mal escrito', () => {
+      // Campo vacío: se pide, no se manda «revisar» algo que no se escribió.
       expect(
         mapearErrorAcceso('ENTRADA_INVALIDA', 'Hay datos que no cumplen el formato esperado.', {
           contrasena: 'String must contain at least 1 character(s)',
         }),
-      ).toBe('Revisa la contraseña e intenta de nuevo.');
+      ).toBe('Escribe tu contraseña para entrar.');
 
       expect(
         mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', {
-          identificador: 'x',
-          contrasena: 'y',
+          identificador: 'Required',
+          contrasena: 'String must contain at least 1 character(s)',
         }),
-      ).toBe('Revisa el correo o usuario y la contraseña e intenta de nuevo.');
+      ).toBe('Escribe tu correo o usuario y tu contraseña para entrar.');
+
+      // Escrito pero mal: ahí sí se manda revisar.
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', { correo: 'Invalid email' }),
+      ).toBe('Revisa tu correo: no tiene el formato esperado.');
+
+      // Mezcla: una cosa falta y la otra está mal.
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', {
+          contrasena: 'Required',
+          correo: 'Invalid email',
+        }),
+      ).toBe('Escribe tu contraseña y revisa tu correo.');
 
       // Sin detalles utilizables, un mensaje honesto en vez de inventarse el campo.
       expect(mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual')).toBe(
@@ -111,7 +125,8 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
       const error = await iniciarSesionApi({ identificador: '', contrasena: '' }).catch((e) => e);
       expect(error.message).not.toContain('too_small');
       expect(error.message).not.toContain('path');
-      expect(error.message).toContain('Revisa');
+      // Los dos campos llegan vacíos: el mensaje los PIDE, no manda «revisar» nada.
+      expect(error.message).toBe('Escribe tu correo o usuario y tu contraseña para entrar.');
     });
 
     it('mensajeDeErrorDeAcceso nunca devuelve un volcado, venga de donde venga', () => {

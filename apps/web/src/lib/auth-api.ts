@@ -76,12 +76,21 @@ function validarEntrada<T>(esquema: { parse: (v: unknown) => T }, valor: unknown
 
 /** Cómo se llama cada campo en la pantalla, no en el contrato. */
 const NOMBRE_DEL_CAMPO: Record<string, string> = {
-  identificador: 'el correo o usuario',
-  correo: 'el correo',
-  contrasena: 'la contraseña',
+  identificador: 'tu correo o usuario',
+  correo: 'tu correo',
+  contrasena: 'tu contraseña',
   codigo: 'el código',
   agenciaId: 'la agencia',
 };
+
+/** Une nombres de campo como se unen en español: «a», «a y b», «a, b y c». */
+function enumerar(nombres: readonly string[]): string {
+  const [primero, ...resto] = nombres;
+  if (primero === undefined) return '';
+  if (resto.length === 0) return primero;
+  const ultimo = resto[resto.length - 1] as string;
+  return `${[primero, ...resto.slice(0, -1)].join(', ')} y ${ultimo}`;
+}
 
 /** `true` si el texto es una frase para una persona y no un volcado del servidor. */
 function esFraseHumana(texto: string | undefined): texto is string {
@@ -94,12 +103,41 @@ function esFraseHumana(texto: string | undefined): texto is string {
   return true;
 }
 
-/** Los campos que el servidor marcó mal, dichos como los ve quien rellena el formulario. */
-function camposInvalidos(detalles: unknown): string[] {
-  if (!detalles || typeof detalles !== 'object' || Array.isArray(detalles)) return [];
-  return Object.keys(detalles as Record<string, unknown>)
-    .map((clave) => NOMBRE_DEL_CAMPO[clave] ?? (/^[A-Za-z_][A-Za-z0-9_.]{0,39}$/.test(clave) ? clave : ''))
-    .filter((nombre) => nombre !== '');
+/** El nombre de pantalla de un campo, o cadena vacía si no es un nombre que podamos enseñar. */
+function nombreDeCampo(clave: string): string {
+  return NOMBRE_DEL_CAMPO[clave] ?? (/^[A-Za-z_][A-Za-z0-9_.]{0,39}$/.test(clave) ? clave : '');
+}
+
+/**
+ * «Falta» no es lo mismo que «está mal escrito», y decirlo igual no ayuda a nadie: con el campo
+ * vacío, «Revisa tu contraseña» hace buscar un error que no existe. Lo que falta se pide
+ * («Escribe tu contraseña»); lo que está mal escrito se manda revisar.
+ *
+ * Del lado del cliente sabemos el código del issue. Del lado del servidor solo llega el texto de
+ * Zod, en inglés: de ahí la heurística, que si no acierta degrada al «revisa» de siempre.
+ */
+function pareceCampoVacio(detalle: unknown): boolean {
+  return typeof detalle === 'string' && /at least 1 character|too_small|required|vacío/i.test(detalle);
+}
+
+/** El mensaje que ve quien rellena el formulario, separando lo que falta de lo que está mal. */
+function mensajeDeCamposInvalidos(detalles: unknown): string {
+  if (!detalles || typeof detalles !== 'object' || Array.isArray(detalles)) {
+    return 'Revisa los datos del formulario e intenta de nuevo.';
+  }
+  const vacios: string[] = [];
+  const malEscritos: string[] = [];
+  for (const [clave, detalle] of Object.entries(detalles as Record<string, unknown>)) {
+    const nombre = nombreDeCampo(clave);
+    if (nombre === '') continue;
+    (pareceCampoVacio(detalle) ? vacios : malEscritos).push(nombre);
+  }
+  if (vacios.length === 0 && malEscritos.length === 0) {
+    return 'Revisa los datos del formulario e intenta de nuevo.';
+  }
+  if (malEscritos.length === 0) return `Escribe ${enumerar(vacios)} para entrar.`;
+  if (vacios.length === 0) return `Revisa ${enumerar(malEscritos)}: no tiene el formato esperado.`;
+  return `Escribe ${enumerar(vacios)} y revisa ${enumerar(malEscritos)}.`;
 }
 
 /**
@@ -136,19 +174,10 @@ export function mapearErrorAcceso(
       return 'El código ingresado no es válido, ha caducado o agotó sus intentos.';
     case 'ORIGEN_NO_CONFIABLE':
       return 'Petición bloqueada por origen de navegación no seguro.';
-    case 'ENTRADA_INVALIDA': {
+    case 'ENTRADA_INVALIDA':
       // La API manda `details` campo por campo justo para esto: un «datos inválidos» a secas
       // obliga a adivinar cuál de los campos está mal.
-      const campos = camposInvalidos(detalles);
-      // `noUncheckedIndexedAccess`: el acceso por índice es `string | undefined`, así que se
-      // desestructura en vez de indexar.
-      const [primero, ...resto] = campos;
-      if (primero === undefined) return 'Revisa los datos del formulario e intenta de nuevo.';
-      if (resto.length === 0) return `Revisa ${primero} e intenta de nuevo.`;
-      const ultimo = resto[resto.length - 1] as string;
-      const previos = [primero, ...resto.slice(0, -1)];
-      return `Revisa ${previos.join(', ')} y ${ultimo} e intenta de nuevo.`;
-    }
+      return mensajeDeCamposInvalidos(detalles);
     default:
       return esFraseHumana(mensajeFallback)
         ? mensajeFallback
