@@ -423,6 +423,102 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       ).toBeTruthy();
     });
 
+    describe('el filtro de archivos no esconde avisos reales (T-322)', () => {
+      const avisoDe = (n: number, archivoId: string) => ({
+        id: `01932000-0000-7000-8000-0000000a000${n}`,
+        tipo: 'TIME_LIMIT_PROXIMO' as const,
+        archivoId,
+        reservaId: `01932000-0000-7000-8000-0000000c000${n}`,
+        archivoNumero: 1040 + n,
+        venceEn: new Date(Date.now() + 3_600_000).toISOString(),
+        leidaEn: null,
+        creadaEn: new Date().toISOString(),
+      });
+      const archivo = (id: string) => ({ id }) as never;
+      const preparar = (avisos: ReturnType<typeof avisoDe>[]) => {
+        vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+          fecha: '2026-10-27',
+          vencidos: [],
+          deHoy: [],
+        });
+        vi.spyOn(avisosApi, 'listarAvisos').mockResolvedValue({
+          datos: avisos,
+          noLeidas: avisos.length,
+        });
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+      };
+      const abrirYLeer = async () => {
+        const contador = await screen.findByTestId('contador-campana');
+        fireEvent.click(screen.getByRole('button', { name: /Alertas operativas/i }));
+        await act(async () => {
+          await new Promise((r) => setTimeout(r, 50));
+        });
+        const n = (id: string) =>
+          Number(/\((\d+)\)/.exec(screen.getByTestId(id).textContent ?? '')?.[1]);
+        const suma = ['plazos', 'mensajes', 'seguimientos', 'cotizaciones', 'operativas']
+          .map((t) => n(`filtro-${t}`))
+          .reduce((x, y) => x + y, 0);
+        expect(n('filtro-todas')).toBe(suma);
+        expect(
+          Number(screen.getByTestId('contador-campana').textContent ?? contador.textContent),
+        ).toBe(suma);
+        return (id: string) => screen.queryByTestId(`notificacion-aviso-${id}`) !== null;
+      };
+      const ID1 = '01932000-0000-7000-8000-0000000a0001';
+      const ID2 = '01932000-0000-7000-8000-0000000a0002';
+
+      it('un archivo creado después de la carga inicial se muestra tras recargar la lista', async () => {
+        preparar([avisoDe(1, 'viejo'), avisoDe(2, 'nuevo')]);
+        const espia = vi
+          .spyOn(archivosApi, 'listarArchivos')
+          .mockResolvedValueOnce([archivo('viejo')])
+          .mockResolvedValue([archivo('viejo'), archivo('nuevo')]);
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(true);
+        expect(espia).toHaveBeenCalledTimes(2);
+      });
+
+      it('un archivo que sigue sin existir tras recargar se oculta, con una sola recarga', async () => {
+        preparar([avisoDe(1, 'existe'), avisoDe(2, 'fantasma')]);
+        const espia = vi
+          .spyOn(archivosApi, 'listarArchivos')
+          .mockResolvedValue([archivo('existe')]);
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(false);
+        expect(espia).toHaveBeenCalledTimes(2);
+      });
+
+      it('con la lista truncada (tantas filas como el tope) no se oculta nada ni se recarga', async () => {
+        preparar([avisoDe(1, 'existe'), avisoDe(2, 'fuera-del-tope')]);
+        const llena = Array.from({ length: archivosApi.LIMITE_LISTA_ARCHIVOS }, (_, i) =>
+          archivo(`f-${i}`),
+        );
+        const espia = vi.spyOn(archivosApi, 'listarArchivos').mockResolvedValue(llena);
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(true);
+        expect(espia).toHaveBeenCalledTimes(1);
+      });
+
+      it('si la recarga falla se muestran los avisos y no se reintenta en bucle', async () => {
+        preparar([avisoDe(1, 'existe'), avisoDe(2, 'dudoso')]);
+        const espia = vi
+          .spyOn(archivosApi, 'listarArchivos')
+          .mockResolvedValueOnce([archivo('existe')])
+          .mockRejectedValue(new Error('sin red'));
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const visible = await abrirYLeer();
+        expect(visible(ID1)).toBe(true);
+        expect(visible(ID2)).toBe(true);
+        expect(espia).toHaveBeenCalledTimes(2);
+      });
+    });
+
     it('abre el panel de notificaciones desde el diálogo de perfil', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);
 

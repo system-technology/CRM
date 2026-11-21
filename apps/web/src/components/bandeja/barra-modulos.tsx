@@ -42,6 +42,7 @@ import {
   archivoIdDeHref,
   resumirNotificaciones,
   soloConArchivoExistente,
+  archivosDesconocidos,
   marcarNotificacionLeida,
   marcarTodasNotificacionesLeidas,
   descartarNotificacion,
@@ -57,7 +58,7 @@ import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { zonaOPorDefecto } from '../../lib/archivos-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
-import { listarArchivos } from '../../lib/archivos-api';
+import { LIMITE_LISTA_ARCHIVOS, listarArchivos } from '../../lib/archivos-api';
 import { useContadoresDeMenu } from '../../lib/use-contadores-de-menu';
 import { nombreAccesibleConContador } from '../../lib/inicio-logica';
 import { tienePermiso, usePermisos } from '../../lib/permisos';
@@ -134,7 +135,13 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   );
   const avisos = useAvisosDePlazo(esDemo);
   // Ids de los archivos de viaje que existen (misma fuente que /viajes). `null` = aún no se sabe.
-  const [idsArchivos, setIdsArchivos] = useState<ReadonlySet<string> | null>(null);
+  // `completa` = la lista trajo menos filas que el tope, así que no está truncada. `verificados` =
+  // ids que siguieron ausentes tras volver a pedir la lista: solo esos se ocultan.
+  const [archivos, setArchivos] = useState<{
+    ids: ReadonlySet<string>;
+    completa: boolean;
+    verificados: ReadonlySet<string>;
+  } | null>(null);
   // Zona horaria de la agencia (R9) para componer el plazo de cada aviso.
   const [zonaAgencia, setZonaAgencia] = useState<string>(zonaOPorDefecto(null));
   const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
@@ -250,7 +257,13 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     let vigente = true;
     listarArchivos('TODOS')
       .then((lista) => {
-        if (vigente) setIdsArchivos(new Set(lista.map((a) => a.id)));
+        if (vigente) {
+          setArchivos({
+            ids: new Set(lista.map((a) => a.id)),
+            completa: lista.length < LIMITE_LISTA_ARCHIVOS,
+            verificados: new Set(),
+          });
+        }
       })
       .catch((err: unknown) => {
         // Sin la lista no se sabe qué existe: no se esconde nada (ver soloConArchivoExistente).
@@ -359,11 +372,49 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       : [];
   // Una sola lista y una sola cuenta (T-322): la campana, el encabezado del desplegable y sus
   // pestañas leen `resumirNotificaciones` de esta misma lista, ya sin avisos de archivos que no existen.
+  const todasLasNotificaciones = [...avisosWeb, ...notificaciones];
+  const desconocidos = archivos?.completa
+    ? archivosDesconocidos(todasLasNotificaciones, archivos.ids, archivos.verificados)
+    : [];
+  const claveDesconocidos = desconocidos.join('|');
   const notificacionesConAvisos = soloConArchivoExistente(
-    [...avisosWeb, ...notificaciones],
-    idsArchivos,
+    todasLasNotificaciones,
+    archivos?.completa ? archivos.ids : null,
+    archivos?.verificados,
   );
   const conteoNoLeidas = resumirNotificaciones(notificacionesConAvisos).total;
+
+  // Un archivo desconocido puede ser nuevo (creado tras la carga): se vuelve a pedir la lista UNA
+  // vez por ráfaga y solo entonces se decide ocultarlo. Si la recarga falla o la lista resulta
+  // truncada, se muestra todo (`completa: false`) y no se reintenta en bucle.
+  useEffect(() => {
+    if (!claveDesconocidos) return;
+    const idsPorVerificar = claveDesconocidos.split('|');
+    let vigente = true;
+    listarArchivos('TODOS')
+      .then((lista) => {
+        if (!vigente) return;
+        setArchivos((previo) =>
+          previo
+            ? {
+                ids: new Set(lista.map((a) => a.id)),
+                completa: lista.length < LIMITE_LISTA_ARCHIVOS,
+                verificados: new Set([...previo.verificados, ...idsPorVerificar]),
+              }
+            : previo,
+        );
+      })
+      .catch((err: unknown) => {
+        console.warn(
+          '[campana] No se pudo recargar la lista de archivos; se muestran los avisos:',
+          err,
+        );
+        if (vigente) setArchivos((previo) => (previo ? { ...previo, completa: false } : previo));
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [claveDesconocidos]);
 
   const nombreUsuario = sesion?.identidad?.nombre ?? (esDemo ? 'Asesor ViajaPro' : 'Tu cuenta');
   const correoUsuario = sesion?.identidad?.correo ?? (esDemo ? 'asesor@viajapro.com' : '');

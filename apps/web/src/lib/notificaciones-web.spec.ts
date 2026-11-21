@@ -13,6 +13,7 @@ import {
   resumirNotificaciones,
   archivoIdDeHref,
   soloConArchivoExistente,
+  archivosDesconocidos,
   type NotificacionWeb,
 } from './notificaciones-web';
 import { TITULOS_SEGUROS_NOTIFICACION } from './preferencias-notificaciones';
@@ -279,11 +280,21 @@ describe('Pruebas Unitarias de Notificaciones Web (notificaciones-web.ts)', () =
     it('los avisos a un archivo que no existe se quitan; los demás pasan', () => {
       const existe = de('aviso_plazo', false, '/viajes?id=existe');
       const fantasma = de('aviso_plazo', false, '/viajes?id=fantasma');
+      const verificados = new Set(['fantasma']);
       const otro = de('mensaje_nuevo', false, '/bandeja/cualquiera');
       const ids = new Set(['existe']);
-      const visibles = soloConArchivoExistente([existe, fantasma, otro], ids);
+      const visibles = soloConArchivoExistente([existe, fantasma, otro], ids, verificados);
       expect(visibles).toEqual([existe, otro]);
       expect(resumirNotificaciones(visibles).total).toBe(2);
+    });
+
+    it('un id sin verificar se muestra aunque no esté en la lista; solo el verificado se oculta', () => {
+      const dudoso = de('aviso_plazo', false, '/viajes?id=dudoso');
+      const ids = new Set(['existe']);
+      expect(soloConArchivoExistente([dudoso], ids)).toEqual([dudoso]);
+      expect(archivosDesconocidos([dudoso], ids)).toEqual(['dudoso']);
+      expect(soloConArchivoExistente([dudoso], ids, new Set(['dudoso']))).toEqual([]);
+      expect(archivosDesconocidos([dudoso], ids, new Set(['dudoso']))).toEqual([]);
     });
 
     it('si la lista de archivos no se pudo leer (null) no se esconde nada', () => {

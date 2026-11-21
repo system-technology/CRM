@@ -226,31 +226,51 @@ export function resumirNotificaciones(notificaciones: NotificacionWeb[]): Resume
   return { total, porTipo };
 }
 
-/** Id del archivo de viaje al que apunta un `href` de la forma `/viajes?id=<id>`; `null` si no es de archivo. */
+/**
+ * Id del archivo de viaje al que apunta un `href` de la forma `/viajes?id=<id>`; `null` si no es de
+ * archivo. Un `id` con codificación inválida también da `null` a propósito: el aviso se trata como
+ * «no filtrable» y por tanto SE MUESTRA (nunca se oculta un aviso por no poder leer su enlace).
+ */
 export function archivoIdDeHref(href: string): string | null {
   const m = /^\/viajes\?(?:[^#]*&)?id=([^&#]+)/.exec(href);
   if (!m?.[1]) return null;
   try {
     return decodeURIComponent(m[1]);
-  } catch {
+  } catch (err) {
+    if (!(err instanceof URIError)) throw err;
     return null;
   }
 }
 
+/** Ids de archivo de las notificaciones que ni están en `existentes` ni se verificaron ya. */
+export function archivosDesconocidos(
+  notificaciones: NotificacionWeb[],
+  existentes: ReadonlySet<string>,
+  verificados: ReadonlySet<string> = new Set(),
+): string[] {
+  const salida = new Set<string>();
+  for (const n of notificaciones) {
+    const id = archivoIdDeHref(n.href);
+    if (id !== null && !existentes.has(id) && !verificados.has(id)) salida.add(id);
+  }
+  return [...salida];
+}
+
 /**
- * Deja solo las notificaciones cuyo archivo de viaje existe en `idsExistentes` (la lista de
- * `listarArchivos`, la misma fuente de /viajes). Las que no apuntan a un archivo pasan intactas.
- * Con `idsExistentes === null` (la lista no se pudo leer) no se filtra: no se sabe, y esconder
- * avisos reales de plazo sería peor que mostrarlos.
+ * Oculta solo las notificaciones cuyo archivo es INEXISTENTE con certeza: `idsExistentes` es la
+ * lista completa de `listarArchivos` y el id está en `verificados` (se volvió a pedir la lista y
+ * siguió sin aparecer). Todo lo demás se muestra: un id aún sin verificar, una lista truncada o no
+ * leída (`idsExistentes === null`). Esconder un aviso real de plazo es peor que mostrar uno roto.
  */
 export function soloConArchivoExistente(
   notificaciones: NotificacionWeb[],
   idsExistentes: ReadonlySet<string> | null,
+  verificados: ReadonlySet<string> = new Set(),
 ): NotificacionWeb[] {
   if (!idsExistentes) return notificaciones;
   return notificaciones.filter((n) => {
     const id = archivoIdDeHref(n.href);
-    return id === null || idsExistentes.has(id);
+    return id === null || idsExistentes.has(id) || !verificados.has(id);
   });
 }
 
