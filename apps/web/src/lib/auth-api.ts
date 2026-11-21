@@ -50,10 +50,109 @@ export class AuthApiError extends Error {
 }
 
 /**
+ * Valida la entrada **en el cliente** y convierte un `ZodError` en `AuthApiError`.
+ *
+ * Sin esto, el `ZodError` sale tal cual hacia quien llamó, y `ZodError.message` **es el JSON de
+ * los `issues`**. Eso fue justo lo que la pantalla de ingreso enseñó en staging: el formulario
+ * hacía `setError(err.message)` creyendo que recibía un `AuthApiError`, y pintaba el volcado.
+ */
+function validarEntrada<T>(esquema: { parse: (v: unknown) => T }, valor: unknown): T {
+  try {
+    return esquema.parse(valor);
+  } catch (error) {
+    const issues = (error as { issues?: Array<{ path?: unknown[]; message?: string }> }).issues;
+    if (!Array.isArray(issues)) throw error;
+    const detalles = Object.fromEntries(
+      issues.map((i) => [Array.isArray(i.path) ? i.path.join('.') : '(raíz)', i.message ?? '']),
+    );
+    throw new AuthApiError(
+      'ENTRADA_INVALIDA',
+      mapearErrorAcceso('ENTRADA_INVALIDA', undefined, detalles),
+      400,
+      detalles,
+    );
+  }
+}
+
+/** Cómo se llama cada campo en la pantalla, no en el contrato. */
+const NOMBRE_DEL_CAMPO: Record<string, string> = {
+  identificador: 'tu correo o usuario',
+  correo: 'tu correo',
+  contrasena: 'tu contraseña',
+  codigo: 'el código',
+  agenciaId: 'la agencia',
+};
+
+/** Une nombres de campo como se unen en español: «a», «a y b», «a, b y c». */
+function enumerar(nombres: readonly string[]): string {
+  const [primero, ...resto] = nombres;
+  if (primero === undefined) return '';
+  if (resto.length === 0) return primero;
+  const ultimo = resto[resto.length - 1] as string;
+  return `${[primero, ...resto.slice(0, -1)].join(', ')} y ${ultimo}`;
+}
+
+/** `true` si el texto es una frase para una persona y no un volcado del servidor. */
+function esFraseHumana(texto: string | undefined): texto is string {
+  if (!texto) return false;
+  const t = texto.trim();
+  // Un JSON serializado (`[{"code":...}]`) empieza por corchete o llave. Eso llegó a verse en
+  // pantalla en el staging de noviembre de 2026: el usuario leyó los `issues` de Zod en crudo.
+  if (t.startsWith('[') || t.startsWith('{')) return false;
+  if (t.includes('"code"') || t.includes('"path"') || t.includes('"validation"')) return false;
+  return true;
+}
+
+/** El nombre de pantalla de un campo, o cadena vacía si no es un nombre que podamos enseñar. */
+function nombreDeCampo(clave: string): string {
+  return NOMBRE_DEL_CAMPO[clave] ?? (/^[A-Za-z_][A-Za-z0-9_.]{0,39}$/.test(clave) ? clave : '');
+}
+
+/**
+ * «Falta» no es lo mismo que «está mal escrito», y decirlo igual no ayuda a nadie: con el campo
+ * vacío, «Revisa tu contraseña» hace buscar un error que no existe. Lo que falta se pide
+ * («Escribe tu contraseña»); lo que está mal escrito se manda revisar.
+ *
+ * Del lado del cliente sabemos el código del issue. Del lado del servidor solo llega el texto de
+ * Zod, en inglés: de ahí la heurística, que si no acierta degrada al «revisa» de siempre.
+ */
+function pareceCampoVacio(detalle: unknown): boolean {
+  return typeof detalle === 'string' && /at least 1 character|too_small|required|vacío/i.test(detalle);
+}
+
+/** El mensaje que ve quien rellena el formulario, separando lo que falta de lo que está mal. */
+function mensajeDeCamposInvalidos(detalles: unknown): string {
+  if (!detalles || typeof detalles !== 'object' || Array.isArray(detalles)) {
+    return 'Revisa los datos del formulario e intenta de nuevo.';
+  }
+  const vacios: string[] = [];
+  const malEscritos: string[] = [];
+  for (const [clave, detalle] of Object.entries(detalles as Record<string, unknown>)) {
+    const nombre = nombreDeCampo(clave);
+    if (nombre === '') continue;
+    (pareceCampoVacio(detalle) ? vacios : malEscritos).push(nombre);
+  }
+  if (vacios.length === 0 && malEscritos.length === 0) {
+    return 'Revisa los datos del formulario e intenta de nuevo.';
+  }
+  if (malEscritos.length === 0) return `Escribe ${enumerar(vacios)} para entrar.`;
+  if (vacios.length === 0) return `Revisa ${enumerar(malEscritos)}: no tiene el formato esperado.`;
+  return `Escribe ${enumerar(vacios)} y revisa ${enumerar(malEscritos)}.`;
+}
+
+/**
  * Mapea códigos de dominio de error de acceso (CodigoDeErrorDeAcceso) a mensajes
  * claros y accionables en español para el asesor.
+ *
+ * **Nunca devuelve el `message` del servidor sin mirarlo.** Ese `default` permisivo fue el camino
+ * por el que un volcado de Zod acabó en la pantalla de ingreso: la web pintaba lo que llegara.
+ * Ahora el mensaje del servidor solo pasa si parece una frase; si no, se usa el genérico.
  */
-export function mapearErrorAcceso(codigo: string, mensajeFallback?: string): string {
+export function mapearErrorAcceso(
+  codigo: string,
+  mensajeFallback?: string,
+  detalles?: unknown,
+): string {
   switch (codigo) {
     case 'CREDENCIALES_INVALIDAS':
       return 'Los datos no coinciden. Revisa tu correo o usuario y tu contraseña, o pide ayuda al administrador de tu agencia.';
@@ -75,11 +174,31 @@ export function mapearErrorAcceso(codigo: string, mensajeFallback?: string): str
       return 'El código ingresado no es válido, ha caducado o agotó sus intentos.';
     case 'ORIGEN_NO_CONFIABLE':
       return 'Petición bloqueada por origen de navegación no seguro.';
+    case 'ENTRADA_INVALIDA':
+      // La API manda `details` campo por campo justo para esto: un «datos inválidos» a secas
+      // obliga a adivinar cuál de los campos está mal.
+      return mensajeDeCamposInvalidos(detalles);
     default:
-      return (
-        mensajeFallback || 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.'
-      );
+      return esFraseHumana(mensajeFallback)
+        ? mensajeFallback
+        : 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.';
   }
+}
+
+/**
+ * El texto que una pantalla puede enseñar ante CUALQUIER error, venga de donde venga.
+ *
+ * Defensa en profundidad: `auth-api` ya solo lanza `AuthApiError` con frases, pero un fallo de red
+ * o un `TypeError` inesperado llegan igual al `catch` del formulario. Pintar `err.message` a ciegas
+ * es lo que puso un volcado de Zod delante del usuario.
+ */
+export function mensajeDeErrorDeAcceso(error: unknown, generico?: string): string {
+  const respaldo = generico ?? 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.';
+  if (error instanceof AuthApiError) {
+    return esFraseHumana(error.message) ? error.message : respaldo;
+  }
+  const mensaje = error instanceof Error ? error.message : undefined;
+  return esFraseHumana(mensaje) ? mensaje : respaldo;
 }
 
 // -----------------------------------------------------------------------------
@@ -194,7 +313,7 @@ let sesionEnMemoriaMock: SesionActualTipo | null = null;
  * POST /api/v1/auth/sign-in/email
  */
 export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise<SesionActualTipo> {
-  const datosValidados = EsquemaIniciarSesion.parse(credenciales);
+  const datosValidados = validarEntrada(EsquemaIniciarSesion, credenciales);
   // Durante la transicion del contrato (ADR-0031) el cuerpo puede traer `correo` o `identificador`.
   const identificador = datosValidados.identificador ?? datosValidados.correo ?? '';
 
@@ -244,7 +363,7 @@ export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise
     const analizado = EsquemaErrorApi.safeParse(cuerpo);
     if (analizado.success) {
       const { code, message, details } = analizado.data.error;
-      throw new AuthApiError(code, mapearErrorAcceso(code, message), res.status, details);
+      throw new AuthApiError(code, mapearErrorAcceso(code, message, details), res.status, details);
     }
     if (res.status === 401) {
       throw new AuthApiError(
@@ -314,7 +433,7 @@ export async function obtenerSesionActualApi(): Promise<SesionActualTipo> {
     const analizado = EsquemaErrorApi.safeParse(cuerpo);
     if (analizado.success) {
       const { code, message, details } = analizado.data.error;
-      throw new AuthApiError(code, mapearErrorAcceso(code, message), res.status, details);
+      throw new AuthApiError(code, mapearErrorAcceso(code, message, details), res.status, details);
     }
     throw new AuthApiError('ERROR_SERVIDOR', 'Error al consultar la sesión actual', res.status);
   }
@@ -329,7 +448,7 @@ export async function obtenerSesionActualApi(): Promise<SesionActualTipo> {
  * POST /api/v1/auth/tenant-activo
  */
 export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionActualTipo> {
-  const payload = EsquemaCambiarAgenciaActiva.parse({ tenantId });
+  const payload = validarEntrada(EsquemaCambiarAgenciaActiva, { tenantId });
 
   if (!usaAuthReal()) {
     const agenciaElegida = [MOCK_AGENCIA_PRINCIPAL, MOCK_AGENCIA_SECUNDARIA].find(
@@ -375,7 +494,7 @@ export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionA
     const analizado = EsquemaErrorApi.safeParse(cuerpo);
     if (analizado.success) {
       const { code, message, details } = analizado.data.error;
-      throw new AuthApiError(code, mapearErrorAcceso(code, message), res.status, details);
+      throw new AuthApiError(code, mapearErrorAcceso(code, message, details), res.status, details);
     }
     throw new AuthApiError('ERROR_SERVIDOR', 'Error al cambiar de agencia activa', res.status);
   }
