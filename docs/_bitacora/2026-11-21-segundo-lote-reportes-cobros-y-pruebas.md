@@ -8,7 +8,7 @@
 | PR | Qué | Tarea |
 |---|---|---|
 | #404 | El listado de miembros expone el apodo. El contrato lleva el campo como opcional, de forma transitoria, para no romper a la web mientras se integraba | parte del ingreso por apodo |
-| #405 | Ingreso con correo o usuario y edición del usuario de un miembro | ingreso por apodo (el PR lo nombró T-362; en `roadmap/tasks.yaml` T-362 es otra tarea, el subdominio por agencia, y **sigue en `backlog`**) |
+| #405 | Ingreso con correo o usuario y edición del usuario de un miembro | ingreso por apodo, registrado tarde bajo **T-512** (el PR lo nombró T-362; en `roadmap/tasks.yaml` T-362 es otra tarea, el subdominio por agencia, y **sigue en `backlog`**) |
 | #406 | «Esta vista es de administración» y avisos de alcance en seguimientos y ficha del contacto | T-485, `done` |
 | #407 | Permiso `reportes.ver_agencia`: el catálogo pasa de 14 a 15, migración `20261121160000`, relleno solo al rol `DUENO` de cada agencia | T-341, `done` |
 | #408 | Las pruebas de la api esperan a las de la base: se acabó la carrera por compartir Postgres | T-503, `done` (ver pendientes) |
@@ -21,6 +21,8 @@ Cerrados por sustitución: #402 y #362. Su contenido entró en #404 y #405.
 - Seguimientos: «Ves solo tus seguimientos. Los de tus compañeros los ve quien administra la agencia.»
 - Ficha del contacto: «Aquí ves solo tus seguimientos de este contacto…».
 - El menú Reportes sigue visible a todos (decisión D3).
+
+El ingreso por apodo se registró tarde, bajo T-512 (#358, #404 y #405), porque las ramas usaron «T-362», que es otra tarea y sigue abierta. Aviso para no repetirlo: un id se numera tras `git fetch`, no se inventa.
 
 ## Decisiones tomadas
 

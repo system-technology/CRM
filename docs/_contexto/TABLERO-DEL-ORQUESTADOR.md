@@ -34,7 +34,7 @@
 
 **Cola de integración vacía.** `main` en `44d8673`, cero PR abiertos. Lo último que entró: #404 a #408 (detalle en la [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)). #402 y #362 se cerraron por sustitución. Este PR de cierre es el único en vuelo, sin auto-merge.
 
-**Ids de tarea ya usados:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-511 (cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-512**; `git fetch` antes de numerar.
+**Ids de tarea ya usados:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-513**; `git fetch` antes de numerar.
 
 ### Integrado en este turno (2026-11-21)
 

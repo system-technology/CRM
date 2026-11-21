@@ -9580,3 +9580,18 @@ tasks:
     source: "cierre del segundo lote, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
     owner: frontend
+  - id: T-512
+    title: "Ingreso con correo o usuario (apodo) de punta a punta"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: done
+    done_at: 2026-11-21T20:30:00.000Z
+    acceptance:
+      - "Evidencia: #358 (API: ingreso por identificador, tope por identificador, apodo de miembros), #404 (el listado de miembros expone el apodo; contrato con el campo opcional de forma transitoria) y #405 (web: ingreso con correo o usuario y edicion del usuario de un miembro). Los PR #402 y #362 se cerraron por sustitucion"
+      - "NO verificado: la pantalla a 390 px contra la API real (T-511)"
+      - "NO verificado: el apodo sigue siendo global en esta fase, contenido por guardia-de-apodos.ts y por el aborto al arrancar, hasta que T-361 mueva el indice a (tenant_acceso_id, apodo)"
+    source: "registro tardio (R14): las ramas y PR del apodo usaron «T-362», que es otra tarea (subdominio por agencia) y sigue abierta; la rama original era a/T-000-apodo-ingreso-web"
+    created_at: 2026-11-21T20:30:00.000Z
+    owner: backend
