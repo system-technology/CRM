@@ -11058,7 +11058,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-342
     acceptance:
@@ -11070,6 +11070,12 @@ tasks:
     source: "T-344: la comparación entre asesores hace una consulta por asesor, en lotes de cuatro, con tope de 12"
     created_at: 2026-11-21T23:00:00.000Z
     owner: backend
+    started_at: 2026-11-21T14:53:28.345Z
+    done_at: 2026-11-21T14:53:28.345Z
+    evidence: "Mergeado en main por el PR #441 (rama a/T-531-532-reportes-por-asesor-y-destino) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 2149b9db523f307cc048b65d331e10666b518d1f
   - id: T-532
     title: "Reportes de agencia: ventas del periodo por destino"
     type: feature
@@ -11260,7 +11266,12 @@ tasks:
     source: "hallazgo de la madre al integrar #428, 2026-11-21"
     created_at: 2026-11-21T13:00:00.000Z
     owner: dueno-de-producto
-    notes: "Cerrada a mano por la madre entrante tras verificarla, no por el cierre automatico, que fallo en su propia rama. Causa 1 (18 tareas con type/effort fuera del enum) la arreglo #437; causa 2 (las 20 in_progress) la aplico #438. VERIFICADO sobre main 898ba390 con un parseo linea a linea: 526 tareas, CERO in_progress, cero claves duplicadas, cero tareas sin status. La evidencia que pedia el criterio: la corrida de cerrar-tarea.yml sobre i/T-554-triaje-aplicado (2026-11-21T14:16:23Z) salio en VERDE, la primera despues de cuatro fallos seguidos (ramas de T-537, T-549, T-548 y T-542)."
+    notes: "Cerrada a mano por la madre entrante tras verificarla, no por el cierre automatico, que fallo en su
+      propia rama. Causa 1 (18 tareas con type/effort fuera del enum) la arreglo #437; causa 2 (las 20
+      in_progress) la aplico #438. VERIFICADO sobre main 898ba390 con un parseo linea a linea: 526 tareas,
+      CERO in_progress, cero claves duplicadas, cero tareas sin status. La evidencia que pedia el criterio: la
+      corrida de cerrar-tarea.yml sobre i/T-554-triaje-aplicado (2026-11-21T14:16:23Z) salio en VERDE, la
+      primera despues de cuatro fallos seguidos (ramas de T-537, T-549, T-548 y T-542)."
   - id: T-543
     title: "Web: formatearDeltaDinero pinta 100 veces de mas en toda moneda con decimales"
     type: bug
@@ -11383,7 +11394,11 @@ tasks:
     source: "verificado por la madre al integrar #429, 2026-11-21"
     created_at: 2026-11-21T13:40:00.000Z
     owner: qa
-    notes: "Integrada como #436 (209a3a8e). La hipotesis que daba el criterio (la tabla de miembros no revalida, cache de TanStack Query) resulto FALSA y la sesion la descarto yendo al trace.zip: el defecto estaba en useFocoModal, que robaba el foco a quien YA estaba escribiendo, asi que la gente perdia ediciones. No era una prueba fragil que normalizar: tenia razon en fallar. El arreglo fue de la web y no de la espera, como exigia el criterio: no se subio el timeout ni se reintento."
+    notes: "Integrada como #436 (209a3a8e). La hipotesis que daba el criterio (la tabla de miembros no revalida,
+      cache de TanStack Query) resulto FALSA y la sesion la descarto yendo al trace.zip: el defecto estaba en
+      useFocoModal, que robaba el foco a quien YA estaba escribiendo, asi que la gente perdia ediciones. No
+      era una prueba fragil que normalizar: tenia razon en fallar. El arreglo fue de la web y no de la espera,
+      como exigia el criterio: no se subio el timeout ni se reintento."
   - id: T-549
     title: "Sin responsable: el filtro se aplica despues del LIMIT, asi que la cifra es un minimo y no un total"
     type: bug
@@ -11484,13 +11499,18 @@ tasks:
     priority: P2
     effort: M
     status: backlog
-    depends_on: [T-531, T-532]
+    depends_on:
+      - T-531
+      - T-532
     acceptance:
-      - "La web deja de llamar a obtenerResumenesDeAsesoresApi una vez por asesor y de recortar a 12: consume las cifras por asesor que T-531 sirve en una sola respuesta"
-      - "El bloque Destinos del dashboard de administracion pasa de archivos abiertos a ventas del periodo, y cambia su rotulo, con lo que sirve T-532"
+      - "La web deja de llamar a obtenerResumenesDeAsesoresApi una vez por asesor y de recortar a 12: consume
+        las cifras por asesor que T-531 sirve en una sola respuesta"
+      - El bloque Destinos del dashboard de administracion pasa de archivos abiertos a ventas del periodo, y
+        cambia su rotulo, con lo que sirve T-532
       - "Sin sumar monedas (R8): una fila por destino y moneda, tal como las sirve el servidor"
       - "El alcance lo impone el servidor (ADR-0035): la web no decide quien ve que, ni reconstruye el margen"
-      - "No se da por buena sin ver fallar la prueba con el codigo viejo"
-    source: "mitad web de T-531 y T-532, que son solo servidor y carril a; esta es carril b. Abierta por la madre, 2026-11-21"
+      - No se da por buena sin ver fallar la prueba con el codigo viejo
+    source: mitad web de T-531 y T-532, que son solo servidor y carril a; esta es carril b. Abierta por la madre,
+      2026-11-21
     created_at: 2026-11-21T14:30:00.000Z
     owner: frontend
