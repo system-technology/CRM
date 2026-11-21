@@ -70,7 +70,7 @@ export function miembroDesdeApi(m: MiembroDeAgencia): MiembroEquipo {
     id: m.id,
     nombre: m.nombre,
     email: m.correo,
-    apodo: m.apodo,
+    apodo: m.apodo ?? null,
     rolClave: m.rol.clave,
     rolNombre: m.rol.nombre,
     estado: m.estado,
