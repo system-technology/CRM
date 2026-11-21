@@ -10,8 +10,12 @@
  * asesor sin reportes: ese permiso es «qué chats superviso», no «qué cifras de venta veo».
  *
  * El neto y el margen salen además solo con `cotizacion.ver_neto_y_margen`, y sin él las claves no
- * existen: alcance y margen son dos ejes distintos (§6). El tenant lo pone el middleware desde la
- * sesión, no aparece en ninguna firma.
+ * existen: alcance y margen son dos ejes distintos (§6). Lo mismo con `porCobrar` y `cobro.ver`
+ * (T-537), el permiso que ya exigen las pantallas de cobro: un reporte nunca enseña más que ellas
+ * (§4). El tenant lo pone el middleware desde la sesión, no aparece en ninguna firma.
+ *
+ * **Por qué el permiso NO va en un `@RequierePermiso` de la ruta:** eso dejaría sin NINGÚN reporte
+ * a quien no puede ver cobros. Lo que se recorta es la clave, no la entrada, igual que el margen.
  */
 import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ConsultarResumenDeReportes, type ResumenDeReportesPorAlcance } from '@viajapro/contracts';

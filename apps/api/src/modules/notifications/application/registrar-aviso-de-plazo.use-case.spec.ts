@@ -37,6 +37,8 @@ function armar(opciones: {
   const asesorDe = vi.fn<PuertoAsesorDeOportunidad['asesorDe']>(() =>
     Promise.resolve(opciones.asesor ?? null),
   );
+  // T-529 añadió el método de a muchos al puerto; el aviso no lo usa, pero el doble lo cumple.
+  const asesoresDe = vi.fn<PuertoAsesorDeOportunidad['asesoresDe']>(() => Promise.resolve([]));
   const activosConPermiso = vi.fn<PuertoUsuariosConPermiso['activosConPermiso']>(
     (_tx, _t, _p, entre) => Promise.resolve(opciones.activosConPermiso?.(entre) ?? []),
   );
@@ -44,7 +46,12 @@ function armar(opciones: {
     Promise.resolve(nuevas.length),
   );
   return {
-    uc: new RegistrarAvisoDePlazoUseCase({ leer }, { asesorDe }, { activosConPermiso }, { crear }),
+    uc: new RegistrarAvisoDePlazoUseCase(
+      { leer },
+      { asesorDe, asesoresDe },
+      { activosConPermiso },
+      { crear },
+    ),
     leer,
     asesorDe,
     activosConPermiso,

@@ -37,6 +37,7 @@ import {
   type CotizacionGuardada,
   DetalleDeArchivo,
   ListaDeArchivos,
+  ListaDeArchivosSinResponsable,
   type ResumenDeArchivo,
 } from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
@@ -756,6 +757,90 @@ describe('permisos archivo.ver y archivo.operar con sesiones reales (T-249)', ()
     expect(r.estado).toBe(200);
     const [fila] = await reservaEnBase(agencias.A.tenant, reserva);
     expect(fila).toMatchObject({ estado: 'SOLICITADA', localizador: 'OPS-1' });
+  });
+});
+
+/**
+ * T-529, ADR-0035 §2 (H7). En esta prueba los archivos nacen aceptando una cotización SIN
+ * oportunidad, que es exactamente el caso silencioso: el archivo existe, nadie lo hereda, y no
+ * aparece en el reporte propio de ningún asesor. Aquí se comprueba que sí aparece en la lista que
+ * lo hace visible, y que la ruta no la casa `:id` (el `ParseUUIDPipe` daría 400, no 200).
+ */
+describe('archivos sin responsable (T-529)', () => {
+  let archivo: ResumenDeArchivo;
+  const RUTA = '/api/v1/archivos/sin-responsable';
+
+  beforeAll(async () => {
+    archivo = await archivoNuevo(agencias.A);
+  }, 60_000);
+
+  it('quien puede operar los ve, con el motivo SIN_OPORTUNIDAD y sin asesor que nombrar', async () => {
+    const r = await comoMiembro('operaciones', 'GET', RUTA);
+    expect(r.estado).toBe(200);
+    const lista = ListaDeArchivosSinResponsable.parse(r.json);
+    const suyo = lista.datos.find((d) => d.archivo.id === archivo.id);
+    expect(suyo).toBeDefined();
+    expect(suyo?.motivo).toBe('SIN_OPORTUNIDAD');
+    expect(suyo?.asesorId).toBeNull();
+    // Todo lo que entra está ABIERTO y sin oportunidad de la que heredar asesor.
+    expect(lista.datos.every((d) => d.archivo.estado === 'ABIERTO')).toBe(true);
+    expect(lista.datos.every((d) => d.archivo.oportunidadId === null)).toBe(true);
+  });
+
+  it('con archivo.ver pero sin archivo.operar: 403, y sin filtrar datos del archivo', async () => {
+    for (const quien of ['soloVer', 'sinArchivo'] as const) {
+      const r = await comoMiembro(quien, 'GET', RUTA);
+      expect(r.estado, quien).toBe(403);
+      expect(codigo(r.json)).toBe('PERMISO_DENEGADO');
+      expect(JSON.stringify(r.json)).not.toContain(archivo.paqueteNombre);
+    }
+  });
+
+  /**
+   * Aislamiento entre agencias en la ruta NUEVA (R1). No basta con que la consulta lleve
+   * `tenant_id` y RLS: eso lo sabe quien lee el código, y una garantía que solo vive en una
+   * lectura no es evidencia.
+   *
+   * **Va por el atajo de desarrollo y no por `comoMiembro`** porque los cuatro miembros con
+   * sesión son de A (`crearMiembro(m, TENANT_A)`) y aquí hace falta pedir COMO B. Además ese
+   * atajo concede TODOS los permisos, así que un 403 no puede hacer pasar por aislamiento lo que
+   * sería solo falta de permiso: si hubiera fuga, esta petición la vería.
+   *
+   * **La prueba no puede pasar en vacío**: cada agencia afirma que SÍ ve su propio archivo
+   * huérfano antes de afirmar que no ve el ajeno. Una respuesta vacía, un 403 tragado o una lista
+   * recortada rompen la primera mitad.
+   */
+  it('la agencia B no ve el archivo huérfano de A, ni A el de B (R1)', async () => {
+    const huerfanoDeB = await archivoNuevo(agencias.B);
+
+    const vistaDeB = await http(agencias.B, 'GET', RUTA);
+    expect(vistaDeB.estado).toBe(200);
+    const idsDeB = ListaDeArchivosSinResponsable.parse(vistaDeB.json).datos.map(
+      (d) => d.archivo.id,
+    );
+    expect(idsDeB).toContain(huerfanoDeB.id);
+    expect(idsDeB).not.toContain(archivo.id);
+    // En el texto crudo tampoco: ni el id por otro rincón, ni el nombre del paquete de A.
+    expect(JSON.stringify(vistaDeB.json)).not.toContain(archivo.id);
+    expect(JSON.stringify(vistaDeB.json)).not.toContain(archivo.paqueteNombre);
+
+    const vistaDeA = await http(agencias.A, 'GET', RUTA);
+    expect(vistaDeA.estado).toBe(200);
+    const idsDeA = ListaDeArchivosSinResponsable.parse(vistaDeA.json).datos.map(
+      (d) => d.archivo.id,
+    );
+    expect(idsDeA).toContain(archivo.id);
+    expect(idsDeA).not.toContain(huerfanoDeB.id);
+    expect(JSON.stringify(vistaDeA.json)).not.toContain(huerfanoDeB.id);
+    expect(JSON.stringify(vistaDeA.json)).not.toContain(huerfanoDeB.paqueteNombre);
+  }, 60_000);
+
+  it('el límite acota la ventana y lo dice: `truncado` no se inventa', async () => {
+    const uno = await comoMiembro('operaciones', 'GET', `${RUTA}?limite=1`);
+    expect(uno.estado).toBe(200);
+    const lista = ListaDeArchivosSinResponsable.parse(uno.json);
+    expect(lista.datos.length).toBeLessThanOrEqual(1);
+    expect(lista.truncado).toBe(true);
   });
 });
 
