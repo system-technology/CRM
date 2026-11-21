@@ -15,6 +15,7 @@
     "lint": "eslint src",
     "identidad:sembrar-dev": "dotenv -e ../../.env -- tsx src/modules/identity/scripts/sembrar-credenciales-dev.ts",
     "canal:registrar-prueba": "dotenv -e ../../.env -- tsx src/modules/inbox/scripts/registrar-canal-de-prueba.ts",
+    "demo:preparar-staging": "tsx src/modules/identity/scripts/preparar-demo-staging.ts",
     "demo:sembrar-cifrada": "dotenv -e ../../.env -- tsx src/demo/sembrar-demo-cifrada.ts"
   },
   "dependencies": {
