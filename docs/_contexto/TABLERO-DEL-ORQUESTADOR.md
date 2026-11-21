@@ -115,6 +115,31 @@ Quiere **un manual funcional de lo que ya existe, con fotos**, para poder enseñ
 **Hay dos sesiones en el carril `i`** (esta y la del relevo): tocan archivos distintos, pero el segundo PR quedará
 `behind` y habrá que ponerlo al día. Contar con esa vuelta.
 
+## 1.5 DOS premisas falsas seguidas, las dos escritas por la madre (2026-11-21)
+
+**Es un patrón, no mala suerte, y por eso está aquí y no enterrado en una tarea.** Las dos tareas que la madre
+redactó a partir de la revisión visual del propietario tenían el diagnóstico equivocado:
+
+| Tarea | Lo que la madre afirmó | Lo que resultó ser |
+|---|---|---|
+| **T-560** | «El tema no se aplica al arrancar; no se respeta `prefers-color-scheme`» | **Falso.** El anti-FOUC existe e inyecta con nonce; el tema por defecto es `system` |
+| **T-561** | «Hay tokens por debajo del umbral de contraste; ajustar luminancia» | **Falso.** Los 19 pares reales cumplen AA. El fallo era **14 tonos usados sin declarar**, que en Tailwind v4 no emiten CSS: la clase era inerte y en oscuro sobrevivía el color de claro, dejando un **botón destructivo a 2,34:1** |
+
+**La causa común:** la madre miró el código por encima (un `grep` estrecho, una lectura de `globals.css`) y
+escribió su hipótesis **como si fuera un diagnóstico**, en el roadmap, que es una de las cuatro fuentes de verdad.
+Las dos sesiones hijas lo midieron de verdad —una con el navegador y la CSP real, otra compilando el CSS con la
+Tailwind instalada— y las dos la desmintieron.
+
+**Lo que hay que hacer distinto, y es barato:** cuando el propietario reporta algo que se ve, **la tarea se
+escribe como SÍNTOMA y pregunta, no como diagnóstico**. «El propietario ve que los textos se pierden en la barra
+lateral y en las pantallas de trabajo; medir los contrastes reales y averiguar por qué» habría llevado al mismo
+sitio sin afirmar nada falso. El diagnóstico lo pone quien mide, no quien reparte.
+
+**Lo que SÍ funcionó, y hay que conservar:** pedir en cada encargo que **vean fallar la prueba** y que **declaren
+si alguna pasó en verde con el fallo puesto**. Es lo que hizo que las dos pararan en vez de implementar una
+premisa falsa, y lo que destapó el 2,34:1. Una de ellas declaró **tres** pruebas suyas que habrían entregado algo
+falso, incluida una que fallaba **por el motivo equivocado** y escondía justo el número que importaba.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
@@ -329,6 +354,12 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 
 - **Una sesión bloqueada en un permiso NO está muerta: está esperando, y su carril sigue ocupado.** `connection_status: disconnected` y `status_bucket: BLOCKED` dicen **dónde está**, no si va a seguir. Comprobar que no ha publicado nada **tampoco basta**. Antes de repartir su tarea a otra: **archivarla** (así no revive) **o esperarla**. Verificado el 2026-11-21 por el camino caro: se reasignó T-531/T-532 dándola por muerta, la sesión revivió, la implementó entera y abrió un PR duplicado.
 - **El medidor de consumo sí funciona MIRANDO A LAS HIJAS, aunque la madre no vea el suyo en caliente.** `get_session` de una hija trae `context_usage.used_tokens` y `usage.cost_usd` reales (verificado: 226.328 tokens y 1,22 USD en una Sonnet). Así que el consumo de la flota **se puede vigilar**; lo que no se ve en el momento es el propio. No confundir las dos cosas, y no dejar de mirar el propio por eso.
+
+- **Un hex en el cuerpo de un commit rompe `convencion-de-commits`.** commitlint lee `#abc123` como referencia a
+  incidencia (`#` es prefijo de issue) y dispara `footer-leading-blank` aunque la línea en blanco antes de los
+  trailers esté bien puesta. Escribir los colores por el nombre del token. Verificado por la sesión de T-561.
+- **`mergeable_state: unstable` NO significa rojo.** Puede ser simplemente que falte un check por terminar.
+  Se clasifica mirando los `check-runs`, igual que un `cancelled`: ni se da por verde ni se da por rojo.
 
 ## 8. Sin verificar (heredado)
 

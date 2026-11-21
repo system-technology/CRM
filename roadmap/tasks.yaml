@@ -11673,6 +11673,17 @@ tasks:
         corregir"
       - "Ojo con los colores fijos que no pasan por tokens (formulario-ingreso.tsx usa #FDE68A y #C9A24B a
         mano): inventariarlos, aunque arreglarlos pueda ir en otra tarea"
+      - "CORRECCION 2026-11-21: la premisa de esta tarea era FALSA. Se midieron los 19 pares que la aplicacion
+        usa de verdad, en claro y en oscuro, y NINGUNO incumplia AA por luminancia (el mas justo, 4,75:1). No se
+        ajusto ninguna luminancia ni se toco la identidad"
+      - "LO QUE SI ESTABA ROTO, y explica el reporte del propietario: 14 tonos de las familias ok y alerta se
+        usaban en 77 sitios de 24 archivos SIN estar declarados en @theme. En Tailwind v4 un tono no declarado
+        NO emite CSS, asi que la clase era inerte y en oscuro sobrevivia el color de claro. El boton de borrar
+        una etiqueta quedaba a 2,34:1 siendo una accion destructiva, y once insignias se pintaban casi blancas
+        dentro del tema oscuro: eso es el «se pierden los textos» que se reporto"
+      - "Se arreglo completando las rampas con tonos de su misma paleta, sin cambiar ningun tono ya declarado
+        (auditado por la madre sobre el diff). La compuerta que lo evita en el futuro no mide solo contraste:
+        comprueba que TODO tono usado en el codigo este declarado, recorriendo lo versionado con git ls-files"
     source: revision visual del propietario, 2026-11-21
     created_at: 2026-11-21T15:42:00.000Z
     owner: frontend
@@ -11703,3 +11714,58 @@ tasks:
       fotos»"
     created_at: 2026-11-21T15:46:00.000Z
     owner: documentador
+  - id: T-569
+    title: "Web: 41 clases primary-* que no existen en ninguna paleta, asi que no generan CSS"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "bloque-etapas-pipeline.tsx, modal-reasignar.tsx y bandeja/[id]/page.tsx usan 41 clases de una familia
+        `primary` que NO existe ni en @theme ni en Tailwind: no emiten una sola linea de CSS"
+      - "Es EXACTAMENTE el mismo defecto que T-561 arreglo para ok y alerta, pero en una familia que ni siquiera
+        es nuestra. Esos elementos se estan pintando con el color que herede el contenedor, no con el que el
+        codigo dice"
+      - "No se arreglo en T-561 a proposito: decidir que debe ser `primary` (acento? neutral?) es una decision de
+        diseno, no un cambio mecanico"
+      - "La compuerta de T-561 (todo tono usado debe estar declarado) deberia extenderse para cazar tambien
+        familias inexistentes, no solo tonos ausentes de una familia que si existe"
+    source: "inventariado por la sesion de T-561 al entregar #454, 2026-11-21"
+    created_at: 2026-11-21T16:05:00.000Z
+    owner: diseno-ux
+  - id: T-570
+    title: "Web: unos 2.400 usos de paletas de fabrica que duplican los colores semanticos"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: L
+    status: backlog
+    acceptance:
+      - "Conteo de la sesion de T-561: amber 801, emerald 651, rose 422, red 292, cyan 113, sky 77, slate 75,
+        indigo 29, orange 6"
+      - "Donde significan «por vencer», «correcto» o «vencido» deberian ser aviso / ok / alerta, que son los
+        semanticos del CRM y los unicos que tienen regla de tema oscuro"
+      - "No es cosmetico: un color de fabrica no cambia con el tema, asi que cada uno es un sitio que puede
+        quedarse con el aspecto de claro dentro del tema oscuro"
+      - "Es L y de fase 2: se hace por zonas y con la compuerta de T-561 puesta, no de una sentada"
+    source: "inventariado por la sesion de T-561 al entregar #454, 2026-11-21"
+    created_at: 2026-11-21T16:05:00.000Z
+    owner: frontend
+  - id: T-571
+    title: "Web: colores escritos a mano en 12 archivos, fuera de los tokens"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "#C9A24B x15, #0B1F3A x10, #FACC15 x7, #06B6D4 x5, #FDE68A x3 y una quincena mas sueltos"
+      - "Incluye la portada de ingreso (formulario-ingreso.tsx), que por eso se ve igual en claro y en oscuro"
+      - "Decidir antes que es identidad de marca (y entonces se declara como token de marca, no se dispersa) y
+        que es un color suelto que deberia ser semantico. Es decision del propietario, no del equipo"
+      - "--color-acento-marca ya existe declarado y sin uso fuera de globals.css. Aviso medido: con el dorado por
+        defecto, el texto blanco encima da 2,40:1 (no llega a AA) y el texto oscuro 7,47:1"
+    source: "inventariado por la sesion de T-561 al entregar #454, 2026-11-21"
+    created_at: 2026-11-21T16:05:00.000Z
+    owner: diseno-ux
