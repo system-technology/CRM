@@ -15,13 +15,17 @@ import {
   ErrorApi as EsquemaError,
   RegistrarPago as EsquemaRegistrarPago,
   ResultadoDeMovimiento as EsquemaResultadoDeMovimiento,
+  VistaDeCobros as EsquemaVistaDeCobros,
   type CobroDelArchivo,
+  type ListarCobros,
   type RegistrarPago,
+  type VistaDeCobros,
   type ResultadoDeMovimiento,
 } from '@viajapro/contracts';
 import { obtenerBaseApi } from './api-base';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { estaUsandoApiReal } from './crm-api';
+import { crearVistaDeCobrosDemo } from './dashboard-admin-api';
 import { cobroDemoDe } from './mock-cobros';
 
 export class CobrosApiError extends Error {
@@ -97,4 +101,25 @@ export async function registrarPago(
     body: JSON.stringify(cuerpo),
   });
   return EsquemaResultadoDeMovimiento.parse(json);
+}
+
+/**
+ * `GET /api/v1/cobros?estadoDeCobro=` — la vista «quién pagó y quién debe». El filtro y el alcance
+ * (lo propio o toda la agencia) los aplica el servidor; esta capa no recorta nada por su cuenta.
+ * En demostración se filtra la maqueta, que no tiene servidor.
+ */
+export async function listarCobros(
+  estadoDeCobro?: ListarCobros['estadoDeCobro'],
+  senal?: AbortSignal,
+): Promise<VistaDeCobros> {
+  if (!estaUsandoApiReal()) {
+    const vista = crearVistaDeCobrosDemo(new Date());
+    if (!estadoDeCobro) return vista;
+    return { ...vista, datos: vista.datos.filter((f) => f.estadoDeCobro === estadoDeCobro) };
+  }
+  const consulta = new URLSearchParams({ limite: '500' });
+  if (estadoDeCobro) consulta.set('estadoDeCobro', estadoDeCobro);
+  return EsquemaVistaDeCobros.parse(
+    await pedirCobros(`/api/v1/cobros?${consulta.toString()}`, senal ? { signal: senal } : {}),
+  );
 }
