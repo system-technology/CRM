@@ -8,17 +8,21 @@ describe('catálogo de permisos', () => {
     );
   });
 
-  it('es el reflejo exacto del CHECK de la migración 20261118100000 (diez, sin repetidos)', () => {
+  it('es el reflejo exacto del CHECK de la migración 20261121140000 (catorce, sin repetidos)', () => {
     expect([...PERMISOS].sort()).toEqual(
       [
         'archivo.operar',
         'archivo.ver',
         'bandeja.operar',
         'catalogo.administrar',
+        'cobro.corregir',
+        'cobro.registrar',
+        'cobro.ver',
         'conversaciones.ver_todas',
         'cotizacion.escribir',
         'cotizacion.ver_neto_y_margen',
         'crm.escribir',
+        'etiquetas.administrar',
         'roles.administrar',
         'usuarios.administrar',
       ].sort(),

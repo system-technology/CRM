@@ -1,10 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NAVEGACION, ACCIONES } from './navegacion';
+import { listarArchivos, obtenerArchivo } from './archivos-api';
+import { obtenerFichaDeContacto } from './crm-api';
+import { obtenerCotizacionGuardadaApi } from './cotizaciones-api';
+import { obtenerConversacionDetalleMock } from './mock-inbox';
 import {
   normalizarTexto,
   construirIndiceGlobal,
   buscarEnIndiceGlobal,
 } from './buscador-global-logica';
+
+const archivosDeLaPantalla = () => listarArchivos('TODOS');
 
 describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logica.ts)', () => {
   describe('normalizarTexto', () => {
@@ -15,8 +21,8 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
   });
 
   describe('construirIndiceGlobal', () => {
-    it('genera el índice con todas las categorías requeridas', () => {
-      const indice = construirIndiceGlobal();
+    it('genera el índice con todas las categorías requeridas', async () => {
+      const indice = construirIndiceGlobal(undefined, await archivosDeLaPantalla());
       expect(indice.length).toBeGreaterThan(15);
 
       const categorias = new Set(indice.map((i) => i.categoria));
@@ -39,6 +45,22 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       for (const a of ACCIONES) {
         expect(comandos.some((c) => c.titulo === a.etiqueta && c.href === a.ruta)).toBe(true);
       }
+    });
+
+    it('escribir la etiqueta de cada módulo de la tabla devuelve ese módulo', () => {
+      for (const m of NAVEGACION) {
+        const { acciones } = buscarEnIndiceGlobal(m.etiqueta);
+        expect(
+          acciones.some((c) => c.titulo === m.etiqueta && c.href === m.ruta),
+          m.etiqueta,
+        ).toBe(true);
+      }
+    });
+
+    it('el módulo cuyo nombre se escribe va primero, antes que otro que solo lo menciona', () => {
+      // La descripción de «Hoy» menciona «seguimientos»: Enter debe llevar a Seguimientos.
+      expect(buscarEnIndiceGlobal('seguimientos').acciones[0]?.href).toBe('/seguimientos');
+      expect(buscarEnIndiceGlobal('cotizaciones').acciones[0]?.href).toBe('/cotizaciones');
     });
 
     it('«hoy», «cotizaciones» y «seguimientos» devuelven su módulo', () => {
@@ -93,10 +115,65 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       expect(cancun).toBeDefined();
     });
 
-    it('encuentra archivos de viaje por código o destino', () => {
-      const resultados = buscarEnIndiceGlobal('EXP-2026');
-      expect(resultados.viajes.length).toBeGreaterThan(0);
-      expect(resultados.viajes[0]?.titulo).toContain('EXP-2026');
+    it('sin archivos de la pantalla no inventa archivos de viaje', () => {
+      expect(buscarEnIndiceGlobal('1043').viajes).toHaveLength(0);
+    });
+
+    it('«1043» y un destino devuelven un archivo que la pantalla de /viajes resuelve', async () => {
+      const archivos = await archivosDeLaPantalla();
+      for (const consulta of ['1043', 'San Andrés']) {
+        const { viajes } = buscarEnIndiceGlobal(
+          consulta,
+          undefined,
+          4,
+          'todos',
+          undefined,
+          archivos,
+        );
+        expect(viajes.length, consulta).toBeGreaterThan(0);
+        for (const v of viajes) {
+          const id = new URL(v.href, 'http://x').searchParams.get('id') ?? '';
+          const abierto = await obtenerArchivo(id);
+          expect(abierto.id).toBe(id);
+        }
+      }
+      const porNumero = buscarEnIndiceGlobal('1043', undefined, 4, 'todos', undefined, archivos);
+      const id = new URL(porNumero.viajes[0]!.href, 'http://x').searchParams.get('id') ?? '';
+      // El file 1043 de la pantalla es el que se abre, no otro con el mismo número.
+      expect((await obtenerArchivo(id)).numero).toBe(1043);
+      expect(porNumero.viajes[0]?.titulo).toContain('File 1043');
+    });
+
+    it('cada archivo del índice lleva a /viajes?id= con un id que existe', async () => {
+      const archivos = await archivosDeLaPantalla();
+      const viajes = construirIndiceGlobal(undefined, archivos).filter(
+        (i) => i.categoria === 'viajes',
+      );
+      expect(viajes).toHaveLength(archivos.length);
+      for (const v of viajes) {
+        const id = v.href.replace('/viajes?id=', '');
+        await expect(obtenerArchivo(id)).resolves.toBeDefined();
+      }
+    });
+
+    it('cada contacto, conversación y cotización indexados lleva a algo que la pantalla abre', async () => {
+      const indice = construirIndiceGlobal();
+      const de = (c: string) => indice.filter((i) => i.categoria === c);
+      expect(de('contactos').length).toBeGreaterThan(0);
+      for (const i of de('contactos')) {
+        const ficha = await obtenerFichaDeContacto(i.href.replace('/contactos/', ''));
+        expect(ficha.contacto.id).toBe(i.href.replace('/contactos/', ''));
+      }
+      expect(de('conversaciones').length).toBeGreaterThan(0);
+      for (const i of de('conversaciones')) {
+        const det = await obtenerConversacionDetalleMock(i.href.replace('/bandeja/', ''), 0);
+        expect(det, i.href).not.toBeNull();
+      }
+      expect(de('cotizaciones').length).toBeGreaterThan(0);
+      for (const i of de('cotizaciones')) {
+        const cot = await obtenerCotizacionGuardadaApi(i.href.replace('/cotizaciones/', ''));
+        expect(cot.id).toBe(i.href.replace('/cotizaciones/', ''));
+      }
     });
 
     it('encuentra contactos por teléfono con formato o solo dígitos', () => {
@@ -172,6 +249,18 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       for (const cat of Object.keys(resultados) as (keyof typeof resultados)[]) {
         expect(resultados[cat].length).toBeLessThanOrEqual(2);
       }
+    });
+  });
+
+  describe('con las pantallas en modo real', () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it('no ofrece contactos, chats, cotizaciones, oportunidades ni paquetes de demostración', () => {
+      vi.stubEnv('NEXT_PUBLIC_USE_REAL_CRM', 'true');
+      vi.stubEnv('NEXT_PUBLIC_USE_REAL_INBOX', 'true');
+      const indice = construirIndiceGlobal();
+      const categorias = new Set(indice.map((i) => i.categoria));
+      expect([...categorias]).toEqual(['acciones']);
     });
   });
 });

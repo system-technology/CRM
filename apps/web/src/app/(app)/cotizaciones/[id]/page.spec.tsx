@@ -7,8 +7,12 @@ import * as authApi from '../../../../lib/auth-api';
 import * as crmApi from '../../../../lib/crm-api';
 import type { CotizacionGuardada, SesionActual } from '@viajapro/contracts';
 
+// Los parámetros de la URL que cada prueba quiere ver (p. ej. `?conversacion=`).
+const parametrosDeUrl = vi.hoisted(() => ({ actuales: new URLSearchParams() }));
+
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '01932000-0000-7000-8000-000000000001' }),
+  useSearchParams: () => parametrosDeUrl.actuales,
   usePathname: () => '/cotizaciones/01932000-0000-7000-8000-000000000001',
   useRouter: () => ({
     push: vi.fn(),
@@ -117,6 +121,7 @@ describe('PaginaCotizacionGuardada (Detalle T-107)', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    parametrosDeUrl.actuales = new URLSearchParams();
     vi.spyOn(cotizacionesApi, 'obtenerCotizacionGuardadaApi').mockResolvedValue(cotizacionPrueba);
     vi.spyOn(crmApi, 'listarContactos').mockResolvedValue({
       datos: [],
@@ -154,8 +159,10 @@ describe('PaginaCotizacionGuardada (Detalle T-107)', () => {
     });
   });
 
-  it('abre el modal de WhatsApp al hacer clic en Enviar por WhatsApp', async () => {
+  it('abre el diálogo «Abrir en la app de WhatsApp» y NO marca la cotización como enviada (T-347)', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(sesionSinPermisoNeto);
+    const cambiarEstado = vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi');
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
 
     render(<PaginaCotizacionGuardada />);
 
@@ -167,8 +174,45 @@ describe('PaginaCotizacionGuardada (Detalle T-107)', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeDefined();
-      expect(screen.getByText(/Enviar Cotización por WhatsApp/i)).toBeDefined();
+      expect(screen.getByRole('heading', { name: /Abrir en la app de WhatsApp/i })).toBeDefined();
     });
+
+    // Aunque se abra wa.me, la cotización sigue como Borrador: nada salió por el canal.
+    fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), {
+      target: { value: '+573105559876' },
+    });
+    fireEvent.click(screen.getByTestId('btn-abrir-whatsapp-directo'));
+    expect(abrir).toHaveBeenCalled();
+    expect(cambiarEstado).not.toHaveBeenCalled();
+    expect(screen.getByText('BORRADOR')).toBeDefined();
+  });
+
+  it('con la conversación en la URL, la acción principal es «Enviar en esta conversación» hacia el chat', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(sesionSinPermisoNeto);
+    parametrosDeUrl.actuales = new URLSearchParams({ conversacion: 'conv-123' });
+
+    render(<PaginaCotizacionGuardada />);
+
+    const enlace = await screen.findByTestId('btn-enviar-en-conversacion');
+    expect(enlace.textContent).toContain('Enviar en esta conversación');
+    expect(enlace.getAttribute('href')).toBe(
+      `/bandeja/conv-123?enviarCotizacion=${cotizacionPrueba.id}`,
+    );
+    // Y la salida de vuelta al chat, en las migas.
+    expect(screen.getByTestId('boton-volver-migas').getAttribute('href')).toBe('/bandeja/conv-123');
+    // El texto de la acción principal no menciona wa.me: nunca sale del canal de la agencia.
+    expect(enlace.getAttribute('href')).not.toContain('whatsapp');
+  });
+
+  it('sin conversación con el viajero no ofrece el envío por el canal y lo explica', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(sesionSinPermisoNeto);
+
+    render(<PaginaCotizacionGuardada />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('aviso-sin-conversacion')).toBeDefined();
+    });
+    expect(screen.queryByTestId('btn-enviar-en-conversacion')).toBeNull();
   });
 
   it('duplica la versión actual creando la versión 2 al hacer clic en Duplicar versión', async () => {

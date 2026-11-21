@@ -90,10 +90,13 @@ model Tenant {
   cambiosDeEtapa    OportunidadCambioEtapa[]
   motivosDePerdida  MotivoDePerdida[]
 
-  conversaciones Conversacion[]
-  mensajes       Mensaje[]
-  adjuntos       Adjunto[]
-  plantillas     PlantillaWhatsapp[]
+  conversaciones            Conversacion[]
+  mensajes                  Mensaje[]
+  adjuntos                  Adjunto[]
+  plantillas                PlantillaWhatsapp[]
+  /// T-324: el catálogo de etiquetas de conversación de la agencia y sus asignaciones.
+  etiquetas                 Label[]
+  etiquetasDeConversaciones ConversationLabel[]
 
   cotizaciones        Cotizacion[]
   versionesCotizacion VersionCotizacion[]
@@ -105,6 +108,11 @@ model Tenant {
   entregasDeEventos EventDelivery[]
   notificaciones    Notification[]
   cambiosDeReserva  ReservaCambioEstado[]
+
+  /// T-329 (ADR-0034): el libro de cobro, los plazos por archivo y los días por defecto (o nada).
+  pagos             Payment[]
+  plazosDeCobro     CollectionDueDate[]
+  parametrosDeCobro ParametrosDeCobro?
 
   /// T-261: los datos legales de la agencia (hoy solo el RNT). Una fila, o ninguna si no los ha escrito.
   perfil PerfilDeAgencia?
@@ -629,6 +637,12 @@ model Usuario {
   pasajerosActualizados        Passenger[]              @relation("PassengerActualizadoPor")
   notificaciones               Notification[]
   cambiosDeReservaHechos       ReservaCambioEstado[]
+  etiquetasCreadas             Label[]                  @relation("LabelCreadoPor")
+  etiquetasActualizadas        Label[]                  @relation("LabelActualizadoPor")
+  etiquetasAsignadas           ConversationLabel[]      @relation("ConversationLabelAsignadaPor")
+  pagosRegistrados             Payment[]                @relation("PaymentRegistradoPor")
+  plazosDeCobroRegistrados     CollectionDueDate[]      @relation("CollectionDueDateRegistradoPor")
+  parametrosDeCobroFijados     ParametrosDeCobro[]      @relation("ParametrosDeCobroActualizadoPor")
 
   @@unique([tenantId, correo])
   @@unique([tenantId, identidadId])
@@ -1355,6 +1369,8 @@ model Contacto {
   cotizaciones    Cotizacion[]
   seguimientos    Seguimiento[]
   archivosDeViaje TravelFile[]
+  /// T-329: movimientos de cobro en los que este contacto pagó por el titular.
+  pagosHechos     Payment[]
 
   /// Dos agencias distintas pueden tener el mismo teléfono de cliente: la unicidad
   /// es POR TENANT, nunca global.
@@ -1867,8 +1883,13 @@ model Conversacion {
   slaVenceEn         DateTime? @map("sla_vence_en") @db.Timestamptz(3)
   primeraRespuestaEn DateTime? @map("primera_respuesta_en") @db.Timestamptz(3)
 
-  /// Etiquetas libres por agencia, R12. Mismo tratamiento que en contactos.
+  /// LEGADO (T-324): arreglo libre, sin catálogo ni color. La migración 20261121110000 lo copió a
+  /// `etiquetas` + `conversacion_etiquetas` y desde entonces NADIE lo escribe. Se retira en una
+  /// migración posterior, cuando T-325 cambie `ConversacionResumen.etiquetas`. Ver `etiquetasAsignadas`.
   etiquetas String[] @default([])
+
+  /// Las etiquetas de la agencia puestas en esta conversación (T-324, HU-inbox-1).
+  etiquetasAsignadas ConversationLabel[]
 
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
@@ -1897,6 +1918,71 @@ model Conversacion {
   /// El filtro SLA_VENCIDO. Parcial: solo las que aún no han tenido respuesta.
   @@index([tenantId, slaVenceEn], map: "idx_conversaciones_sla_pendiente")
   @@map("conversaciones")
+}
+
+/// Etiqueta de conversación de la agencia (`Label`, T-324, HU-inbox-1). **Tabla por agencia, no
+/// enum** (R12): cada agencia define las suyas; nacen tres sembradas (Pagado, Pago pendiente,
+/// Seguimiento). Ayuda visual del chat: ningún saldo ni estado de cobro se calcula con ella.
+///
+/// En la migración, y no expresable aquí:
+/// - `UNIQUE (tenant_id, lower(btrim(nombre)))` (`etiquetas_tenant_id_nombre_normalizado_key`):
+///   «Pagado» y «pagado » chocan. Prisma no sabe hacer `upsert` sobre una unicidad de expresión:
+///   se crea con `createMany({ skipDuplicates: true })` (ON CONFLICT DO NOTHING).
+/// - CHECK `etiquetas_nombre_forma`: 1 a 30 caracteres, sin espacios a los lados ni de control.
+/// - CHECK `etiquetas_color_de_la_paleta`: gris, azul, turquesa, verde, ambar, naranja, rosa, dorado.
+///
+/// Borrado FÍSICO (HU-inbox-1 §3): se lleva sus asignaciones en cascada. Los topes (50 por agencia,
+/// 10 por conversación) los impone la API, no la base. El nombre es texto libre de la agencia:
+/// logs, eventos y outbox llevan solo el id.
+model Label {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  nombre String @db.VarChar(30)
+  /// Clave de la paleta del sistema de diseño (CHECK en la migración). No es enum de Postgres:
+  /// ampliar la paleta es ampliar el CHECK, sin reescribir la tabla.
+  color  String @db.VarChar(16)
+  orden  Int    @default(0) @db.SmallInt
+
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn    DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  creadoPorId      String?  @map("creado_por") @db.Uuid
+  actualizadoPorId String?  @map("actualizado_por") @db.Uuid
+  creadoPor        Usuario? @relation("LabelCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  actualizadoPor   Usuario? @relation("LabelActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  conversaciones ConversationLabel[]
+
+  /// Destino de la foránea compuesta de `conversacion_etiquetas`.
+  @@unique([id, tenantId])
+  @@index([tenantId, orden])
+  @@map("etiquetas")
+}
+
+/// Qué etiquetas tiene cada conversación (T-324). La clave es la terna con el tenant: poner dos
+/// veces la misma no duplica (ON CONFLICT DO NOTHING). Foráneas COMPUESTAS con el tenant hacia la
+/// conversación, la etiqueta y el usuario: una asignación no cruza agencias ni aunque falle un
+/// `WHERE`. Sin UPDATE para el rol de aplicación: se pone o se quita.
+model ConversationLabel {
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  conversacionId String       @map("conversacion_id") @db.Uuid
+  conversacion   Conversacion @relation(fields: [conversacionId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+  etiquetaId     String       @map("etiqueta_id") @db.Uuid
+  etiqueta       Label        @relation(fields: [etiquetaId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  /// UTC (R9). En lo copiado del arreglo libre por la migración, el instante de la copia.
+  asignadaEn    DateTime @default(now()) @map("asignada_en") @db.Timestamptz(3)
+  /// Nulo en lo copiado por la migración.
+  asignadaPorId String?  @map("asignada_por") @db.Uuid
+  asignadaPor   Usuario? @relation("ConversationLabelAsignadaPor", fields: [asignadaPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  @@id([tenantId, conversacionId, etiquetaId])
+  /// El filtro de la bandeja por etiqueta, con el tenant delante.
+  @@index([tenantId, etiquetaId, conversacionId], map: "conversacion_etiquetas_tenant_etiqueta_conversacion_idx")
+  @@map("conversacion_etiquetas")
 }
 
 enum EstadoConversacion {
@@ -2536,10 +2622,17 @@ model TravelFile {
   creadoPor        Usuario? @relation("TravelFileCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("TravelFileActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
-  reservas  Booking[]
-  pasajeros Passenger[]
+  reservas      Booking[]
+  pasajeros     Passenger[]
+  /// T-329 (ADR-0034): el libro de cobro y los plazos de cobro del archivo.
+  pagos         Payment[]
+  plazosDeCobro CollectionDueDate[]
 
   @@unique([id, tenantId])
+  /// T-329: destino de la foránea del libro de cobro (el movimiento va en la moneda del archivo).
+  /// Con el disparador `travel_files_venta_inmutable` (que Prisma no modela): `id`, `tenantId`,
+  /// `ventaUnidades` y `monedaIso` no cambian nunca.
+  @@unique([id, tenantId, monedaIso])
   @@unique([tenantId, numero])
   /// Idempotencia de la apertura: una cotización abre un solo archivo.
   @@unique([tenantId, cotizacionId])
@@ -2790,4 +2883,125 @@ model ReservaCambioEstado {
   @@index([tenantId, reservaId, ocurridoEn, id], map: "idx_reserva_cambios_estado_por_reserva")
   @@index([tenantId, archivoId, ocurridoEn, id], map: "idx_reserva_cambios_estado_por_archivo")
   @@map("reserva_cambios_estado")
+}
+
+// =============================================================================
+// PAYMENTS — pagos del viajero (ADR-0034, T-329)
+// =============================================================================
+
+/// Los cinco movimientos del libro de cobro. Invariantes del dominio, no política (R12).
+enum TipoMovimientoDeCobro {
+  /// Dinero del viajero a la agencia. El anticipo es el primer pago.
+  PAGO
+  /// Dinero que la agencia devolvió de verdad al viajero.
+  DEVOLUCION
+  /// Anula otro movimiento registrado por error. No mueve dinero; copia el monto del original.
+  REVERSO
+  /// Cargo (> 0) o descuento (< 0) sobre el total vendido, con motivo. No edita la venta.
+  AJUSTE
+  /// Lo que la agencia retiene al cancelar, con motivo.
+  PENALIDAD
+
+  @@map("tipo_movimiento_de_cobro")
+}
+
+/// Libro de movimientos de cobro del archivo de viaje (ADR-0034 §2). **Solo crece**: la API tiene
+/// SELECT e INSERT, y el disparador `pagos_inmutables` rechaza UPDATE, DELETE y TRUNCATE (salvo la
+/// purga declarada de un tenant y el tachado de `nota`/`referencia`, ambos solo para el dueño de la
+/// tabla). `pagos_validar_alta` fija `registradoEn` y rechaza el reverso de un reverso. El saldo se
+/// calcula, nunca se guarda.
+///
+/// En la migración, y no aquí: CHECK por tipo (monto, fecha, medio, pagador, motivo, reverso), el
+/// catálogo cerrado de `medio` y el índice único parcial `pagos_un_reverso_por_movimiento`
+/// `(tenant_id, reverso_de_id) WHERE reverso_de_id IS NOT NULL`, que Prisma no modela.
+/// `nota`, `referencia` y `motivo` nunca van a logs, outbox ni auditoría.
+model Payment {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Foránea de TRES columnas: el archivo es de esta agencia y el movimiento va en SU moneda.
+  travelFileId String     @map("travel_file_id") @db.Uuid
+  travelFile   TravelFile @relation(fields: [travelFileId, tenantId, monedaIso], references: [id, tenantId, monedaIso], onDelete: NoAction, onUpdate: Restrict, map: "pagos_travel_file_id_tenant_id_moneda_iso_fkey")
+
+  tipo          TipoMovimientoDeCobro
+  /// R8: unidad mínima de la moneda. Valor absoluto 1..999999999999999; negativo solo en AJUSTE y
+  /// en el REVERSO de un descuento.
+  montoUnidades BigInt                @map("monto_unidades")
+  monedaIso     String                @map("moneda_iso") @db.Char(3)
+  /// R9: fecha de calendario. Solo PAGO y DEVOLUCION.
+  pagadoEl      DateTime?             @map("pagado_el") @db.Date
+  /// TRANSFERENCIA, EFECTIVO, TARJETA, CONSIGNACION, BILLETERA_DIGITAL, PSE, LINK_DE_PAGO u OTRO
+  /// (CHECK). Solo PAGO y DEVOLUCION.
+  medio         String?               @db.VarChar(20)
+
+  /// Quién pagó, si no es el titular. Solo PAGO.
+  pagadorId String?   @map("pagador_id") @db.Uuid
+  pagador   Contacto? @relation(fields: [pagadorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  referencia    String?   @db.VarChar(100)
+  nota          String?   @db.VarChar(500)
+  notaTachadaEn DateTime? @map("nota_tachada_en") @db.Timestamptz(3)
+  /// Obligatorio en AJUSTE, PENALIDAD y REVERSO.
+  motivo        String?   @db.VarChar(500)
+
+  /// Solo y siempre en REVERSO. Foránea de CINCO columnas: mismo archivo, agencia, monto y moneda.
+  reversoDeId String?   @map("reverso_de_id") @db.Uuid
+  reversoDe   Payment?  @relation("PaymentReverso", fields: [reversoDeId, tenantId, travelFileId, montoUnidades, monedaIso], references: [id, tenantId, travelFileId, montoUnidades, monedaIso], onDelete: NoAction, onUpdate: Restrict, map: "pagos_reverso_de_id_fkey")
+  /// A lo sumo uno (índice único parcial en la migración).
+  reversos    Payment[] @relation("PaymentReverso")
+
+  /// R5: la genera el cliente y la repite en cada reintento.
+  claveIdempotencia String   @map("clave_idempotencia") @db.Uuid
+  registradoPorId   String   @map("registrado_por") @db.Uuid
+  registradoPor     Usuario  @relation("PaymentRegistradoPor", fields: [registradoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  /// UTC. Lo fija la base con la hora de la sentencia (disparador): el valor que mande el cliente se ignora.
+  registradoEn      DateTime @default(now()) @map("registrado_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  /// Destino de la foránea del reverso.
+  @@unique([id, tenantId, travelFileId, montoUnidades, monedaIso])
+  @@unique([tenantId, claveIdempotencia])
+  @@index([tenantId, travelFileId, registradoEn, id])
+  @@index([tenantId, pagadorId])
+  @@map("pagos")
+}
+
+/// Fecha límite de cobro fijada a mano en un archivo (`collectionDueDate`, ADR-0034 §3). Solo
+/// inserción (la API tiene SELECT e INSERT): rige la última fila del archivo; sin filas, la fecha
+/// por defecto que calcula el dominio.
+model CollectionDueDate {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  travelFileId String     @map("travel_file_id") @db.Uuid
+  travelFile   TravelFile @relation(fields: [travelFileId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  /// R9: fecha de calendario.
+  venceEl DateTime @map("vence_el") @db.Date
+  motivo  String?  @db.VarChar(200)
+
+  registradoPorId String   @map("registrado_por") @db.Uuid
+  registradoPor   Usuario  @relation("CollectionDueDateRegistradoPor", fields: [registradoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  registradoEn    DateTime @default(now()) @map("registrado_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, travelFileId, registradoEn, id])
+  @@map("plazos_de_cobro")
+}
+
+/// Política de cobro de la agencia (ADR-0034 §3, R12): días antes de la salida en que vence el
+/// cobro por defecto, 0 a 365 (CHECK). Sin fila rigen 30: ni la siembra ni `crear_agencia` la crean.
+model ParametrosDeCobro {
+  tenantId String @id @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  diasPlazoDeCobro Int @map("dias_plazo_de_cobro") @db.SmallInt
+
+  actualizadoPorId String   @map("actualizado_por") @db.Uuid
+  actualizadoPor   Usuario  @relation("ParametrosDeCobroActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  actualizadoEn    DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@map("parametros_de_cobro")
 }

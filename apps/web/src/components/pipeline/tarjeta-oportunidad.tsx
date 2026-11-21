@@ -37,6 +37,8 @@ interface TarjetaOportunidadProps {
   etapas: EtapaDefinida[];
   onSolicitarMover: (oportunidad: Oportunidad, nuevaEtapa: EtapaDefinida) => void;
   indice?: number;
+  /** La pidió el enlace (`/pipeline?op=`): se marca y recibe el foco (T-318). */
+  enfocada?: boolean;
 }
 
 export function TarjetaOportunidad({
@@ -44,6 +46,7 @@ export function TarjetaOportunidad({
   etapas,
   onSolicitarMover,
   indice,
+  enfocada = false,
 }: TarjetaOportunidadProps) {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
@@ -96,12 +99,14 @@ export function TarjetaOportunidad({
 
   return (
     <div
+      id={`op-${id}`}
+      data-enfocada={enfocada ? 'true' : undefined}
       draggable
       onDragStart={manejarDragStart}
       tabIndex={0}
       role="article"
       aria-label={`Oportunidad: ${titulo}, cliente ${contactoNombre || 'anónimo'}, etapa ${etapa.nombre}`}
-      className={`group tarjeta-elevacion relative cursor-grab rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs hover:border-cyan-500/40 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500 active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-cyan-500/40 ${claseAnimacion}`.trim()}
+      className={`group tarjeta-elevacion relative cursor-grab rounded-2xl border ${enfocada ? 'border-acento-600 ring-acento-600 ring-2' : 'border-neutral-200'} bg-white p-4 shadow-2xs hover:border-cyan-500/40 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500 active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-cyan-500/40 ${claseAnimacion}`.trim()}
     >
       {/* Fila superior: «Destino · mes · pasajeros» + fecha de salida */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px]">

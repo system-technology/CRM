@@ -10,6 +10,11 @@
 import { Module } from '@nestjs/common';
 import { ActuarEnConversacionUseCase } from './application/actuar-en-conversacion.js';
 import { ConsultarBandejaUseCase } from './application/consultar-bandeja.js';
+import { EtiquetarConversacionUseCase } from './application/etiquetar-conversacion.js';
+import { GestionarEtiquetasUseCase } from './application/gestionar-etiquetas.js';
+import { PuertoDeEtiquetas } from './application/puerto-de-etiquetas.js';
+import { EtiquetasPrisma } from './infrastructure/etiquetas.prisma.js';
+import { EtiquetasController } from './interface/etiquetas.controller.js';
 import { ConsultarEstadoDelCanal } from './application/consultar-estado-del-canal.js';
 import { PuertoEstadoDelCanal } from './application/puerto-estado-del-canal.js';
 import { EstadoDelCanalPrisma } from './infrastructure/estado-del-canal.prisma.js';
@@ -54,7 +59,12 @@ import { WebhookWhatsappController } from './interface/webhook-whatsapp.controll
 
 @Module({
   imports: [InboxPuertosModule],
-  controllers: [WebhookWhatsappController, ConversacionesController, CanalesController],
+  controllers: [
+    WebhookWhatsappController,
+    ConversacionesController,
+    EtiquetasController,
+    CanalesController,
+  ],
   providers: [
     RegistrarRecepcion,
     // --- Estado del canal de WhatsApp (T-122) ---
@@ -65,6 +75,10 @@ import { WebhookWhatsappController } from './interface/webhook-whatsapp.controll
     ActuarEnConversacionUseCase,
     EnviarCotizacionPorWhatsapp,
     { provide: PuertoConversaciones, useClass: ConversacionesPrisma },
+    // --- Etiquetas de conversación (T-325) ---
+    GestionarEtiquetasUseCase,
+    EtiquetarConversacionUseCase,
+    { provide: PuertoDeEtiquetas, useClass: EtiquetasPrisma },
     {
       provide: PuertoAvisoAlRelay,
       useFactory: crearAvisoAlRelay,

@@ -6951,7 +6951,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-315]
     acceptance:
       - "lib/navegacion.ts con id, etiqueta, ruta, icono, grupo, permiso y prefijos activos; todo lo demás lee de ella"
@@ -6959,13 +6959,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main en dos partes con los 14 checks en verde: #337 (b69ffe6, tabla lib/navegacion.ts, spec y comandos de la paleta derivados) y #348 (3f5af1c, menú, H1 y título de pestaña desde la tabla; «Archivos de viaje» en lugar de «Reservas»; «Reportes» visible para todos; permiso como lista «cualquiera de»). #348 se integró con dos e2e rotos que arregló #349; desde entonces los PR de apps/web esperan `navegador` en verde."
   - id: T-317
     title: 'N3: «Hoy», Cotizaciones y Seguimientos en el menú y la paleta; destino tras ingresar'
     type: feature
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316, T-313]
     acceptance:
       - "Desde / se llega a Seguimientos y a Cotizaciones en un clic; «Hoy» con contador visible desde cualquier pantalla"
@@ -6973,13 +6975,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #359 (975e77c) con los 14 checks en verde, incluido navegador. «Hoy» y «Seguimientos» en el menú lateral con contadores (Hoy = seguimientos de hoy + vencidos; Seguimientos = vencidos), destino tras ingresar = «Hoy» (`/`) respetando ?redirigir=, logo a `/`. Cola: los plazos de menos de 24 h no entran en el contador de Hoy (Inicio no consume esa fuente) y hay una llamada duplicada a pendientes-del-dia (menú y campana): se resuelve con la cifra única (T-391)."
   - id: T-318
     title: 'N5: la URL como estado (Atrás vuelve; ?id en Catálogo, ?op en Pipeline, ?pestana= en Configuración y ficha)'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-315]
     acceptance:
       - "e2e: elegir un archivo, luego otro, y Atrás vuelve al primero; /catalogo?id=X abre el paquete X"
@@ -6987,13 +6991,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:40:00.000Z
+    evidence: "Integrada en main por el PR #371 (b9a7702) con los 14 checks en verde, incluido navegador. Archivos de viaje con router.push y ?id (Atrás vuelve al archivo anterior sin salir del módulo), ?id en Catálogo, ?op en Pipeline (tarjeta enfocada, avisos para id inválido, inexistente y oculta por filtros), ?pestana= en Configuración, Reportes y la ficha del contacto con `replace`, y parámetros validados (lib/parametros-url.ts: UUID o lista cerrada) antes de usarse en la API. SIN e2e nuevo (dependería de datos sembrados del CI; cubierto con pruebas de componente y corrida manual en demo). Sin verificar con la API real: el UUID inexistente en /viajes depende de que el servidor responda 404. Cola: T-393 y T-394."
   - id: T-319
     title: 'N6: la paleta busca en la misma fuente que cada pantalla y tiene comando para todo módulo'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316]
     acceptance:
       - "Buscar un id devuelve algo que la pantalla resuelve; «cotizaciones» y «seguimientos» devuelven su módulo"
@@ -7001,13 +7007,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T02:10:00.000Z
+    evidence: "Integrada en main por el PR #374 (b878e06) con los 14 checks en verde, incluido navegador en el PR. La paleta (Ctrl+K y lupa móvil) busca archivos de viaje con listarArchivos, la misma fuente que /viajes y solo con archivo.ver; «File 1043 — San Andrés, Colombia» abre /viajes?id=; filtro «Archivos»; todos los módulos de la tabla de navegación salen como comando y el título va primero («seguimientos» + Enter lleva a Seguimientos, ya no a Hoy); en modo real solo se indexa lo que la pantalla también lee; error de carga con «Reintentar» y sin console.error. SIN verificar con la API real: el modo real solo se cubrió con spec y variables de entorno. Cola: T-403 a T-406."
   - id: T-320
     title: 'N4: móvil con barra inferior de 5 y hoja «Más»'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316]
     acceptance:
       - "CRÍTICA para el piloto (el asesor y el dueño trabajan todo el flujo desde el celular). Decisión del propietario (2026-11-20, variante B de diseno-ux): barra inferior Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, con una LUPA FIJA en la cabecera de cada pantalla que abre la búsqueda (Buscar no ocupa pestaña)"
@@ -7018,13 +7026,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #368 (0373ec2) con los 14 checks en verde, incluido navegador (verificado también en main). Barra inferior Hoy · Conversaciones · Cotizar · Archivos de viaje · Más (78×55 px, etiquetas de 11 px), lupa fija de 44×44 en la cabecera móvil montada una vez en el marco, hoja «Más» con módulos, campana, perfil y enlaces legales, flecha de volver en el error de la conversación. Cola: T-389 (contador de no leídos) y T-390 (banner de cookies sobre la barra; esqueleto de la conversación sin flecha)."
   - id: T-321
     title: 'N7: contexto en el cotizador (para quién y desde qué chat) y un solo total'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316]
     acceptance:
       - "«Cotizando para …· desde la conversación» con volver al chat; tras guardar, la acción principal es «Enviar por WhatsApp»"
@@ -7039,6 +7049,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #369 (c2318ee) con los 14 checks en verde, incluido navegador; auditoría de seguridad de una pasada sin bloqueantes de seguridad (un bloqueante de texto corregido). Contexto «Cotizando para… · volver al chat», «Cotizar» de 1 toque en el compositor, barra fija con total y «Guardar», «Enviar en esta conversación» por el canal (de 7 a 5 toques), desglose apilable a 390 px, total coherente en la demo. SIN verificar con la API real: totales, envío, POST /cotizaciones/:id/estado BORRADOR→ENVIADA y la búsqueda de conversación por teléfono del e2e nuevo. Cola de la auditoría: T-386 a T-388 y T-392."
   - id: T-322
     title: 'N8: la campana cuenta lo que suman sus pestañas; el error de sesión ofrece «Ir a ingresar»'
     type: feature
@@ -7059,7 +7071,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     depends_on: []
     acceptance:
       - "Decide a qué se asignan (conversación, archivo o ambos), colores, sembrado de «Pagado», «Pago pendiente» y «Seguimiento», y la relación con Contacto.etiquetas"
@@ -7067,13 +7079,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: analista-producto
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #366 (ac0d66d): docs/01-producto/03-historias/HU-inbox-1.md. Decisión: las etiquetas se asignan solo a la conversación (no al archivo ni al contacto); tablas por agencia `etiquetas` y `conversacion_etiquetas`; permiso propuesto `etiquetas.administrar`. Siguen T-324 (datos, protegida), T-325 y T-326."
   - id: T-324
     title: 'B1: migración de etiquetas por agencia y su asignación (RLS, R1)'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-323]
     acceptance:
       - "Tabla por agencia con color (R12, no enum), asignación a lo que decida T-323, RLS con USING y WITH CHECK, sembrado por defecto"
@@ -7081,13 +7095,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: datos
+    done_at: 2026-11-21T02:10:00.000Z
+    evidence: "Integrada en main por el PR #372 (1857a42) con los 15 checks en verde, incluidos aislamiento-tenants y test (la migración solo se ejerce en el CI: aquí no hay Postgres). Migración 20261121110000: tablas etiquetas y conversacion_etiquetas con tenant_id, RLS ENABLE+FORCE con USING y WITH CHECK, claves foráneas compuestas, privilegios solo para viajapro_app, permiso etiquetas.administrar solo para DUENO, siembra y copia por agencia; pruebas E1 a E7. Dos auditorías (la de la sesión madre y auditor-seguridad) sin bloqueantes. Cola: T-395 a T-402."
   - id: T-325
     title: 'B2: API de etiquetas (gestionar, asignar, filtrar)'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-324]
     acceptance:
       - "Gestión de etiquetas por la agencia y asignación con un clic; la bandeja filtra por etiqueta respetando la visibilidad por asesor"
@@ -7095,6 +7111,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
+    done_at: 2026-11-21T02:45:00.000Z
+    evidence: "Integrada en main por el PR #379 (cfe175c) con los 14 checks en verde, incluidos navegador, test y aislamiento-tenants; los e2e de etiquetas corrieron contra Postgres real en el CI (aquí no hay Postgres). GET/POST/PATCH/DELETE /etiquetas (escribir exige etiquetas.administrar), PUT/DELETE /conversaciones/:id/etiquetas/:etiquetaId (bandeja.operar, idempotentes, con evento sin datos en el outbox), filtro de la bandeja por etiqueta respetando la visibilidad por asesor, topes 50/10 con candado, 404 idéntico con ids ajenos. Cambia el contrato: ConversacionResumen.etiquetas pasa de string[] a {id,nombre,color}[]. Dos auditorías (auditor-seguridad y la sesión madre) sin bloqueantes; la primera pasada del CI falló por un e2e que no deshacía su relleno, no por la API. Cola: T-411 a T-418."
   - id: T-326
     title: 'B3: chips con color en la bandeja, un clic y filtro por etiqueta'
     type: feature
@@ -7133,7 +7151,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: ready
     depends_on: [T-327]
     acceptance:
       - "Define el contexto payments mínimo: pago, saldo, estados de cobro, R8 (unidad mínima), R5 (idempotencia), permiso propio, historial inmutable, relación con el archivo de viaje y con la TRM"
@@ -7141,6 +7159,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: arquitecto
+    notes: "ADR-0034 redactado en el PR de esta tarea (estado Propuesto). Antes de aceptarlo: auditor-seguridad sin recortar vueltas (dinero y aislamiento) y experto-turismo sobre los estados y la fecha límite. Su cola es T-419 a T-424."
   - id: T-329
     title: 'C2: migración de pagos del viajero (insert-only, historial inmutable, RLS) y su permiso'
     type: feature
@@ -7404,7 +7423,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "Hoy la acción abre https://api.whatsapp.com/send (otra pestaña, número que no es el de la Cloud API de la agencia) y marca la cotización ENVIADA en el acto, se haya enviado o no; al volver al chat no hay rastro (components/cotizaciones/modal-enviar-whatsapp-cotizacion.tsx:89-94): estado falso"
@@ -7415,7 +7434,8 @@ tasks:
     source: revisión a 390 px del cotizador (diseno-ux, 2026-11-20); la sesión coordinadora lo pide como bug de cola P1
     created_at: 2026-11-20T22:00:00.000Z
     owner: frontend
-
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #369 (c2318ee): la cotización solo pasa a ENVIADA tras el envío por el canal desde la web y la salida a api.whatsapp.com/send queda como acción secundaria que no cambia el estado. Matiz que dejó la auditoría: ENVIADA significa «encolado», no «salió por el canal»; se resuelve en el servidor con T-386."
   - id: T-360
     title: "Codigo de un solo uso pedido por apodo (decidir si vale el riesgo)"
     type: security
@@ -7675,7 +7695,7 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: done
     human_required: true
     depends_on: [T-307]
     acceptance:
@@ -7687,13 +7707,14 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20). now() es la hora de inicio de la transacción: viajapro_app puede abrir una, esperar y escribir, y las fechas quedan antedatadas (migración 20261120160000, líneas 44-45 y 57)"
     created_at: 2026-11-21T00:00:00.000Z
     owner: datos
+    notes: "Integrada en #361 (migración 20261120170000, pruebas P-8 y P-9). Auditoría de seguridad: integrable, sin bloqueantes; aislamiento-tenants 173/173. Su cola es T-408, T-409 y T-410."
   - id: T-376
     title: "Endurecer el cinturón de la migración 20261120160000 sobre proteger_verificacion_del_perfil"
     type: security
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: done
     human_required: true
     depends_on: [T-307]
     acceptance:
@@ -7705,6 +7726,7 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): las comprobaciones finales solo miran la línea del UPDATE y aceptan un proconfig con ajustes de más"
     created_at: 2026-11-21T00:00:00.000Z
     owner: datos
+    notes: "Integrada en #361 junto con T-375, en la misma migración (cinturón con el cuerpo entero de la función y proconfig exacto). Su cola es T-408."
   - id: T-377
     title: "Mutación que cubra T-307 (M24) y evaluar correr mutaciones-aislamiento.mjs en el CI"
     type: test
@@ -7724,3 +7746,689 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
+  - id: T-378
+    title: "Permitir en .claude/settings.json los comandos habituales de solo lectura para que las sesiones desatendidas no se detengan"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Se ejecuta la skill fewer-permission-prompts sobre las transcripciones y se propone una lista de permisos de solo lectura (git, gh api GET, grep, ls, node de los scripts del repositorio)"
+      - "La lista no incluye escrituras, red hacia hosts nuevos ni comandos destructivos; la aprueba el propietario (ruta protegida .claude/)"
+    source: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md (2026-11-21)
+    created_at: 2026-11-21T00:30:00.000Z
+    owner: devops
+    notes: "Hoy una sesión que pide un permiso y nadie contesta se queda detenida (la de despliegue lleva horas). Las sesiones de trabajo además deben ir en modo Auto, que elige el propietario."
+  - id: T-379
+    title: "Auditoría integral al cerrar cada ola del roadmap maestro"
+    type: audit
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Al cerrar una ola se ejecuta la skill auditoria-integral (seguridad, aislamiento, calidad, deuda, cumplimiento, veracidad de la documentación) y se registra el informe en docs/_auditorias/"
+      - "Lo bloqueante se corrige antes de empezar la ola siguiente; lo demás va a la cola con dueño (R13)"
+    source: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md (2026-11-21)
+    created_at: 2026-11-21T00:30:00.000Z
+    owner: auditor-seguridad
+    notes: "Recurrente: una vez por ola (Ola 0 a Ola 4 del roadmap maestro)."
+  - id: T-380
+    title: "Guardar la semilla de la demo (seed.ts) con la regla de una sola agencia del ADR-0031"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "seed.ts aplica decidirSiSePuedeSembrarLaAgencia y la guarda de base remota antes de crear agencia-demo"
+      - "La comprobación de la semilla toma el mismo candado (7410103, 0) o queda escrito por qué no hace falta en un script local"
+      - "Una prueba cubre el caso: índice de apodos global y ya existe otra agencia, la siembra se niega"
+    files:
+      - packages/database/prisma/seed.ts
+      - packages/database/prisma/guardia-de-semilla-agencia.ts
+    source: "auditorías de seguridad del PR 1b (#363, cola C2 y hallazgos 1 y 8 de la segunda auditoría, 2026-11-21): seed.ts:61 crea agencia-demo sin la guarda de ADR-0031 §4"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-381
+    title: "Endurecer el cinturón de crear_agencia (usado_en IS NULL) y restaurar la R-7 original con la fase 2"
+    type: security
+    phase: 2
+    priority: P2
+    effort: M
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "El cinturón de una migración nueva exige que el cuerpo de crear_agencia lleve c.usado_en IS NULL dentro del WHERE del UPDATE de codigos_de_acceso_al_registro"
+      - "Cuando T-361 apague la guarda se restauran, con COMMIT real, la R-7 original (dos altas con el mismo código: una agencia y VPR04) y la de dos primeras altas sobre tenants vacía (una sola)"
+      - "Una mutación del arnés quita la condición usado_en IS NULL y la prueba correspondiente se pone en rojo"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/scripts/mutaciones-aislamiento.mjs
+    source: "auditorías de seguridad del PR 1b (#363, cola C1 y hallazgo 3 de la segunda auditoría, 2026-11-21): la R-7 reformulada ya no detecta consumir un código dos veces tras un COMMIT"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-382
+    title: "Pruebas de la guarda de agencias: rama activa en R-10, conexión real de viajapro_app y AP14 sin superusuario"
+    type: test
+    phase: 2
+    priority: P3
+    effort: M
+    status: ready
+    human_required: false
+    depends_on: []
+    acceptance:
+      - "Una variante de R-10 corre con la guarda activa y tenants vaciada, para ejercitar la rama activa"
+      - "Las pruebas R-3, R-4, R-6, R-9 y R-10 reescritas se contrastan con la conexión real de viajapro_app (con sus ajustes de nivel de rol), o queda escrito por qué la sesión del propietario con SET LOCAL ROLE es equivalente"
+      - "AP14 no exige superusuario: sin él se omite con motivo escrito en vez de fallar con 40001"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditorías de seguridad del PR 1b (#363, cola C4 y hallazgos 2 y 4 de la segunda auditoría, 2026-11-21)"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: qa
+  - id: T-383
+    title: "Garantizar que la suite de aislamiento no corra en paralelo contra la misma base (ACCESS EXCLUSIVE)"
+    type: devops
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "Queda escrito, con evidencia del ci.yml, que aislamiento.spec.ts no comparte base con los e2e de la API"
+      - "Una nota junto a conFaseDosSimulada y AP15 avisa de que toman ACCESS EXCLUSIVE sobre accesos_identidad y que paralelizar el job contra la misma base los bloquea"
+    files:
+      - .github/workflows/ci.yml
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditorías de seguridad del PR 1b (#363, cola C3 y hallazgo 5 de la segunda auditoría, 2026-11-21). Causa real observada en el CI de #363 (2026-11-21): el job test corre pnpm test con todos los paquetes en paralelo contra la misma base (ci.yml) y AP14, que vacía tenants, falló de forma intermitente con «Ciclo de dependencias entre: contactos, cotizaciones, roles, usuarios» (y antes con 40001), mientras aislamiento-tenants, que corre sola, pasaba"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: devops
+  - id: T-384
+    title: "Documentar el candado público (7410103, 0) de la guarda de agencias"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "El ADR-0031 o la documentación de seguridad anota que cualquier rol puede tomar el candado (7410103, 0) y frenar las altas de agencia mientras lo sostenga"
+      - "Queda decidido si se acepta el riesgo (la guarda se apaga con T-361) o se mitiga"
+    files:
+      - docs/05-seguridad
+    source: "segunda auditoría de seguridad del PR 1b (#363, 2026-11-21): el candado de la guarda es un advisory lock público"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-385
+    title: "Traducir VPR05 de crear_agencia a un 503 genérico en la API"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    human_required: false
+    depends_on: [T-373]
+    acceptance:
+      - "Cuando la API llame a crear_agencia y reciba VPR05, responde un 503 con código estable y mensaje genérico, sin reenviar el mensaje de Postgres"
+      - "Una prueba cubre el caso con la guarda activa (índice global y una agencia ya existente)"
+      - "El código de ADR-0030 usa registroAutoservicioHabilitado() para decidir si el autoservicio está disponible"
+    files:
+      - apps/api/src/modules/identity
+    source: "auditorías de seguridad del PR 1b (#363, cola C5 y hallazgo 7 de la segunda auditoría, 2026-11-21): staging ya tiene la demo, así que crear_agencia da VPR05 hasta T-361 y la API todavía no lo traduce"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: backend
+  - id: T-386
+    title: "El estado ENVIADA de una cotización lo fija el servidor, no la web, y solo cuando el mensaje salió"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-321]
+    acceptance:
+      - "Hoy el endpoint de envío responde 201 con el mensaje en PENDIENTE y el evento en el outbox, y la web pide después POST /cotizaciones/:id/estado a ENVIADA: si el envío falla luego en Meta (token inválido, número sin WhatsApp, ventana cerrada entre el encolado y el envío) la cotización queda ENVIADA con el mensaje FALLIDO"
+      - "La transición BORRADOR→ENVIADA ocurre en el servidor (en la misma transacción del encolado, o al recibir el estado `sent` del mensaje) y la web deja de pedirla; el reintento del envío es idempotente (R5)"
+      - "Spec de la transición y de aislamiento: una cotización de otra agencia no cambia; según la decisión de diseño que se diga en el PR, un mensaje FALLIDO no deja la cotización ENVIADA"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo MEDIO"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: backend
+  - id: T-387
+    title: "Validar como UUID los parámetros de la URL del cotizador y del detalle, y codificar los enlaces"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-321]
+    acceptance:
+      - "contactoId, conversacion y enviarCotizacion se validan con el esquema de id de @viajapro/contracts antes de usarse en una llamada a la API o en una ruta (crm-api.ts, cotizaciones/[id]/page.tsx, enlaces-viaje-logica.ts); uno inválido se ignora"
+      - "encodeURIComponent en los enlaces que interpolan ids; spec que falla con un parámetro tipo `../../inbox`"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo BAJO"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-388
+    title: "Lectura ligera del contacto para el cotizador (minimización de datos, R10)"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-321]
+    acceptance:
+      - "GET que devuelve solo id y nombre del contacto, con su permiso y el aislamiento por agencia, para que el cotizador no descargue la ficha completa (notas internas, cotizaciones, archivos de viaje) solo para pintar un nombre"
+      - "El cotizador la usa en lugar de la ficha completa"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo BAJO"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: backend
+  - id: T-389
+    title: "Contador de conversaciones sin leer en la barra inferior y el menú (dato compartido por el marco)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-320]
+    acceptance:
+      - "El número de no leídos vive en un store o endpoint compartido que el marco consume, sin una llamada nueva por pantalla, y se muestra como contador de «Conversaciones» en el menú lateral y en la barra móvil"
+      - "Un 0 no se muestra; si la carga falla no se pinta cifra; el contador forma parte del nombre accesible del enlace"
+    source: "revisión de T-320 (2026-11-21): hoy el estado de no leídos solo existe dentro del layout de /bandeja"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-390
+    title: "En móvil el banner de cookies no tapa la barra inferior, y la carga de la conversación tiene salida"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-320]
+    acceptance:
+      - "En la primera visita el banner de consentimiento de cookies no deja tapada la barra inferior móvil ni reduce el marco de forma que el contenido quede bajo la barra de acción (observado a 390 px)"
+      - "El esqueleto de carga de /bandeja/[id] tiene flecha de volver de 44 px, como ya tiene su estado de error"
+    source: "revisión de T-320 y T-321 (2026-11-21)"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-391
+    title: "Una sola cifra de pendientes del día para Hoy, el menú y la campana (sin llamada duplicada ni catch vacío)"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Hoy, el contador del menú y la campana leen la misma fuente y el mismo cálculo (seguimientos de hoy, vencidos y plazos de menos de 24 h); una sola llamada a pendientes-del-dia al montar el marco"
+      - "use-contadores-de-menu.ts deja de tragarse el error con un catch vacío (CLAUDE.md §6): lo registra de forma tipada y conserva la última cifra buena"
+    source: "cola de T-317 (2026-11-21)"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-392
+    title: "La versión que se marca enviada es la que se mandó, no la última creada"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-386]
+    acceptance:
+      - "version_enviada guarda el número de la versión que el chat envió y no max(numero) (cotizaciones.use-case.ts): si alguien añade una versión entre el envío y la transición, el historial no registra una versión que el cliente no recibió"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo BAJO"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: backend
+  - id: T-393
+    title: "La ficha del contacto no vuelca un console.error en el primer render, antes de cargar"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-318]
+    acceptance:
+      - "construirMensajeErrorAccionable hace console.error en el primer render de /contactos/[id], antes de que cargue la ficha (previo a T-318); el vigilante de los e2e lo contaría como defecto de la página"
+      - "El error solo se registra cuando hay un error real; spec que falla si el primer render, sin error, escribe en la consola"
+    source: "cola de T-318 (2026-11-21)"
+    created_at: 2026-11-21T01:40:00.000Z
+    owner: frontend
+  - id: T-394
+    title: "El estado de pestañas y periodo de Catálogo y Reportes también vive en la URL"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-318]
+    acceptance:
+      - "Catálogo guarda su pestaña activa en ?pestana= y Reportes guarda el periodo elegido en la URL, con la misma validación contra lista cerrada de lib/parametros-url.ts; recargar o compartir el enlace conserva el sitio"
+      - "Pruebas de componente como las de T-318; sin recorrer rutas pesadas en el e2e"
+    source: "cola de T-318 (2026-11-21): quedó fuera de su alcance"
+    created_at: 2026-11-21T01:40:00.000Z
+    owner: frontend
+  - id: T-395
+    title: "El cinturón final de la migración de etiquetas también vigila los privilegios de columna"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "La matriz de privilegios del cinturón final suma NOT has_any_column_privilege (SELECT, INSERT, UPDATE) para todo rol de login que no sea viajapro_app, como el precedente 20261117120000:766-771"
+      - "Corrección en una migración nueva (la aplicada no se edita) y spec que falla si se concede una columna a viajapro_webhook"
+    source: "auditoría de T-324 (2026-11-21), BAJO, aislamiento"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-396
+    title: "E1 y el cinturón de etiquetas vigilan también los roles NOLOGIN dueños de funciones"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "E1 y el cinturón incluyen viajapro_registro, _planificador, _metricas, _ajustes y _accesos y esperan que no tengan privilegios sobre etiquetas ni conversacion_etiquetas"
+      - "Spec que falla si alguno recibe un permiso"
+    source: "auditoría de T-324 (2026-11-21), BAJO, aislamiento"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-397
+    title: "La comprobación de PUBLIC del cinturón de etiquetas mira todos los privilegios, no solo SELECT"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "La comprobación de concesiones a PUBLIC cubre SELECT, INSERT, UPDATE y DELETE en las dos tablas nuevas"
+    source: "revisión de la sesión madre de #372 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-398
+    title: "Corregir el comentario falso de que el cambio del CHECK de roles no bloquea escrituras"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "El comentario de migration.sql (líneas 44-45 y 62-63) y el precedente 20261118100000 dicen la verdad: dentro de una transacción DROP/ADD CHECK toma ACCESS EXCLUSIVE sobre roles y las claves foráneas SHARE ROW EXCLUSIVE hasta el COMMIT"
+      - "La corrección va en una migración o nota nueva, no editando la aplicada; se anota la condición para separar el CHECK cuando haya volumen"
+    source: "auditoría de T-324 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-399
+    title: "Normalizar nombres de etiqueta: NFC y rechazo de espacios Unicode, ancho cero y controles bidireccionales"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on: [T-325]
+    acceptance:
+      - "La API normaliza a NFC y convierte los espacios Unicode en U+0020 antes de recortar; rechaza U+200B-200D, U+FEFF, U+202A-202E, U+2066-2069 y los controles C1"
+      - "Un CHECK adicional en la base impide los mismos caracteres; spec con «Pagado », «Pagado\\u200b» y U+202E"
+    source: "auditoría de T-324 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: backend
+    done_at: 2026-11-21T02:45:00.000Z
+    evidence: "Hecha dentro de T-325 (#379, cfe175c): normalizarNombreDeEtiqueta en packages/contracts/src/etiquetas.ts normaliza a NFC, convierte espacios Unicode y rechaza ancho cero, controles bidireccionales y controles C0/C1. Quedan por rechazar otros invisibles (U+00AD, U+034F, U+180E…): T-413. Sin CHECK adicional en la base (se decide en T-413)."
+  - id: T-400
+    title: "Los errores de etiquetas duplicadas no registran el nombre (R10)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on: [T-325]
+    acceptance:
+      - "Los errores 23505 y 23514 de Postgres se convierten en ETIQUETA_DUPLICADA y en un error de forma sin registrar message, meta ni detail, que traen el nombre de la etiqueta"
+      - "Spec: crear dos veces la misma etiqueta no deja el nombre en ningún log, evento ni outbox"
+    source: "auditoría de T-324 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: backend
+    done_at: 2026-11-21T02:45:00.000Z
+    evidence: "Hecha dentro de T-325 (#379, cfe175c): 23505 y 23514 se traducen por su código a ETIQUETA_DUPLICADA o a un fallo sin texto, sin registrar message, meta ni detail; el outbox lleva payload vacío. Auditada sin bloqueantes. Queda sin probar con un error real de Prisma contra Postgres: T-416."
+  - id: T-401
+    title: "La sesión de demo del dueño incluye etiquetas.administrar antes de construir la pantalla de etiquetas"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "MOCK_SESION_DUENO incluye el permiso etiquetas.administrar y la asesora no; spec de permisos de la demo"
+    source: "revisión de la sesión madre de #372 (2026-11-21), BAJO; antes de T-326"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-402
+    title: "crear_agencia siembra las etiquetas iniciales de la agencia nueva"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "Una agencia creada por el registro nace con Pagado, Pago pendiente y Seguimiento, o se decide por escrito que se siembran al incorporarla"
+      - "Spec de aislamiento si se toca crear_agencia (ruta protegida: auditor y aprobación de la madre)"
+    source: "revisión de la sesión madre de #372 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-403
+    title: "La paleta busca contactos y conversaciones en modo real (con debounce)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "En modo real la paleta consulta listarContactos(buscar) y consultarBandeja({buscar}) con debounce y abre la misma ficha o conversación que las pantallas"
+      - "Error y vacío con salida, sin console.error; spec del debounce"
+    source: "cola de T-319 (2026-11-21): en modo real hoy solo salen módulos y archivos"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-404
+    title: "En la paleta, «1043» muestra el archivo de viaje antes que un chat que coincide por teléfono"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "Una consulta numérica que coincide con un archivo de viaje y con un teléfono ordena de forma que el archivo no quede detrás del chat, o la regla del orden queda escrita y probada"
+    source: "cola de T-319 (2026-11-21)"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-405
+    title: "La paleta no repite «Hoy» como resultado y como etiqueta de grupo"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "El grupo y el resultado no se llaman igual en la lista de la paleta; verificado con captura a 390 y 1440 px"
+    source: "cola de T-319 (2026-11-21), cosmético"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-406
+    title: "El resultado de un archivo de viaje en la paleta muestra el titular"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-319]
+    acceptance:
+      - "El subtítulo del archivo trae el nombre del titular; hoy ResumenDeArchivo solo trae contactoId. Se resuelve ampliando el resumen del servidor o con una lectura ligera (sin bajar la ficha completa, R10)"
+    source: "cola de T-319 (2026-11-21)"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: frontend
+  - id: T-407
+    title: "Añadir al guion de mutaciones de aislamiento las tres de etiquetas (ruta protegida)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "packages/database/scripts/mutaciones-aislamiento.mjs gana las tres mutaciones propuestas en la revisión de #372 (quitar la política, WITH CHECK (true), clave foránea simple) y cada una pone en rojo su prueba E1 a E7"
+      - "Ruta protegida: auditor-seguridad y aprobación de la sesión madre antes de integrar"
+    source: "revisión de la sesión madre de #372 (2026-11-21)"
+    created_at: 2026-11-21T02:10:00.000Z
+    owner: datos
+  - id: T-408
+    title: "El cinturón de perfiles_de_agencia y P-9 no detectan localtimestamp, current_time, localtime ni timeofday()"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: [T-375]
+    acceptance:
+      - "La expresión de P-9 y la del cinturón de la próxima migración incluyen localtimestamp, current_time, localtime y timeofday()"
+      - "Las dos comprobaciones ignoran los comentarios del cuerpo de la función, o se decide por escrito que no hace falta"
+      - "Va con una migración nueva (la 20261120170000 ya está aplicada y no se edita)"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditoría de seguridad de T-375 y T-376 (cola, 2026-11-21): el cinturón compara texto y no distingue comentarios ni cubre esas funciones de hora"
+    created_at: 2026-11-21T02:30:00.000Z
+    owner: datos
+  - id: T-409
+    title: "Fijar y documentar la versión de PostgreSQL de Neon (el esquema ya exige 15 o más)"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "La versión de Postgres de Neon (staging y producción) queda escrita en ADR-0028 o en el runbook de despliegue, con la fecha en que se comprobó"
+      - "Se anota qué migraciones dependen de una versión mínima (regexp_count, de Postgres 15) y se fija esa versión al crear el proyecto de producción"
+    files:
+      - docs/03-adr
+    source: "auditoría de seguridad de T-375 (cola, 2026-11-21): la versión no está escrita en ningún ADR ni documento de despliegue y las migraciones ya usan regexp_count"
+    created_at: 2026-11-21T02:30:00.000Z
+    owner: devops
+  - id: T-410
+    title: "Darle un tiempo límite explícito a la prueba P-8 de aislamiento.spec.ts"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-375]
+    acceptance:
+      - "P-8 (espera de 1,2 s dos veces, unos 2,4 s en total) lleva un tiempo límite explícito, de unos 15 s, porque vitest usa 5 s por defecto y aislamiento-tenants es un check obligatorio"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditoría de seguridad de T-375 (cola, 2026-11-21): en un CI lento la prueba podría agotar el tiempo por defecto"
+    created_at: 2026-11-21T02:30:00.000Z
+    owner: qa
+  - id: T-411
+    title: "Los candados de etiquetas fijan lock_timeout y devuelven un error tipado al vencer"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "serializar en etiquetas.prisma.ts hace set_config('lock_timeout', …, true) antes de pg_advisory_xact_lock, como archivos.prisma.ts y catalogo.prisma.ts; una ráfaga de PUT a la misma conversación no retiene conexiones del pool compartido"
+      - "El 55P03 se traduce a un error tipado 409 o 503, no a un 500; spec"
+    source: "auditoría de T-325 (2026-11-21), MEDIO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-412
+    title: "Borrar una etiqueta mientras otro la pone da 404 y no 500"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "poner y quitar (etiquetas.prisma.ts) traducen la violación de clave foránea (23503/P2003) y P2028 a ETIQUETA_NO_ENCONTRADA 404, sin registrar nombre ni detalle de la base"
+      - "Spec con la carrera borrar/poner"
+    source: "auditoría de T-325 (2026-11-21) y revisión de la sesión madre de #379 (2026-11-21), MEDIO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-413
+    title: "Rechazar en el nombre de etiqueta todos los caracteres invisibles"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "etiquetas.ts rechaza \\p{Cf} y \\p{Default_Ignorable_Code_Point} (U+00AD, U+034F, U+180E, U+2061-2064, U+206A-206F, U+FE00-FE0F, etiquetas U+E0000-E007F) y los rellenos Hangul (U+115F, U+3164, U+FFA0); se decide por escrito si se admite el ZWJ de los emoji"
+      - "Casos nuevos en etiquetas.spec.ts; se evalúa un CHECK equivalente en la base en una migración nueva"
+    source: "auditoría de T-325 (2026-11-21) y revisión de la sesión madre de #379 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-414
+    title: "Renombrar, recolorear o borrar una etiqueta avisa en vivo a las demás bandejas"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Un evento de catálogo (por ejemplo inbox.etiquetas_cambiadas, con payload sin datos) o eventos por cada conversación afectada hace que las bandejas abiertas muestren el cambio sin recargar (HU-inbox-1 §4.5, «Etiqueta borrada por otro»)"
+      - "El evento no lleva el nombre (R10); spec de tiempo real"
+    source: "auditoría de T-325 (2026-11-21), BAJO; lo necesita T-326"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-415
+    title: "El borrado de una etiqueta deja rastro de quién la borró y cuántas asignaciones se llevó"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Al borrar se registra {actorId, etiquetaId, asignacionesBorradas} en la bitácora de auditoría cuando exista el contexto audit, sin el nombre"
+      - "Hasta que exista audit, se anota la decisión en el ADR o en la historia"
+    source: "auditoría de T-325 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-416
+    title: "El error del CHECK 23514 de etiquetas se prueba con un error real de Prisma contra Postgres"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Un caso con base real fuerza el CHECK con $executeRaw y comprueba el código traducido y que el nombre no aparece en ningún log"
+    source: "auditoría de T-325 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: qa
+  - id: T-417
+    title: "Migración que borra el campo legado conversaciones.etiquetas (ruta protegida)"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Nadie lee ni escribe conversaciones.etiquetas (siembra-de-demo-cifrada.ts y demo-cifrada.ts solo tocan el campo del contacto); se elimina en una migración nueva con la fase de contracción de compat-migraciones"
+      - "Ruta protegida: auditor-seguridad y aprobación de la sesión madre"
+    source: "cola de T-325 (2026-11-21), reportada por el agente de backend"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: datos
+  - id: T-418
+    title: "Conteo de conversaciones por etiqueta para la confirmación de borrado y Configuración"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Un endpoint devuelve cuántas conversaciones tiene cada etiqueta, solo con las que el usuario puede ver, para «Está en 14 conversaciones» (HU-inbox-1 §3 y §4.6); sin datos de otra agencia, con spec de aislamiento"
+    source: "cola de T-325 (2026-11-21), reportada por el agente de backend"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-419
+    title: "Monto recibido, moneda recibida y TRM congelada en el pago (ADR-0034 §2.2)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §2.2: hoy el pago solo se registra en la moneda del archivo; guardar lo recibido en otra moneda con su TRM va en columnas nulas nuevas, sin migrar el libro (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: datos
+  - id: T-420
+    title: "Tabla medios_de_pago por agencia con categoría del catálogo (ADR-0034 §2.3)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §2.3: hoy el medio de pago es un catálogo cerrado por CHECK; pasa a tabla por agencia si una segunda agencia lo pide (R12) (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: datos
+  - id: T-421
+    title: "Días de la fecha límite de cobro por defecto como política por agencia (ADR-0034 §3)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §3: hoy son 30 días constantes antes de la salida; parametrizar cuando lo pida una segunda agencia (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: analista-producto
+  - id: T-422
+    title: "Historial de cambios de la fecha límite de cobro (hoy solo queda el último autor)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §3: plazos_de_cobro es editable y solo guarda el último autor (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: datos
+  - id: T-423
+    title: "Decidir si se cifran nota y referencia de los pagos (ADR-0034, R10)"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034: son texto libre; hoy no son PII sensible según R10, pero la decisión es de auditor-seguridad (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: auditor-seguridad
+  - id: T-424
+    title: "Primer consumidor de los eventos payments.pago_* : Hoy y la campana (T-333)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: backend

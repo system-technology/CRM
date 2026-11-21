@@ -18,6 +18,8 @@ export const PERMISO_CATALOGO_ADMINISTRAR: Permiso = 'catalogo.administrar';
 /** Permisos introducidos en T-089 para mutaciones granulares */
 export const PERMISO_BANDEJA_OPERAR: Permiso = 'bandeja.operar';
 export const PERMISO_CRM_ESCRIBIR: Permiso = 'crm.escribir';
+/** Crear, renombrar, recolorear, ordenar y borrar las etiquetas de la agencia (T-326). */
+export const PERMISO_ETIQUETAS_ADMINISTRAR: Permiso = 'etiquetas.administrar';
 export const PERMISO_COTIZACION_ESCRIBIR: Permiso = 'cotizacion.escribir';
 
 /** Permisos del archivo de viaje (ADR-0024 §3.7, T-249) */
@@ -29,6 +31,7 @@ export const PERMISOS_MUTACION_T089: readonly Permiso[] = [
   PERMISO_BANDEJA_OPERAR,
   PERMISO_CRM_ESCRIBIR,
   PERMISO_COTIZACION_ESCRIBIR,
+  PERMISO_ETIQUETAS_ADMINISTRAR,
 ] as const;
 
 // =============================================================================
@@ -36,13 +39,22 @@ export const PERMISOS_MUTACION_T089: readonly Permiso[] = [
 // =============================================================================
 
 export interface EtiquetaPermiso {
-  clave: Permiso;
+  clave: ClaveConEtiqueta;
   nombre: string;
   descripcion: string;
   categoria: 'bandeja' | 'crm' | 'cotizacion' | 'catalogo' | 'archivo' | 'administracion';
 }
 
-export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
+/**
+ * Los tres permisos de cobro (ADR-0034) entran en `PERMISOS` con la migración de T-329. Mientras esa
+ * migración no esté en `main`, no son parte de `Permiso`: se nombran aquí para que el mapa ya tenga su
+ * texto y compile ANTES y DESPUÉS del cambio del contrato. Con la unión el `Record` sigue siendo
+ * exhaustivo: un permiso nuevo sin etiqueta sigue siendo un error de compilación. Cuando `Permiso` ya
+ * los incluya, esta unión sobra y se quita (la limpia un PR posterior).
+ */
+type ClaveConEtiqueta = Permiso | 'cobro.ver' | 'cobro.registrar' | 'cobro.corregir';
+
+export const MAPA_ETIQUETAS_PERMISOS: Record<ClaveConEtiqueta, EtiquetaPermiso> = {
   'bandeja.operar': {
     clave: 'bandeja.operar',
     nombre: 'Operar bandeja',
@@ -99,6 +111,34 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
       'Permite confirmar, abonar y pagar reservas al proveedor, editar los pasajeros y cancelar el archivo.',
     categoria: 'archivo',
   },
+  'etiquetas.administrar': {
+    clave: 'etiquetas.administrar',
+    nombre: 'Administrar etiquetas',
+    descripcion:
+      'Permite crear, renombrar, cambiar el color, ordenar y borrar las etiquetas de conversación de la agencia.',
+    categoria: 'bandeja',
+  },
+  // Cobros (ADR-0034, T-329): solo el texto. Las pantallas de cobro son de T-331 y T-332.
+  'cobro.ver': {
+    clave: 'cobro.ver',
+    nombre: 'Ver cobros',
+    descripcion:
+      'Permite consultar el saldo, el historial de pagos y la vista de quién pagó y quién debe de los archivos de viaje.',
+    categoria: 'archivo',
+  },
+  'cobro.registrar': {
+    clave: 'cobro.registrar',
+    nombre: 'Registrar pagos',
+    descripcion: 'Permite registrar los pagos que hace el viajero en un archivo de viaje.',
+    categoria: 'archivo',
+  },
+  'cobro.corregir': {
+    clave: 'cobro.corregir',
+    nombre: 'Corregir cobros',
+    descripcion:
+      'Permite registrar devoluciones, ajustes del total, penalidades y reversos, y cambiar la fecha límite de cobro.',
+    categoria: 'archivo',
+  },
   'usuarios.administrar': {
     clave: 'usuarios.administrar',
     nombre: 'Administrar equipo',
@@ -139,6 +179,8 @@ export function explicacionFaltaPermiso(permiso: Permiso): string {
       return 'Acceso restringido: se requiere el permiso «Ver archivos de viaje» (archivo.ver).';
     case 'archivo.operar':
       return 'Acción deshabilitada: se requiere el permiso «Operar archivos de viaje» (archivo.operar) para avanzar reservas, editar pasajeros o cancelar el archivo.';
+    case 'etiquetas.administrar':
+      return 'Acción deshabilitada: se requiere el permiso «Administrar etiquetas» (etiquetas.administrar) para crear, renombrar o borrar etiquetas.';
     case 'usuarios.administrar':
       return 'Acceso restringido: se requiere el permiso «Administrar equipo» (usuarios.administrar).';
     case 'roles.administrar':
@@ -269,6 +311,10 @@ export function puedeAdministrarCatalogo(sesion: SesionActual | null | undefined
   return tienePermiso(sesion, PERMISO_CATALOGO_ADMINISTRAR);
 }
 
+export function puedeAdministrarEtiquetas(sesion: SesionActual | null | undefined): boolean {
+  return tienePermiso(sesion, PERMISO_ETIQUETAS_ADMINISTRAR);
+}
+
 export function puedeAdministrarUsuarios(sesion: SesionActual | null | undefined): boolean {
   return tienePermiso(sesion, PERMISO_USUARIOS_ADMINISTRAR);
 }
@@ -291,6 +337,7 @@ export interface ResultadoPermisos {
   puedeEscribirCrm: boolean;
   puedeEscribirCotizacion: boolean;
   puedeAdministrarCatalogo: boolean;
+  puedeAdministrarEtiquetas: boolean;
   puedeAdministrarUsuarios: boolean;
   puedeAdministrarRoles: boolean;
   evaluarAccion: (permiso: Permiso) => EstadoAccionMutacion;
@@ -347,6 +394,7 @@ export function usePermisos(sesionInicial?: SesionActual | null): ResultadoPermi
     puedeEscribirCrm: puedeEscribirCrm(sesion),
     puedeEscribirCotizacion: puedeEscribirCotizacion(sesion),
     puedeAdministrarCatalogo: puedeAdministrarCatalogo(sesion),
+    puedeAdministrarEtiquetas: puedeAdministrarEtiquetas(sesion),
     puedeAdministrarUsuarios: puedeAdministrarUsuarios(sesion),
     puedeAdministrarRoles: puedeAdministrarRoles(sesion),
     evaluarAccion: evaluar,

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, use } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { esUuid, hrefDePestana, leerPestanaDeUrl } from '../../../../lib/parametros-url';
 import {
   type FichaDeContacto,
   type Seguimiento,
@@ -98,8 +99,21 @@ interface Contacto360PageProps {
   params?: Promise<{ id: string }>;
 }
 
-export default function Contacto360Page({ params: paramsPromise }: Contacto360PageProps) {
+type PestanaFicha = 'cronologia' | 'oportunidades' | 'seguimientos' | 'campos' | 'consentimientos';
+
+/** Lista cerrada de `?pestana=`; la primera es la de por defecto (T-318). */
+const PESTANAS_FICHA = [
+  'cronologia',
+  'oportunidades',
+  'seguimientos',
+  'campos',
+  'consentimientos',
+] as const satisfies readonly [PestanaFicha, ...PestanaFicha[]];
+
+function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
   const routerParams = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const idFromParams = routerParams?.['id'] as string | undefined;
 
   let idFromProps: string | undefined;
@@ -121,10 +135,14 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
 
   const { puedeEscribirCrm } = usePermisos();
 
-  // Pestaña activa
-  const [pestanaActiva, setPestanaActiva] = useState<
-    'cronologia' | 'oportunidades' | 'seguimientos' | 'campos' | 'consentimientos'
-  >('cronologia');
+  // Pestaña activa: vive en `?pestana=` (T-318). `replace`: cambiar de pestaña no es navegar;
+  // Atrás sale de la ficha en vez de recorrer las pestañas visitadas.
+  const parametros = searchParams ?? new URLSearchParams();
+  const pestanaActiva = leerPestanaDeUrl<PestanaFicha>(parametros, PESTANAS_FICHA);
+  const setPestanaActiva = (pestana: PestanaFicha) =>
+    router.replace(hrefDePestana(`/contactos/${contactoId}`, pestana, PESTANAS_FICHA, parametros), {
+      scroll: false,
+    });
 
   // Modales
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
@@ -137,6 +155,12 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
   const cargarDatos = async () => {
     setCargando(true);
     setError(null);
+    // El id viene de la ruta: solo un UUID llega a la API.
+    if (!esUuid(contactoId)) {
+      setError('El identificador del contacto no es válido. Revisa que el enlace esté completo.');
+      setCargando(false);
+      return;
+    }
     try {
       const [fichaRes, segsRes] = await Promise.all([
         obtenerFichaDeContacto(contactoId),
@@ -873,5 +897,13 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
         />
       )}
     </>
+  );
+}
+
+export default function Contacto360Page(props: Contacto360PageProps) {
+  return (
+    <Suspense fallback={<div aria-busy="true" className="min-h-64 flex-1" />}>
+      <Contacto360Contenido {...props} />
+    </Suspense>
   );
 }

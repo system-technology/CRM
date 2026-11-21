@@ -4,10 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  MessageSquare,
-  Kanban,
-  FileText,
-  Briefcase,
   Sun,
   Moon,
   Laptop,
@@ -26,6 +22,9 @@ import type { SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
 import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
 import { SelectorTemaDensidad } from '../comun/selector-tema-densidad';
+import { BarraInferiorMovil } from '../comun/barra-inferior-movil';
+import { HojaMas } from '../comun/hoja-mas';
+import { EVENTO_ABRIR_BUSQUEDA_GLOBAL } from '../../lib/busqueda-global-evento';
 import {
   type ModoTema,
   type DensidadVisual,
@@ -40,7 +39,10 @@ import {
   generarNotificacionesIniciales,
   crearNotificacionSeguimientoVencido,
   procesarEventoSocketNotificacion,
-  contarNotificacionesNoLeidas,
+  archivoIdDeHref,
+  resumirNotificaciones,
+  soloConArchivoExistente,
+  archivosDesconocidos,
   marcarNotificacionLeida,
   marcarTodasNotificacionesLeidas,
   descartarNotificacion,
@@ -56,6 +58,7 @@ import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { zonaOPorDefecto } from '../../lib/archivos-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
+import { LIMITE_LISTA_ARCHIVOS, listarArchivos } from '../../lib/archivos-api';
 import { useContadoresDeMenu } from '../../lib/use-contadores-de-menu';
 import { nombreAccesibleConContador } from '../../lib/inicio-logica';
 import { tienePermiso, usePermisos } from '../../lib/permisos';
@@ -65,8 +68,7 @@ import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { fijarZonaAgencia } from '../../lib/formato';
 import {
-  ACCIONES,
-  entradaDe,
+  entradasDeHojaMas,
   entradasDelMenu,
   esDetalleMovilDeBandeja,
   esVisiblePara,
@@ -74,7 +76,7 @@ import {
   type IdDeModulo,
 } from '../../lib/navegacion';
 
-/** Color e icono suave por módulo (iconos-modulos); «Hoy» y «Seguimientos» aún no están en el menú. */
+/** Color e icono suave por módulo (iconos-modulos) del menú lateral expandido. */
 const CLAVE_DE_COLOR: Partial<Record<IdDeModulo, ModuloViajaPro>> = {
   conversaciones: 'bandeja',
   oportunidades: 'pipeline',
@@ -125,12 +127,21 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const [esOscuroEfectivo, setEsOscuroEfectivo] = useState(false);
   const [barraExpandida, setBarraExpandida] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
+  const [masAbierta, setMasAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
   // Fuera del modo demostración la campana parte vacía: solo muestra lo que llega de la API.
   const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>(() =>
     esModoDemo() ? generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()) : [],
   );
   const avisos = useAvisosDePlazo(esDemo);
+  // Ids de los archivos de viaje que existen (misma fuente que /viajes). `null` = aún no se sabe.
+  // `completa` = la lista trajo menos filas que el tope, así que no está truncada. `verificados` =
+  // ids que siguieron ausentes tras volver a pedir la lista: solo esos se ocultan.
+  const [archivos, setArchivos] = useState<{
+    ids: ReadonlySet<string>;
+    completa: boolean;
+    verificados: ReadonlySet<string>;
+  } | null>(null);
   // Zona horaria de la agencia (R9) para componer el plazo de cada aviso.
   const [zonaAgencia, setZonaAgencia] = useState<string>(zonaOPorDefecto(null));
   const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
@@ -146,6 +157,18 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const esDetalleMovil = esDetalleMovilDeBandeja(pathname);
   const idActivo = moduloActivo(pathname)?.id ?? null;
   const contadoresMenu = useContadoresDeMenu(pathname);
+
+  // Navegar (un enlace de la hoja, la barra o el botón atrás) cierra la hoja «Más».
+  useEffect(() => {
+    setMasAbierta(false);
+  }, [pathname]);
+
+  // La lupa fija de la cabecera móvil (marco) pide abrir esta misma paleta.
+  useEffect(() => {
+    const abrir = () => setBusquedaAbierta(true);
+    window.addEventListener(EVENTO_ABRIR_BUSQUEDA_GLOBAL, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_BUSQUEDA_GLOBAL, abrir);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -185,12 +208,17 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               generarAlertasOperativas(),
             );
             const idsNuevas = new Set(nuevas.map((n) => n.id));
-            const previasSinDuplicados = prev.filter((p) => !idsNuevas.has(p.id));
+            // Los seguimientos vencidos son los de `pendientes`: el de arranque ya no aplica.
+            const previasSinDuplicados = prev.filter(
+              (p) => !idsNuevas.has(p.id) && p.tipo !== 'seguimiento_vencido',
+            );
             return [...previasSinDuplicados, ...nuevas];
           });
         }
       })
-      .catch(() => null);
+      .catch((err: unknown) => {
+        console.warn('[campana] Sin seguimientos vencidos para avisar:', err);
+      });
 
     // 2. Suscribirse a eventos Socket.IO en tiempo real (T-110)
     const desuscribir =
@@ -219,6 +247,32 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       activo = false;
     };
   }, [esDemo]);
+
+  // Los avisos y alertas que apuntan a un archivo (`/viajes?id=`) solo valen si ese archivo existe.
+  const hayEnlacesAArchivos =
+    notificaciones.some((n) => archivoIdDeHref(n.href) !== null) ||
+    (avisos.estado.tipo === 'listo' && avisos.estado.lista.datos.length > 0);
+  useEffect(() => {
+    if (!hayEnlacesAArchivos) return;
+    let vigente = true;
+    listarArchivos('TODOS')
+      .then((lista) => {
+        if (vigente) {
+          setArchivos({
+            ids: new Set(lista.map((a) => a.id)),
+            completa: lista.length < LIMITE_LISTA_ARCHIVOS,
+            verificados: new Set(),
+          });
+        }
+      })
+      .catch((err: unknown) => {
+        // Sin la lista no se sabe qué existe: no se esconde nada (ver soloConArchivoExistente).
+        console.warn('[campana] Sin lista de archivos para validar los avisos:', err);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [hayEnlacesAArchivos, esDemo]);
 
   const abrirPanelNotificaciones = () => {
     setPanelNotifAbierto(true);
@@ -316,10 +370,51 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     avisos.estado.tipo === 'listo'
       ? avisos.estado.lista.datos.map((n) => adaptarAvisoANotificacionWeb(n, zonaAgencia))
       : [];
-  const notificacionesConAvisos = [...avisosWeb, ...notificaciones];
-  // `noLeidas` del servidor cuenta todas las del usuario, no solo las de la página.
-  const noLeidasDeAvisos = avisos.estado.tipo === 'listo' ? avisos.estado.lista.noLeidas : 0;
-  const conteoNoLeidas = contarNotificacionesNoLeidas(notificaciones) + noLeidasDeAvisos;
+  // Una sola lista y una sola cuenta (T-322): la campana, el encabezado del desplegable y sus
+  // pestañas leen `resumirNotificaciones` de esta misma lista, ya sin avisos de archivos que no existen.
+  const todasLasNotificaciones = [...avisosWeb, ...notificaciones];
+  const desconocidos = archivos?.completa
+    ? archivosDesconocidos(todasLasNotificaciones, archivos.ids, archivos.verificados)
+    : [];
+  const claveDesconocidos = desconocidos.join('|');
+  const notificacionesConAvisos = soloConArchivoExistente(
+    todasLasNotificaciones,
+    archivos?.completa ? archivos.ids : null,
+    archivos?.verificados,
+  );
+  const conteoNoLeidas = resumirNotificaciones(notificacionesConAvisos).total;
+
+  // Un archivo desconocido puede ser nuevo (creado tras la carga): se vuelve a pedir la lista UNA
+  // vez por ráfaga y solo entonces se decide ocultarlo. Si la recarga falla o la lista resulta
+  // truncada, se muestra todo (`completa: false`) y no se reintenta en bucle.
+  useEffect(() => {
+    if (!claveDesconocidos) return;
+    const idsPorVerificar = claveDesconocidos.split('|');
+    let vigente = true;
+    listarArchivos('TODOS')
+      .then((lista) => {
+        if (!vigente) return;
+        setArchivos((previo) =>
+          previo
+            ? {
+                ids: new Set(lista.map((a) => a.id)),
+                completa: lista.length < LIMITE_LISTA_ARCHIVOS,
+                verificados: new Set([...previo.verificados, ...idsPorVerificar]),
+              }
+            : previo,
+        );
+      })
+      .catch((err: unknown) => {
+        console.warn(
+          '[campana] No se pudo recargar la lista de archivos; se muestran los avisos:',
+          err,
+        );
+        if (vigente) setArchivos((previo) => (previo ? { ...previo, completa: false } : previo));
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [claveDesconocidos]);
 
   const nombreUsuario = sesion?.identidad?.nombre ?? (esDemo ? 'Asesor ViajaPro' : 'Tu cuenta');
   const correoUsuario = sesion?.identidad?.correo ?? (esDemo ? 'asesor@viajapro.com' : '');
@@ -333,7 +428,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const modulos = entradasDelMenu().filter(
     (m) => !sesion || esVisiblePara(m, (permiso) => tienePermiso(sesion, permiso)),
   );
-  const accionCotizar = ACCIONES.find((a) => a.id === 'cotizar');
+  const modulosDeLaHoja = entradasDeHojaMas().filter(
+    (m) => !sesion || esVisiblePara(m, (permiso) => tienePermiso(sesion, permiso)),
+  );
 
   return (
     <>
@@ -728,112 +825,37 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
         </div>
       </aside>
 
-      {/* 2. Barra de Navegación Inferior Móvil (<768px, WCAG 2.5.5 Touch Target >= 44px) */}
+      {/* 2. Barra inferior móvil (<768px): Hoy · Conversaciones · Cotizar · Archivos · Más (T-320) */}
       {!esDetalleMovil && (
-        <nav
-          aria-label="Navegación móvil inferior"
-          className="fixed right-0 bottom-0 left-0 z-40 flex h-14 items-center justify-around border-t border-neutral-200 bg-white/95 px-2 shadow-lg backdrop-blur-md md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
-        >
-          {/* Composición de la barra: T-320 (N4). Aquí solo las etiquetas salen de la tabla. */}
-          <Link
-            href="/bandeja"
-            title={entradaDe('conversaciones').etiqueta}
-            aria-label={entradaDe('conversaciones').etiqueta}
-            aria-current={idActivo === 'conversaciones' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'conversaciones'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <MessageSquare className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {entradaDe('conversaciones').etiqueta}
-            </span>
-          </Link>
+        <BarraInferiorMovil
+          idActivo={idActivo}
+          pathname={pathname}
+          contadorHoy={contadoresMenu?.hoy ?? null}
+          masAbierta={masAbierta}
+          alAbrirMas={() => setMasAbierta(true)}
+        />
+      )}
 
-          <Link
-            href="/pipeline"
-            title={entradaDe('oportunidades').etiqueta}
-            aria-label={entradaDe('oportunidades').etiqueta}
-            aria-current={idActivo === 'oportunidades' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'oportunidades'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <Kanban className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {entradaDe('oportunidades').etiqueta}
-            </span>
-          </Link>
-
-          <Link
-            href="/cotizador"
-            title={accionCotizar?.etiqueta ?? 'Cotizar'}
-            aria-label={accionCotizar?.etiqueta ?? 'Cotizar'}
-            aria-current={idActivo === 'cotizaciones' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'cotizaciones'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <FileText className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {accionCotizar?.etiqueta ?? 'Cotizar'}
-            </span>
-          </Link>
-
-          <Link
-            href="/viajes"
-            title={entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
-            aria-label={entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
-            aria-current={idActivo === 'archivos' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'archivos'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <Briefcase className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
-            </span>
-          </Link>
-
-          {/* Buscador / Más */}
-          <button
-            type="button"
-            onClick={() => setBusquedaAbierta(true)}
-            title="Buscar o abrir menú (Cmd+K)"
-            aria-label="Buscar o abrir menú global"
-            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
-          >
-            <Search className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">Buscar</span>
-          </button>
-
-          {/* Perfil Móvil */}
-          <button
-            type="button"
-            onClick={() => setMenuSesionAbierto(true)}
-            title={'Perfil y sesión (' + nombreUsuario + ')'}
-            aria-label={'Perfil y sesión (' + nombreUsuario + ')'}
-            data-testid="boton-perfil-movil"
-            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
-          >
-            <div className="relative flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-              {iniciales}
-            </div>
-            <span className="text-[9px] leading-tight font-medium">Perfil</span>
-          </button>
-        </nav>
+      {/* Hoja «Más»: el resto de módulos, la campana y el perfil. */}
+      {!esDetalleMovil && (
+        <HojaMas
+          abierta={masAbierta}
+          alCerrar={() => setMasAbierta(false)}
+          modulos={modulosDeLaHoja}
+          idActivo={idActivo}
+          seguimientosVencidos={contadoresMenu?.seguimientosVencidos ?? null}
+          noLeidas={conteoNoLeidas}
+          nombreUsuario={nombreUsuario}
+          iniciales={iniciales}
+          alAbrirNotificaciones={() => {
+            setMasAbierta(false);
+            abrirPanelNotificaciones();
+          }}
+          alAbrirPerfil={() => {
+            setMasAbierta(false);
+            setMenuSesionAbierto(true);
+          }}
+        />
       )}
 
       {/* Popover / Menú Desplegable de Sesión y Agencia Activa (ADR-0011) */}

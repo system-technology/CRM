@@ -79,6 +79,8 @@ export function estaUsandoApiRealInbox(): boolean {
   return true;
 }
 
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class InboxErrorApi extends Error {
   constructor(
     readonly code: string,
@@ -90,7 +92,7 @@ export class InboxErrorApi extends Error {
   }
 }
 
-async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
+export async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${obtenerBaseApi()}${ruta}`, {
@@ -124,7 +126,12 @@ async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
         );
       }
 
-      if (code === 'CONVERSACION_NO_ENCONTRADA' || res.status === 404) {
+      // Una etiqueta que no existe también responde 404, pero NO es «la conversación no existe»
+      // (T-326): conserva su código para que la pantalla diga cuál de las dos falta.
+      if (
+        code === 'CONVERSACION_NO_ENCONTRADA' ||
+        (res.status === 404 && code !== 'ETIQUETA_NO_ENCONTRADA')
+      ) {
         throw new InboxErrorApi(
           'CONVERSACION_NO_ENCONTRADA',
           'La conversación no existe o fue reasignada a otro asesor.',
@@ -162,6 +169,10 @@ export const inboxApi = {
     if (consulta.filtro) params.set('filtro', consulta.filtro);
     if (consulta.buscar) params.set('buscar', consulta.buscar);
     if (consulta.estado) params.set('estado', consulta.estado);
+    if (consulta.etiquetas && consulta.etiquetas.length > 0) {
+      params.set('etiquetas', consulta.etiquetas.join(','));
+      if (consulta.modo) params.set('modo', consulta.modo);
+    }
     if (consulta.cursor) params.set('cursor', consulta.cursor);
     if (consulta.limite) params.set('limite', consulta.limite.toString());
 
@@ -189,6 +200,10 @@ export const inboxApi = {
     if (!estaUsandoApiRealInbox()) {
       return obtenerConversacionDetalleMock(id);
     }
+
+    // La API solo conoce UUID: un id que no lo es («/bandeja/inexistente») no puede existir, y
+    // preguntar devolvería un 400 de validación en vez del «no encontrada» que la pantalla explica.
+    if (!ES_UUID.test(id)) return null;
 
     try {
       const bruto = await pedirInbox<unknown>(`/api/v1/conversaciones/${id}`);

@@ -10,10 +10,10 @@
  * Venta comercial transparente y calculada (R10). Todo a 375 px.
  */
 
-import React, { use, useEffect, useState, useMemo } from 'react';
+import React, { Suspense, use, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   Calendar,
   Clock,
@@ -25,6 +25,7 @@ import {
   FileText,
   User,
   MessageSquare,
+  Send,
   Printer,
   Shield,
   Scale,
@@ -59,6 +60,7 @@ import {
 import { useEnlacesDelViaje } from '../../../../lib/use-enlaces-del-viaje';
 import { usePermisos } from '../../../../lib/permisos';
 import { CampoFecha } from '../../../../components/comun/campo-fecha';
+import { TablaDeLineas } from '../../../../components/cotizador/tabla-de-lineas';
 
 // Carga diferida de modales pesados (T-130)
 const ModalEnviarWhatsAppCotizacion = dynamic(
@@ -81,8 +83,26 @@ interface PageProps {
   params?: Promise<{ id: string }>;
 }
 
-export default function PaginaCotizacionGuardada({ params: paramsPromise }: PageProps) {
+export default function PaginaCotizacionGuardada(props: PageProps) {
+  // `useSearchParams` (la conversación de origen) pide un límite de Suspense.
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 bg-neutral-50 p-4 dark:bg-neutral-950">
+          <div className="h-40 animate-pulse rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" />
+        </div>
+      }
+    >
+      <ContenidoCotizacionGuardada {...props} />
+    </Suspense>
+  );
+}
+
+function ContenidoCotizacionGuardada({ params: paramsPromise }: PageProps) {
   const routerParams = useParams();
+  const searchParams = useSearchParams();
+  // La conversación desde la que se cotizó; si no viene en la URL, se busca por el contacto.
+  const conversacionParam = searchParams.get('conversacion');
   const idFromParams = routerParams?.['id'] as string | undefined;
 
   let idFromProps: string | undefined;
@@ -123,6 +143,11 @@ export default function PaginaCotizacionGuardada({ params: paramsPromise }: Page
   const enlaces = useEnlacesDelViaje(cotizacion?.contactoId ?? null);
   const contacto: ContactoDeLista | null =
     enlaces.contacto.tipo === 'listo' ? enlaces.contacto.valor : null;
+  // La vía por el canal solo existe si hay una conversación con este viajero.
+  const conversacionDeEnvio: string | null =
+    conversacionParam ??
+    (enlaces.conversacionId.tipo === 'listo' ? enlaces.conversacionId.valor : null);
+  const buscandoConversacion = !conversacionParam && enlaces.conversacionId.tipo === 'cargando';
   const archivoDeOrigen =
     enlaces.archivos.tipo === 'listo' && cotizacion
       ? archivoDeLaCotizacion(enlaces.archivos.valor, cotizacion.id)
@@ -302,11 +327,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                 },
               ]}
               mostrarBotonVolver
-              volverHref="/cotizaciones"
-              volverTexto="Volver a Cotizaciones"
+              volverHref={conversacionParam ? `/bandeja/${conversacionParam}` : '/cotizaciones'}
+              volverTexto={conversacionParam ? 'Volver al chat' : 'Volver a Cotizaciones'}
             />
 
-            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-3 py-1 text-xs font-bold">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-3 py-1 text-sm font-bold">
               Cotización Oficial Guardada
             </span>
           </div>
@@ -345,11 +370,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       ? 'Cotización no encontrada'
                       : 'Error al consultar la cotización'}
                   </h3>
-                  <p className="mt-1 text-xs">{errorCarga.mensaje}</p>
+                  <p className="mt-1 text-sm">{errorCarga.mensaje}</p>
                   <div className="mt-4">
                     <Link
                       href="/cotizador"
-                      className="boton-primario inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs"
+                      className="boton-primario inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold shadow-xs"
                     >
                       Ir al Cotizador
                     </Link>
@@ -363,7 +388,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
           {notificacion && (
             <div
               role="status"
-              className={`animate-in fade-in flex items-center justify-between gap-3 rounded-2xl p-4 text-xs font-semibold shadow-xs duration-200 ${
+              className={`animate-in fade-in flex items-center justify-between gap-3 rounded-2xl p-4 text-sm font-semibold shadow-xs duration-200 ${
                 notificacion.tipo === 'exito'
                   ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                   : 'border border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'
@@ -381,7 +406,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                 type="button"
                 onClick={() => setNotificacion(null)}
                 aria-label="Cerrar aviso"
-                className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
               >
                 ✕
               </button>
@@ -396,10 +421,10 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-neutral-100 px-2.5 py-0.5 text-xs font-bold text-neutral-700 uppercase dark:bg-neutral-800 dark:text-neutral-300">
+                      <span className="rounded-md bg-neutral-100 px-2.5 py-0.5 text-sm font-bold text-neutral-700 uppercase dark:bg-neutral-800 dark:text-neutral-300">
                         {cotizacion.estado}
                       </span>
-                      <span className="text-xs text-neutral-400">
+                      <span className="text-sm text-neutral-400">
                         Registrada: {formatearFecha(cotizacion.creadaEn)}
                       </span>
                     </div>
@@ -408,7 +433,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       {cotizacion.titulo}
                     </h1>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-neutral-600 dark:text-neutral-400">
+                    <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
                       <span className="flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 text-neutral-400" />
                         Viajero: <strong>{contacto?.nombre || 'Contacto registrado'}</strong>
@@ -428,7 +453,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     <EnlacesDelViaje
                       className="mt-3"
                       enlaces={[
-                        enlaceDeConversacion(enlaces.conversacionId),
+                        enlaceDeConversacion(
+                          conversacionParam
+                            ? { tipo: 'listo', valor: conversacionParam }
+                            : enlaces.conversacionId,
+                        ),
                         enlaceDeContacto(cotizacion.contactoId, contacto?.nombre),
                         enlaceDeArchivo(
                           enlaces.archivos.tipo === 'cargando'
@@ -441,21 +470,42 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
 
                   {/* Acciones de Cabecera: WhatsApp, Modificar y Duplicar Versión (T-107) */}
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    {conversacionDeEnvio ? (
+                      <Link
+                        href={`/bandeja/${conversacionDeEnvio}?enviarCotizacion=${cotizacion.id}`}
+                        data-testid="btn-enviar-en-conversacion"
+                        className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 sm:w-auto"
+                        title="Enviar esta cotización por el canal de la agencia, en el chat con el viajero"
+                      >
+                        <Send className="h-4 w-4" aria-hidden="true" />
+                        <span>Enviar en esta conversación</span>
+                      </Link>
+                    ) : (
+                      <p
+                        data-testid="aviso-sin-conversacion"
+                        className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700 sm:max-w-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                      >
+                        {buscandoConversacion
+                          ? 'Buscando la conversación de WhatsApp de este viajero…'
+                          : 'Este viajero no tiene una conversación abierta en la bandeja: para enviarla por el canal, empieza el chat desde la bandeja.'}
+                      </p>
+                    )}
+
                     <button
                       type="button"
                       data-testid="btn-abrir-modal-whatsapp"
                       onClick={() => setModalWhatsAppAbierto(true)}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700"
-                      title="Enviar propuesta de esta cotización por WhatsApp"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      title="Abre WhatsApp fuera del canal de la agencia: no queda en el chat ni cambia el estado"
                     >
-                      <MessageSquare className="h-4 w-4" />
-                      <span>Enviar por WhatsApp</span>
+                      <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                      <span>Abrir en la app de WhatsApp</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={abrirModalModificar}
-                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition-colors"
+                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-xs transition-colors"
                       title="Modificar parámetros creando una nueva versión"
                     >
                       <Edit3 className="h-4 w-4" />
@@ -465,7 +515,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     <Link
                       href={`/cotizaciones/${cotizacion.id}/imprimir`}
                       data-testid="enlace-vista-imprimible"
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       title="Abrir vista imprimible A4 para el cliente (sin neto ni margen)"
                     >
                       <Printer className="h-4 w-4" />
@@ -477,7 +527,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       data-testid="btn-duplicar-version"
                       onClick={() => void manejarDuplicarVersion()}
                       disabled={duplicandoVersion}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       title="Duplicar esta versión exacta como versión siguiente"
                     >
                       <Copy className="h-4 w-4" />
@@ -491,7 +541,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       data-testid="btn-comparar-versiones"
                       onClick={() => setModalCompararAbierto(true)}
                       disabled={cotizacion.versiones.length < 2}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       title={
                         cotizacion.versiones.length < 2
                           ? 'Se requieren al menos 2 versiones para comparar'
@@ -508,10 +558,10 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
               {/* Selector de Versiones (Tabs/Pills) */}
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-xs font-bold text-neutral-500">
+                  <span className="text-sm font-bold text-neutral-500">
                     Historial de versiones ({versionesCronologicas.length})
                   </span>
-                  <span className="text-[11px] text-neutral-400">
+                  <span className="text-sm text-neutral-400">
                     Haga clic en una versión para ver exactamente lo que se cotizó ese día
                   </span>
                 </div>
@@ -526,7 +576,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         key={v.id}
                         type="button"
                         onClick={() => setVersionSeleccionadaNumero(v.numero)}
-                        className={`flex min-h-[44px] items-center gap-3 rounded-xl border px-4 py-2 text-xs font-semibold transition-all ${
+                        className={`flex min-h-[44px] items-center gap-3 rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
                           activa
                             ? 'border-acento-600 bg-acento-50 text-acento-950 dark:border-acento-500 dark:bg-acento-950/40 dark:text-acento-200 shadow-xs'
                             : 'border-neutral-200 bg-neutral-50/70 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/40 dark:text-neutral-300'
@@ -534,7 +584,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       >
                         <div className="flex items-center gap-1.5">
                           <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black ${
+                            className={`flex h-5 w-5 items-center justify-center rounded-full text-sm font-black ${
                               activa
                                 ? 'bg-acento-700 text-white'
                                 : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200'
@@ -545,7 +595,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                           <span className="font-bold">Versión {v.numero}</span>
                         </div>
 
-                        <span className="text-[11px] font-normal opacity-75">({fechaTxt})</span>
+                        <span className="text-sm font-normal opacity-75">({fechaTxt})</span>
 
                         <span className="cifra font-extrabold text-neutral-900 dark:text-white">
                           {formatearDinero(v.venta)}
@@ -563,16 +613,16 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                   {/* Tarjeta de Parámetros de Viaje */}
                   <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
-                      <span className="text-acento-700 dark:text-acento-300 text-xs font-bold">
+                      <span className="text-acento-700 dark:text-acento-300 text-sm font-bold">
                         Detalles de la Versión {versionActual.numero}
                       </span>
-                      <span className="flex items-center gap-1 text-[11px] text-neutral-400">
+                      <span className="flex items-center gap-1 text-sm text-neutral-400">
                         <Clock className="h-3 w-3" />
                         {formatearFechaHora(versionActual.creadaEn)}
                       </span>
                     </div>
 
-                    <div className="mt-4 space-y-3 text-xs">
+                    <div className="mt-4 space-y-3 text-sm">
                       <div>
                         <span className="text-neutral-500">Paquete Turístico:</span>
                         <p className="font-bold text-neutral-900 dark:text-white">
@@ -634,11 +684,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/60 pb-3 dark:border-amber-900/60">
                         <div className="flex items-center gap-2">
                           <Shield className="h-4 w-4 text-amber-700 dark:text-amber-400" />
-                          <h3 className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                          <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">
                             Auditoría de Margen (ADR-0011)
                           </h3>
                         </div>
-                        <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                        <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-sm font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-200">
                           cotizacion.ver_neto_y_margen
                         </span>
                       </div>
@@ -646,7 +696,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       {(() => {
                         const desglose = calcularDesgloseMargen(versionActual, true);
                         return (
-                          <div className="mt-4 space-y-2.5 text-xs">
+                          <div className="mt-4 space-y-2.5 text-sm">
                             <div className="flex items-center justify-between rounded-xl bg-white/80 p-2.5 shadow-2xs dark:bg-neutral-900/80">
                               <span className="text-neutral-600 dark:text-neutral-400">
                                 Costo Neto Total:
@@ -695,7 +745,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                               </span>
                             </div>
 
-                            <p className="pt-1 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300">
+                            <p className="pt-1 text-sm leading-relaxed text-amber-800 dark:text-amber-300">
                               * Confidencial: El neto del mayorista y el margen se omiten en
                               propuestas por WhatsApp y al cliente final (R10).
                             </p>
@@ -715,122 +765,81 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
                           Líneas de Precio — Versión {versionActual.numero}
                         </h2>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-sm text-neutral-500">
                           Tarifas congeladas en el momento de crear esta versión
                         </p>
                       </div>
-                      <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                      <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-sm font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
                         {versionActual.lineas.length}{' '}
                         {versionActual.lineas.length === 1 ? 'línea' : 'líneas'}
                       </span>
                     </div>
 
-                    <div className="overflow-x-auto rounded-xl border border-neutral-100 dark:border-neutral-800">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-neutral-100 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
-                            <th className="px-4 py-2.5 text-left font-medium">Concepto</th>
-                            <th className="px-4 py-2.5 text-left font-medium">Modalidad</th>
-                            <th className="px-4 py-2.5 text-right font-medium">Cantidad</th>
-                            {puedeVerNetoYMargen && (
-                              <>
-                                <th className="px-4 py-2.5 text-right font-medium text-amber-800 dark:text-amber-300">
-                                  Neto Unit.
-                                </th>
-                                <th className="px-4 py-2.5 text-right font-medium text-amber-800 dark:text-amber-300">
-                                  Margen Unit.
-                                </th>
-                              </>
-                            )}
-                            <th className="px-4 py-2.5 text-right font-medium">Precio Unitario</th>
-                            <th className="px-4 py-2.5 text-right font-medium">Subtotal Venta</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                          {versionActual.lineas.map((linea) => (
-                            <tr key={linea.tarifaId}>
-                              <td className="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200">
-                                {linea.nombre}
-                              </td>
-                              <td className="px-4 py-3 text-neutral-500">
-                                {linea.unidad === 'POR_PERSONA' ? 'Por persona' : 'Por grupo'}
-                              </td>
-                              <td className="cifra px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300">
-                                {linea.veces}x
-                              </td>
-                              {puedeVerNetoYMargen && (
-                                <>
-                                  <td className="cifra px-4 py-3 text-right text-amber-800 dark:text-amber-300">
-                                    {linea.margen
-                                      ? formatearDinero({
-                                          unidades: String(
-                                            Math.max(
-                                              0,
-                                              parseInt(linea.precioUnitario.unidades, 10) -
-                                                parseInt(linea.margen.unidades, 10),
-                                            ),
-                                          ),
-                                          moneda: linea.precioUnitario.moneda,
-                                        })
-                                      : '—'}
-                                  </td>
-                                  <td className="cifra px-4 py-3 text-right text-amber-800 dark:text-amber-300">
-                                    {linea.margen ? formatearDinero(linea.margen) : '—'}
-                                  </td>
-                                </>
-                              )}
-                              <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                                {formatearDinero(linea.precioUnitario)}
-                              </td>
-                              <td className="cifra px-4 py-3 text-right text-sm font-black text-neutral-900 dark:text-white">
-                                {formatearDinero(linea.total)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t-2 border-neutral-200 bg-neutral-50/80 font-bold dark:border-neutral-700 dark:bg-neutral-800/60">
-                            <td
-                              colSpan={puedeVerNetoYMargen ? 6 : 4}
-                              className="px-4 py-3 text-right text-neutral-800 dark:text-neutral-200"
-                            >
-                              Total Venta Versión {versionActual.numero}:
-                            </td>
-                            <td className="cifra text-acento-700 dark:text-acento-400 px-4 py-3 text-right text-lg font-black">
-                              {formatearDinero(versionActual.venta)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
+                    <TablaDeLineas
+                      testId="lineas-de-la-version"
+                      columnas={[
+                        { id: 'concepto', titulo: 'Concepto', esConcepto: true },
+                        { id: 'modalidad', titulo: 'Modalidad' },
+                        { id: 'cantidad', titulo: 'Cantidad', derecha: true },
+                        ...(puedeVerNetoYMargen
+                          ? [
+                              { id: 'neto', titulo: 'Neto Unit.', derecha: true },
+                              { id: 'margen', titulo: 'Margen Unit.', derecha: true },
+                            ]
+                          : []),
+                        { id: 'unitario', titulo: 'Precio Unitario', derecha: true },
+                        {
+                          id: 'subtotal',
+                          titulo: 'Subtotal Venta',
+                          derecha: true,
+                          esSubtotal: true,
+                        },
+                      ]}
+                      filas={versionActual.lineas.map((linea) => ({
+                        clave: linea.tarifaId,
+                        celdas: {
+                          concepto: linea.nombre,
+                          modalidad: linea.unidad === 'POR_PERSONA' ? 'Por persona' : 'Por grupo',
+                          cantidad: `${linea.veces}x`,
+                          neto: linea.margen
+                            ? formatearDinero({
+                                unidades: String(
+                                  Math.max(
+                                    0,
+                                    parseInt(linea.precioUnitario.unidades, 10) -
+                                      parseInt(linea.margen.unidades, 10),
+                                  ),
+                                ),
+                                moneda: linea.precioUnitario.moneda,
+                              })
+                            : '—',
+                          margen: linea.margen ? formatearDinero(linea.margen) : '—',
+                          unitario: formatearDinero(linea.precioUnitario),
+                          subtotal: formatearDinero(linea.total),
+                        },
+                      }))}
+                      etiquetaTotal={`Total Venta Versión ${versionActual.numero}:`}
+                      total={formatearDinero(versionActual.venta)}
+                    />
                   </div>
 
                   {/* Acciones de WhatsApp */}
                   <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs sm:flex-row dark:border-neutral-800 dark:bg-neutral-900">
                     <div>
-                      <h4 className="text-xs font-bold text-neutral-900 dark:text-white">
+                      <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
                         Propuesta para WhatsApp (Versión {versionActual.numero})
                       </h4>
-                      <p className="text-[11px] text-neutral-500">
-                        Envía directamente con seguimiento de estado o copia el texto comercial
+                      <p className="text-sm text-neutral-600">
+                        Copia el texto comercial para pegarlo donde lo necesites. El envío con
+                        seguimiento de estado es «Enviar en esta conversación».
                       </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        data-testid="btn-abrir-whatsapp-inferior"
-                        onClick={() => setModalWhatsAppAbierto(true)}
-                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span>Abrir Envío WhatsApp</span>
-                      </button>
-
-                      <button
-                        type="button"
                         onClick={copiarPropuestaWhatsApp}
-                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       >
                         {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         <span>{copiado ? '¡Copiado!' : 'Copiar Texto'}</span>
@@ -848,14 +857,6 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                   versionInicial={versionActual.numero}
                   abierto={modalWhatsAppAbierto}
                   alCerrar={() => setModalWhatsAppAbierto(false)}
-                  alEnviarExitoso={(actualizada) => {
-                    setCotizacion(actualizada);
-                    setNotificacion({
-                      texto: 'Cotización marcada como enviada exitosamente.',
-                      tipo: 'exito',
-                    });
-                    setTimeout(() => setNotificacion(null), 3000);
-                  }}
                 />
               )}
             </>
@@ -882,7 +883,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       >
                         Crear Versión {(cotizacion?.versiones.length ?? 1) + 1}
                       </h2>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-sm text-neutral-500">
                         Modifica composición de viaje conservando la Versión {versionActual.numero}
                       </p>
                     </div>
@@ -893,7 +894,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     onClick={() => setModalModificarAbierto(false)}
                     disabled={guardandoVersion}
                     aria-label="Cerrar modal"
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                   >
                     ×
                   </button>
@@ -903,7 +904,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                   onSubmit={(e) => {
                     void manejarCrearNuevaVersion(e);
                   }}
-                  className="space-y-4 p-6 text-xs"
+                  className="space-y-4 p-6 text-sm"
                 >
                   {errorModificar && (
                     <div
@@ -930,7 +931,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       onChange={setModFecha}
                       disabled={guardandoVersion}
                       required
-                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
@@ -950,7 +951,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModAdultos(Math.max(1, modAdultos - 1))}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           -
                         </button>
@@ -960,7 +961,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModAdultos(modAdultos + 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           +
                         </button>
@@ -976,7 +977,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModNinos(Math.max(0, modNinos - 1))}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           -
                         </button>
@@ -986,7 +987,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModNinos(modNinos + 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           +
                         </button>
@@ -1002,7 +1003,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModInfantes(Math.max(0, modInfantes - 1))}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           -
                         </button>
@@ -1012,7 +1013,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModInfantes(modInfantes + 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           +
                         </button>
@@ -1033,7 +1034,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       value={modAcomodacion}
                       onChange={(e) => setModAcomodacion(e.target.value as Acomodacion)}
                       disabled={guardandoVersion}
-                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     >
                       <option value="SENCILLA">Sencilla (1 persona)</option>
                       <option value="DOBLE">Doble (2 personas)</option>
@@ -1055,11 +1056,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       valor={modVigenteHasta}
                       onChange={setModVigenteHasta}
                       disabled={guardandoVersion}
-                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
-                  <p className="text-[11px] text-neutral-500">
+                  <p className="text-sm text-neutral-500">
                     * El servidor recalculará los importes oficiales. La Versión{' '}
                     {versionActual.numero} no cambiará.
                   </p>
@@ -1069,14 +1070,14 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       type="button"
                       onClick={() => setModalModificarAbierto(false)}
                       disabled={guardandoVersion}
-                      className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 px-4 py-2.5 text-xs font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                      className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={guardandoVersion}
-                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs"
+                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-xs"
                     >
                       {guardandoVersion ? (
                         <>

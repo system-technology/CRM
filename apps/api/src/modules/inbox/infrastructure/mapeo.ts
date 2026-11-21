@@ -82,12 +82,33 @@ export const PARA_EL_RESUMEN = {
   mensajesSinLeer: true,
   slaVenceEn: true,
   primeraRespuestaEn: true,
-  etiquetas: true,
+  // T-325: las etiquetas de la agencia puestas en la conversación (id, nombre, color y orden para
+  // ordenarlas). La columna `conversaciones.etiquetas` es legado y ya no se lee.
+  etiquetasAsignadas: {
+    select: { etiqueta: { select: { id: true, nombre: true, color: true, orden: true } } },
+  },
   contacto: { select: { nombre: true, telefonoE164: true } },
   asignadoA: { select: { nombre: true } },
 } satisfies Prisma.ConversacionSelect;
 
 export type FilaDeResumen = Prisma.ConversacionGetPayload<{ select: typeof PARA_EL_RESUMEN }>;
+
+/** En el orden del catálogo de la agencia: `orden`, luego nombre y id para que sea estable. */
+export function etiquetasEnOrden(
+  asignadas: ReadonlyArray<{
+    etiqueta: { id: string; nombre: string; color: string; orden: number };
+  }>,
+): Array<{ id: string; nombre: string; color: string }> {
+  return asignadas
+    .map((a) => a.etiqueta)
+    .sort(
+      (x, y) =>
+        x.orden - y.orden ||
+        (x.nombre < y.nombre ? -1 : x.nombre > y.nombre ? 1 : 0) ||
+        (x.id < y.id ? -1 : 1),
+    )
+    .map(({ id, nombre, color }) => ({ id, nombre, color }));
+}
 
 export function aResumen(
   fila: FilaDeResumen,
@@ -124,7 +145,7 @@ export function aResumen(
     mensajesSinLeer: fila.mensajesSinLeer,
     // El plazo se anula cuando ya hubo primera respuesta, pero la columna se conserva (evidencia).
     slaVenceEn: fila.primeraRespuestaEn ? null : (fila.slaVenceEn?.toISOString() ?? null),
-    etiquetas: fila.etiquetas,
+    etiquetas: etiquetasEnOrden(fila.etiquetasAsignadas),
   });
 }
 

@@ -6,8 +6,11 @@ import { ACCIONES_RAPIDAS } from './buscador-global-logica';
 import {
   ACCIONES,
   NAVEGACION,
+  elementosDeBarraMovil,
   entradaDe,
+  entradasDeHojaMas,
   entradasDelMenu,
+  etiquetaDeBarra,
   esDetalleMovilDeBandeja,
   esVisiblePara,
   moduloActivo,
@@ -38,9 +41,34 @@ describe('NAVEGACION', () => {
     expect(NAVEGACION.map((e) => e.etiqueta)).toEqual(ORDEN_DEL_MENU);
   });
 
-  it('tiene exactamente 3 entradas en la barra móvil: Hoy, Conversaciones y Archivos de viaje', () => {
+  it('tiene exactamente 3 módulos en la barra móvil: Hoy, Conversaciones y Archivos de viaje', () => {
     const barra = NAVEGACION.filter((e) => e.movil === 'barra').map((e) => e.etiqueta);
     expect(barra).toEqual(['Hoy', 'Conversaciones', 'Archivos de viaje']);
+  });
+
+  it('la barra móvil es Hoy · Conversaciones · Cotizar · Archivos (y «Más» la añade la barra)', () => {
+    const rotulos = elementosDeBarraMovil().map((e) =>
+      e.tipo === 'modulo' ? etiquetaDeBarra(e.entrada) : e.accion.etiqueta,
+    );
+    expect(rotulos).toEqual(['Hoy', 'Conversaciones', 'Cotizar', 'Archivos']);
+    const cotizar = elementosDeBarraMovil().find((e) => e.tipo === 'accion');
+    expect(cotizar?.tipo === 'accion' && cotizar.accion.ruta).toBe('/cotizador');
+  });
+
+  it('la hoja «Más» tiene el resto del menú, en orden, y ninguno de la barra', () => {
+    const mas = entradasDeHojaMas().map((e) => e.etiqueta);
+    expect(mas).toEqual([
+      'Oportunidades',
+      'Cotizaciones',
+      'Seguimientos',
+      'Contactos',
+      'Catálogo',
+      'Reportes',
+      'Configuración',
+    ]);
+    // Cada módulo del menú está en la barra o en la hoja: ninguno se queda sin camino en móvil.
+    const enBarra = NAVEGACION.filter((e) => e.movil === 'barra').length;
+    expect(enBarra + mas.length).toBe(entradasDelMenu().length);
   });
 
   it('la etiqueta corta está contenida en la etiqueta', () => {
@@ -82,7 +110,8 @@ describe('NAVEGACION', () => {
   });
 
   it('expone la acción Cotizar hacia /cotizador', () => {
-    expect(ACCIONES).toContainEqual({ id: 'cotizar', etiqueta: 'Cotizar', ruta: '/cotizador' });
+    const cotizar = ACCIONES.find((a) => a.id === 'cotizar');
+    expect(cotizar).toMatchObject({ etiqueta: 'Cotizar', ruta: '/cotizador', movil: 'barra' });
   });
 });
 

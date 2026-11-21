@@ -29,6 +29,7 @@ import {
   CONSULTA_DEL_INDICE_DE_APODOS,
   elIndiceDeApodosEsGlobal,
 } from '../prisma/guardia-de-semilla-agencia.js';
+import { ROLES_SEMBRADOS } from '../prisma/siembra-de-tenant.js';
 
 // SIN `??` hacia DATABASE_URL, y eso es media compuerta.
 //
@@ -414,12 +415,22 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
  */
 const PRIVILEGIOS_DECLARADOS: ReadonlyArray<readonly [string, string, readonly string[]]> = [
   ['bookings', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  // T-324: las asignaciones de etiquetas a conversaciones. Sin UPDATE: se ponen o se quitan.
+  ['conversacion_etiquetas', 'viajapro_app', ['SELECT', 'INSERT', 'DELETE']],
   ['entregas_de_eventos', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  // T-324: el catálogo de etiquetas de la agencia. Borrado físico (HU-inbox-1 §3).
+  ['etiquetas', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
   // T-254: la bandeja de avisos de cada usuario. Sin DELETE: se marca leída.
   ['notificaciones', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  // T-329 (ADR-0034 §5): el libro de cobro solo crece. Sin UPDATE, DELETE ni TRUNCATE.
+  ['pagos', 'viajapro_app', ['SELECT', 'INSERT']],
+  // T-329: los días por defecto de la agencia (upsert). Sin DELETE.
+  ['parametros_de_cobro', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
   ['pasajeros', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
   // T-261: los datos legales de la agencia (hoy el RNT). Sin DELETE.
   ['perfiles_de_agencia', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  // T-329: la fecha límite de cobro de un archivo. Solo inserción: rige la última.
+  ['plazos_de_cobro', 'viajapro_app', ['SELECT', 'INSERT']],
   // T-250: el historial de estados de la reserva. Inmutable: sin UPDATE ni DELETE.
   ['reserva_cambios_estado', 'viajapro_app', ['SELECT', 'INSERT']],
   ['travel_files', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
@@ -3659,6 +3670,441 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
   });
 });
 // =============================================================================
+// T-324 — etiquetas de la agencia y su asignación a la conversación (20261121110000)
+//
+// HU-inbox-1 §3: «A no lista, no asigna, no filtra por, no renombra ni borra etiquetas de B, ni
+// adivinando el id». Aquí, la mitad de la base: RLS forzada con la política canónica en las dos
+// tablas, privilegios solo de `viajapro_app`, foráneas COMPUESTAS con el tenant (una asignación no
+// cruza agencias ni con el rol propietario) y la unicidad del nombre POR agencia. La mitad de la
+// API (404 con un id ajeno, filtro con un id ajeno = cero filas) es de T-325.
+//
+// Fixtures propios (cuenta, canal, contacto y conversación por agencia), con identificadores que
+// no chocan con los del bloque del inbox.
+// =============================================================================
+
+const TABLAS_DE_ETIQUETAS = ['etiquetas', 'conversacion_etiquetas'] as const;
+
+describe('T-324 — etiquetas por agencia y su asignación a la conversación', () => {
+  const cuentaDe: Record<string, string> = {};
+  const canalDe: Record<string, string> = {};
+  const contactoDe: Record<string, string> = {};
+  const conversacionDe: Record<string, string> = {};
+  /** «Pagado» en las DOS agencias: la misma etiqueta puede existir en dos agencias. */
+  const etiquetaDe: Record<string, string> = {};
+
+  const crearEtiqueta = async (
+    c: Client,
+    tenant: string,
+    nombre: string,
+    color = 'gris',
+  ): Promise<string> =>
+    (
+      (
+        await c.query(
+          `INSERT INTO etiquetas (id, tenant_id, nombre, color)
+           VALUES (gen_random_uuid(), $1, $2, $3) RETURNING id`,
+          [tenant, nombre, color],
+        )
+      ).rows[0] as { id: string }
+    ).id;
+
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await comoTenant(tenant, async (c) => {
+        const cuenta = await c.query(
+          `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'WABA de etiquetas', now(), now())
+           ON CONFLICT (tenant_id, waba_id) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant, `9324000000000${i}`],
+        );
+        cuentaDe[tenant] = (cuenta.rows[0] as { id: string }).id;
+
+        const canal = await c.query(
+          `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, now(), now())
+           ON CONFLICT (tenant_id, phone_number_id) DO UPDATE SET numero_e164 = EXCLUDED.numero_e164
+           RETURNING id`,
+          [tenant, cuentaDe[tenant], `8324000000000${i}`, `+5763240000${i}`],
+        );
+        canalDe[tenant] = (canal.rows[0] as { id: string }).id;
+
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Contacto Demo A', now(), now())
+           ON CONFLICT (tenant_id, telefono_e164) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant, `+57332400000${i}`],
+        );
+        contactoDe[tenant] = (contacto.rows[0] as { id: string }).id;
+
+        const conversacion = await c.query(
+          `INSERT INTO conversaciones (id, tenant_id, contacto_id, canal_id, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant], canalDe[tenant]],
+        );
+        conversacionDe[tenant] = (conversacion.rows[0] as { id: string }).id;
+
+        etiquetaDe[tenant] = await crearEtiqueta(c, tenant, 'Pagado', 'verde');
+        await c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3)`,
+          [tenant, conversacionDe[tenant], etiquetaDe[tenant]],
+        );
+      });
+    }
+  });
+
+  afterAll(async () => {
+    // Las asignaciones y las etiquetas primero; luego la conversación, que es RESTRICT hacia el
+    // canal.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        await c.query('DELETE FROM conversacion_etiquetas WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM etiquetas WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM conversaciones WHERE id = $1', [conversacionDe[tenant]]);
+        await c.query('DELETE FROM canales WHERE id = $1', [canalDe[tenant]]);
+        await c.query('DELETE FROM cuentas_whatsapp WHERE id = $1', [cuentaDe[tenant]]);
+        await c.query('DELETE FROM contactos WHERE id = $1', [contactoDe[tenant]]);
+      });
+    }
+  });
+
+  it('E1 — las dos tablas: tenant_id NOT NULL, RLS forzada, una sola política canónica FOR ALL con USING = WITH CHECK, no son excepción y solo viajapro_app las toca', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname AS tabla, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT json_agg(json_build_object(
+                        'nombre', p.polname,
+                        'cmd', p.polcmd::text,
+                        'permisiva', p.polpermissive,
+                        'using', pg_get_expr(p.polqual, p.polrelid),
+                        'check', pg_get_expr(p.polwithcheck, p.polrelid)))
+                 FROM pg_policy p WHERE p.polrelid = c.oid) AS politicas,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = ANY($1)
+        ORDER BY c.relname`,
+      [[...TABLAS_DE_ETIQUETAS]],
+    );
+    const politica = {
+      nombre: 'tenant_isolation',
+      cmd: '*',
+      permisiva: true,
+      using: EXPRESION_AISLAMIENTO_CANONICA,
+      check: EXPRESION_AISLAMIENTO_CANONICA,
+    };
+    expect(rows).toEqual(
+      [...TABLAS_DE_ETIQUETAS].sort().map((tabla) => ({
+        tabla,
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        // Una sola política: otra permisiva al lado (FOR SELECT USING (true)) abriría la tabla.
+        politicas: [politica],
+        declarada: false,
+      })),
+    );
+
+    const esperados: Record<string, Record<string, string[]>> = {
+      etiquetas: { viajapro_app: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'] },
+      conversacion_etiquetas: { viajapro_app: ['DELETE', 'INSERT', 'SELECT'] },
+    };
+    for (const tabla of TABLAS_DE_ETIQUETAS) {
+      for (const rol of ROLES_DE_LOGIN_DECLARADOS) {
+        const p = await admin.query(
+          `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+            WHERE has_table_privilege($1, $2::regclass, p) ORDER BY 1`,
+          [rol, `public.${tabla}`],
+        );
+        expect(
+          p.rows.map((r) => r.p as string),
+          `${rol} sobre ${tabla}`,
+        ).toEqual(esperados[tabla]?.[rol] ?? []);
+      }
+    }
+
+    const defectos = await admin.query(
+      'SELECT tabla, problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = ANY($1)',
+      [[...TABLAS_DE_ETIQUETAS]],
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('E2 — las foráneas de la asignación son COMPUESTAS con el tenant, validadas y en cascada hacia la conversación y la etiqueta', async () => {
+    const { rows } = await admin.query(
+      `SELECT p.relname AS padre,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.confdeltype::text AS al_borrar,
+              c.convalidated
+         FROM pg_constraint c JOIN pg_class p ON p.oid = c.confrelid
+        WHERE c.contype = 'f' AND c.conrelid = 'public.conversacion_etiquetas'::regclass
+        ORDER BY 1, 2`,
+    );
+    expect(rows).toEqual([
+      {
+        padre: 'conversaciones',
+        columnas: ['conversacion_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        al_borrar: 'c',
+        convalidated: true,
+      },
+      {
+        padre: 'etiquetas',
+        columnas: ['etiqueta_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        al_borrar: 'c',
+        convalidated: true,
+      },
+      {
+        padre: 'tenants',
+        columnas: ['tenant_id'],
+        referidas: ['id'],
+        al_borrar: 'c',
+        convalidated: true,
+      },
+      {
+        padre: 'usuarios',
+        columnas: ['asignada_por', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        al_borrar: 'a',
+        convalidated: true,
+      },
+    ]);
+
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) =>
+          (TABLAS_DE_ETIQUETAS as readonly string[]).includes(r.hija) ||
+          (TABLAS_DE_ETIQUETAS as readonly string[]).includes(r.padre),
+      ),
+    ).toEqual([]);
+  });
+
+  it('E3 — una agencia no lista, no renombra, no borra ni planta etiquetas de otra, ni adivinando el id', async () => {
+    const cruzado = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT id FROM etiquetas WHERE id = $1', [etiquetaDe[TENANT_A]])).rowCount,
+      (await c.query('SELECT id FROM etiquetas WHERE tenant_id = $1', [TENANT_A])).rowCount,
+      (
+        await c.query("UPDATE etiquetas SET nombre = 'Secuestrada', color = 'rosa' WHERE id = $1", [
+          etiquetaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM etiquetas WHERE id = $1', [etiquetaDe[TENANT_A]])).rowCount,
+    ]);
+    expect(cruzado).toEqual([0, 0, 0, 0]);
+
+    // B solo ve la suya.
+    const deB = await comoTenant(TENANT_B, (c) => c.query('SELECT id, tenant_id FROM etiquetas'));
+    expect(deB.rows).toEqual([{ id: etiquetaDe[TENANT_B], tenant_id: TENANT_B }]);
+
+    // Plantar una etiqueta en A desde B: lo rechaza WITH CHECK.
+    await expect(
+      comoTenant(TENANT_B, (c) => crearEtiqueta(c, TENANT_A, 'Plantada por B')),
+    ).rejects.toThrow(/row-level security/i);
+    // Y mudar la propia a A, también: WITH CHECK en UPDATE.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE etiquetas SET tenant_id = $1 WHERE id = $2', [
+          TENANT_A,
+          etiquetaDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    const intacta = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT nombre, color FROM etiquetas WHERE id = $1', [etiquetaDe[TENANT_A]]),
+    );
+    expect(intacta.rows).toEqual([{ nombre: 'Pagado', color: 'verde' }]);
+  });
+
+  it('E4 — una agencia no ve, no filtra por, no planta ni quita las asignaciones de otra', async () => {
+    const cruzado = await comoTenant(TENANT_B, async (c) => [
+      (
+        await c.query('SELECT 1 FROM conversacion_etiquetas WHERE conversacion_id = $1', [
+          conversacionDe[TENANT_A],
+        ])
+      ).rowCount,
+      // El filtro de la bandeja con el id de una etiqueta ajena: cero filas, no un error.
+      (
+        await c.query('SELECT conversacion_id FROM conversacion_etiquetas WHERE etiqueta_id = $1', [
+          etiquetaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query('DELETE FROM conversacion_etiquetas WHERE conversacion_id = $1', [
+          conversacionDe[TENANT_A],
+        ])
+      ).rowCount,
+    ]);
+    expect(cruzado).toEqual([0, 0, 0]);
+
+    // Plantar una asignación con el tenant_id de A desde B (con los ids de A): WITH CHECK. Con
+    // ON CONFLICT DO NOTHING, como lo hará la API: no puede convertir el rechazo en silencio.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [TENANT_A, conversacionDe[TENANT_A], etiquetaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    const sigue = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT etiqueta_id FROM conversacion_etiquetas WHERE conversacion_id = $1', [
+        conversacionDe[TENANT_A],
+      ]),
+    );
+    expect(sigue.rows).toEqual([{ etiqueta_id: etiquetaDe[TENANT_A] }]);
+
+    // Sin contexto de tenant no se ve nada.
+    const ciego = await app.query(
+      'SELECT (SELECT count(*) FROM etiquetas)::int AS e, (SELECT count(*) FROM conversacion_etiquetas)::int AS a',
+    );
+    expect(ciego.rows).toEqual([{ e: 0, a: 0 }]);
+  });
+
+  it('E5 — la foránea compuesta impide colgar la conversación de una agencia de la etiqueta de otra, también con el rol propietario', async () => {
+    // Con el tenant PROPIO en la fila (WITH CHECK pasa) y los ids cruzados.
+    for (const [conversacion, etiqueta] of [
+      [conversacionDe[TENANT_A], etiquetaDe[TENANT_B]],
+      [conversacionDe[TENANT_B], etiquetaDe[TENANT_A]],
+    ] as const) {
+      await expect(
+        comoTenant(TENANT_A, (c) =>
+          c.query(
+            `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+             VALUES ($1, $2, $3)`,
+            [TENANT_A, conversacion, etiqueta],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '23503' });
+    }
+
+    // «Ni aunque falle un WHERE»: el propietario (en CI, superusuario: sin RLS) tampoco puede. Lo
+    // para la integridad referencial, no la política. Dentro de BEGIN … ROLLBACK: la base es
+    // compartida y, con el sistema roto, la fila quedaría plantada.
+    await admin.query('BEGIN');
+    try {
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+      await expect(
+        admin.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3)`,
+          [TENANT_A, conversacionDe[TENANT_A], etiquetaDe[TENANT_B]],
+        ),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'conversacion_etiquetas_etiqueta_id_tenant_id_fkey',
+      });
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+
+    // Mover una asignación propia a la etiqueta de otra tampoco: viajapro_app no tiene UPDATE.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('UPDATE conversacion_etiquetas SET etiqueta_id = $1 WHERE conversacion_id = $2', [
+          etiquetaDe[TENANT_B],
+          conversacionDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+  });
+
+  it('E6 — nombre único POR agencia sin distinguir mayúsculas ni espacios; la misma en dos agencias sí; forma y color los fija la base', async () => {
+    // «Pagado» existe en A y en B (beforeAll): dos agencias, la misma etiqueta. En A, «PAGADO»
+    // choca con la suya.
+    await expect(
+      comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, 'PAGADO')),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'etiquetas_tenant_id_nombre_normalizado_key',
+    });
+
+    // Sin espacios a los lados, ni vacía, ni con caracteres de control; 30 caracteres como mucho.
+    for (const nombre of [' Pagado', 'Pagado ', '', '   ', 'Pago\npendiente', 'Pago\tpendiente']) {
+      await expect(
+        comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, nombre)),
+        JSON.stringify(nombre),
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'etiquetas_nombre_forma',
+      });
+    }
+    await expect(
+      comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, 'x'.repeat(31))),
+    ).rejects.toMatchObject({ code: '22001' });
+
+    // Solo las ocho claves de la paleta: ni rojo, ni un hexadecimal, ni mayúsculas, ni vacío.
+    for (const color of ['rojo', '#ff0000', 'Verde', '']) {
+      await expect(
+        comoTenant(TENANT_A, (c) => crearEtiqueta(c, TENANT_A, 'Color fuera de paleta', color)),
+        JSON.stringify(color),
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'etiquetas_color_de_la_paleta',
+      });
+    }
+    const paleta = ['gris', 'azul', 'turquesa', 'verde', 'ambar', 'naranja', 'rosa', 'dorado'];
+    const creadas = await comoTenant(TENANT_A, async (c) => {
+      for (const color of paleta) await crearEtiqueta(c, TENANT_A, `Paleta ${color}`, color);
+      return (await c.query("DELETE FROM etiquetas WHERE nombre LIKE 'Paleta %'")).rowCount;
+    });
+    expect(creadas).toBe(paleta.length);
+  });
+
+  it('E7 — poner dos veces la misma no duplica, y borrar la etiqueta se la quita a sus conversaciones', async () => {
+    const r = await comoTenant(TENANT_A, async (c) => {
+      const otra = await crearEtiqueta(c, TENANT_A, 'Seguimiento', 'azul');
+      for (let i = 0; i < 2; i += 1) {
+        await c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [TENANT_A, conversacionDe[TENANT_A], otra],
+        );
+      }
+      const contar = async () =>
+        (
+          (
+            await c.query(
+              'SELECT count(*)::int AS n FROM conversacion_etiquetas WHERE etiqueta_id = $1',
+              [otra],
+            )
+          ).rows[0] as { n: number }
+        ).n;
+      const antes = await contar();
+      await c.query('DELETE FROM etiquetas WHERE id = $1', [otra]);
+      return [antes, await contar()];
+    });
+    expect(r).toEqual([1, 0]);
+
+    // Sin ON CONFLICT, la segunda vez la para la clave primaria.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO conversacion_etiquetas (tenant_id, conversacion_id, etiqueta_id)
+           VALUES ($1, $2, $3)`,
+          [TENANT_A, conversacionDe[TENANT_A], etiquetaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'conversacion_etiquetas_pkey',
+    });
+  });
+});
+// =============================================================================
 // Cotizaciones — cabecera mutable y versiones inmutables (20261019200000)
 //
 // Dos propiedades distintas, y las dos se prueban en rojo con `scripts/mutaciones-aislamiento.mjs`:
@@ -6577,6 +7023,10 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'definiciones_campo_personalizado.etiqueta',
   'etapas_pipeline.clave',
   'etapas_pipeline.nombre',
+  // T-324: catálogo de la agencia, sin PII sensible de viajeros. El nombre es texto libre y
+  // podría llevar un nombre de persona: logs, eventos y outbox llevan solo el id (HU-inbox-1 §3).
+  'etiquetas.color',
+  'etiquetas.nombre',
   'formatos_de_viaje.nombre',
   'mayoristas.contacto_correo',
   'mayoristas.contacto_nombre',
@@ -6612,6 +7062,16 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'oportunidades.titulo',
   'outbox.agregado',
   'outbox.tipo_evento',
+  // T-329 (ADR-0034 §2.4): el libro de cobro. `nota`, `referencia` y `motivo` son texto libre de la
+  // agencia, en claro bajo RLS por decisión del ADR (no son PII sensible según R10; sin datos de
+  // tarjeta, filtro Luhn en la API) y nunca van a logs, outbox ni auditoría. `medio` es un catálogo
+  // cerrado por CHECK y `moneda_iso` un código ISO-4217.
+  'pagos.medio',
+  'pagos.moneda_iso',
+  'pagos.motivo',
+  'pagos.nota',
+  'pagos.referencia',
+  'plazos_de_cobro.motivo',
   'paquetes.codigo',
   'paquetes.descripcion',
   'paquetes.destino',
@@ -11669,5 +12129,1233 @@ describe('ADR-0031 §4 (PR 1b) — crear_agencia no da de alta una segunda agenc
     expect(fuente).toContain("'public.accesos_identidad'::pg_catalog.regclass");
     expect(fuente).not.toMatch(/to_regclass|indexrelid|relname/);
     expect(fuente).toMatch(/pg_advisory_xact_lock\(c_espacio_de_la_guarda, 0\)/);
+  });
+});
+
+// =========================================================================================
+// T-329 — ADR-0034: el libro de cobro del viajero (migración 20261121140000)
+//
+// Dinero y aislamiento: lo que no puede pasar es que una agencia vea, plante o ate movimientos al
+// archivo, al contacto, al usuario o a un movimiento de otra agencia; que un movimiento vaya en otra
+// moneda que la del archivo; que un movimiento se reverse dos veces (ni en carrera) o que se reverse
+// un reverso; que la API (o el dueño) edite o borre el libro fuera de las dos salidas declaradas; y
+// que el total o la moneda del archivo cambien por debajo del saldo. Cada prueba dice qué mutación
+// la pone en rojo. La mitad de la API (contenido igual en un reintento idempotente, tipo permitido
+// por el estado del archivo, saldos no negativos, Luhn) es de T-330.
+// =========================================================================================
+
+const TABLAS_DE_COBRO = ['pagos', 'plazos_de_cobro', 'parametros_de_cobro'] as const;
+const MIGRACION_DE_COBRO = '20261121140000_pagos_del_viajero_libro_de_cobro';
+/** Lo que la migración y `ROLES_SEMBRADOS` conceden de cobro a cada rol sembrado (ADR-0034 §6). */
+const COBRO_POR_ROL: Readonly<Record<string, readonly string[]>> = {
+  DUENO: ['cobro.ver', 'cobro.registrar', 'cobro.corregir'],
+  ASESOR: ['cobro.ver', 'cobro.registrar'],
+  OPERACIONES: ['cobro.ver'],
+};
+
+describe('T-329 — libro de cobro: aislamiento, foráneas compuestas, solo crece y el total del archivo fijo', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-cobro-${sufijo}@prueba.test`;
+  const identidadDe: Record<string, string> = {
+    [TENANT_A]: randomUUID(),
+    [TENANT_B]: randomUUID(),
+  };
+  const usuarioDe: Record<string, string> = {};
+  const contactoDe: Record<string, string> = {};
+  const pagadorDe: Record<string, string> = {};
+  const archivoDe: Record<string, string> = {};
+  const otroArchivoDe: Record<string, string> = {};
+  /** Un PAGO de 300.000 que `reversoDe` ya reversó. */
+  const pagoDe: Record<string, string> = {};
+  const reversoDe: Record<string, string> = {};
+  /** Un PAGO de 200.000, con nota y referencia, sin reverso. */
+  const pagoVivoDe: Record<string, string> = {};
+  const claveDe: Record<string, string> = {};
+  const plazoDe: Record<string, string> = {};
+  let app2: Client;
+
+  const req = (registro: Record<string, string>, tenant: string): string => {
+    const valor = registro[tenant];
+    if (!valor) throw new Error(`fixture sin valor para ${tenant}`);
+    return valor;
+  };
+  const idDe = (r: { rows: unknown[] }): string => (r.rows[0] as { id: string }).id;
+
+  type Tipo = 'PAGO' | 'DEVOLUCION' | 'REVERSO' | 'AJUSTE' | 'PENALIDAD';
+  interface Movimiento {
+    id?: string;
+    tipo?: Tipo;
+    monto?: string;
+    moneda?: string;
+    archivo?: string;
+    pagadoEl?: string | null;
+    medio?: string | null;
+    pagador?: string | null;
+    referencia?: string | null;
+    nota?: string | null;
+    motivo?: string | null;
+    reversoDe?: string | null;
+    clave?: string;
+    registradoPor?: string;
+  }
+  /**
+   * Con valores por defecto válidos para cada tipo. `conRetorno = false` para las pruebas del
+   * WITH CHECK: con RETURNING, PostgreSQL pasa también la fila por el USING y la rechazaría aunque
+   * el WITH CHECK fuera `true` (ver la aserción 48).
+   */
+  const insertarMovimiento = (c: Client, tenant: string, m: Movimiento = {}, conRetorno = true) => {
+    const tipo = m.tipo ?? 'PAGO';
+    const conDinero = tipo === 'PAGO' || tipo === 'DEVOLUCION';
+    return c.query(
+      `INSERT INTO pagos (id, tenant_id, travel_file_id, tipo, monto_unidades, moneda_iso, pagado_el,
+                          medio, pagador_id, referencia, nota, motivo, reverso_de_id,
+                          clave_idempotencia, registrado_por)
+       VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, $3, $4::tipo_movimiento_de_cobro,
+               $5::bigint, $6, $7::date, $8, $9, $10, $11, $12, $13, $14, $15)
+       ${conRetorno ? 'RETURNING id' : ''}`,
+      [
+        m.id ?? null,
+        tenant,
+        m.archivo ?? archivoDe[tenant] ?? null,
+        tipo,
+        m.monto ?? '300000',
+        m.moneda ?? 'COP',
+        m.pagadoEl !== undefined ? m.pagadoEl : conDinero ? '2026-11-20' : null,
+        m.medio !== undefined ? m.medio : conDinero ? 'TRANSFERENCIA' : null,
+        m.pagador ?? null,
+        m.referencia ?? null,
+        m.nota ?? null,
+        m.motivo !== undefined ? m.motivo : conDinero ? null : 'Motivo de prueba',
+        m.reversoDe ?? null,
+        m.clave ?? randomUUID(),
+        m.registradoPor ?? usuarioDe[tenant] ?? null,
+      ],
+    );
+  };
+  const insertarPlazo = (
+    c: Client,
+    tenant: string,
+    { archivo, usuario }: { archivo?: string; usuario?: string } = {},
+    conRetorno = true,
+  ) =>
+    c.query(
+      `INSERT INTO plazos_de_cobro (id, tenant_id, travel_file_id, vence_el, motivo, registrado_por)
+       VALUES (gen_random_uuid(), $1, $2, '2026-11-30', 'Acordado con el cliente', $3)
+       ${conRetorno ? 'RETURNING id' : ''}`,
+      [tenant, archivo ?? archivoDe[tenant], usuario ?? usuarioDe[tenant]],
+    );
+  const fijarParametros = (c: Client, tenant: string, usuario?: string) =>
+    c.query(
+      `INSERT INTO parametros_de_cobro (tenant_id, dias_plazo_de_cobro, actualizado_por)
+       VALUES ($1, 20, $2)`,
+      [tenant, usuario ?? usuarioDe[tenant]],
+    );
+
+  /** Corre `fn` en el contexto de `tenant` y deshace TODO al final, haya ido bien o no. */
+  const yDeshacer = async (tenant: string, fn: (c: Client) => Promise<void>): Promise<void> => {
+    await comoTenant(tenant, async (c) => {
+      await fn(c);
+      throw new Error('revertir');
+    }).catch((e: unknown) => {
+      if (!(e instanceof Error) || e.message !== 'revertir') throw e;
+    });
+  };
+
+  /**
+   * Como el DUEÑO de la tabla (la conexión de migraciones), con el contexto de `tenant` y los
+   * ajustes de sesión dados, SIEMPRE dentro de BEGIN … ROLLBACK. Devuelve 'aceptada' o el error
+   * (código y mensaje). Un deadlock (40P01) con la limpieza de otra suite no es el rechazo que se
+   * prueba: se reintenta, como en la aserción 49.
+   */
+  const comoDueno = async (
+    tenant: string,
+    ajustes: Record<string, string>,
+    sentencias: ReadonlyArray<readonly [string, unknown[]]>,
+  ): Promise<'aceptada' | { code?: string | undefined; message: string; filas?: number }> => {
+    for (let intento = 1; ; intento += 1) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
+        for (const [clave, valor] of Object.entries(ajustes)) {
+          await admin.query('SELECT set_config($1, $2, true)', [clave, valor]);
+        }
+        for (const [sql, params] of sentencias) {
+          const r = await admin.query(sql, params as never[]);
+          if (r.rowCount === 0 && /^\s*(UPDATE|DELETE)/i.test(sql)) {
+            return { message: 'ninguna fila afectada', filas: 0 };
+          }
+        }
+        return 'aceptada';
+      } catch (error) {
+        const e = error as { code?: string; message: string };
+        if (e.code !== '40P01' || intento >= 5) return { code: e.code, message: e.message };
+      } finally {
+        await admin.query('ROLLBACK');
+      }
+    }
+  };
+
+  const pidDe = async (c: Client): Promise<number> =>
+    (await c.query('SELECT pg_backend_pid() AS pid')).rows[0]?.pid as number;
+  /** ¿`pid` está bloqueado por `por`? Espera acotada (5 s). */
+  const esperarBloqueo = async (pid: number, por: number): Promise<boolean> => {
+    for (let i = 0; i < 100; i += 1) {
+      const { rows } = await admin.query(
+        'SELECT $2::int = ANY (pg_blocking_pids($1::int)) AS bloqueada',
+        [pid, por],
+      );
+      if (rows[0]?.bloqueada) return true;
+      await new Promise((resolver) => setTimeout(resolver, 50));
+    }
+    return false;
+  };
+  const capturar = (p: Promise<unknown>): Promise<unknown> =>
+    p.then(
+      () => 'aceptada',
+      (error: unknown) => error,
+    );
+
+  beforeAll(async () => {
+    app2 = new Client({ connectionString: URL_APP });
+    await app2.connect();
+
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await admin.query(
+        `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+        [identidadDe[tenant], correo(String(i))],
+      );
+      await comoTenant(tenant, async (c) => {
+        const rol = await c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, ARRAY[]::text[], now()) RETURNING id`,
+          [tenant, `Cobros T-329 ${MARCA}`],
+        );
+        usuarioDe[tenant] = idDe(
+          await c.query(
+            `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Cajera', now()) RETURNING id`,
+            [tenant, identidadDe[tenant], idDe(rol), correo(`u${i}`)],
+          ),
+        );
+        contactoDe[tenant] = idDe(
+          await c.query(
+            `INSERT INTO contactos (id, tenant_id, telefono_e164, creado_en, actualizado_en)
+             VALUES (gen_random_uuid(), $1, $2, now(), now()) RETURNING id`,
+            [tenant, `+57329000000${i}`],
+          ),
+        );
+        pagadorDe[tenant] = idDe(
+          await c.query(
+            `INSERT INTO contactos (id, tenant_id, telefono_e164, creado_en, actualizado_en)
+             VALUES (gen_random_uuid(), $1, $2, now(), now()) RETURNING id`,
+            [tenant, `+57329100000${i}`],
+          ),
+        );
+        const paqueteId = idDe(
+          await c.query(
+            `INSERT INTO paquetes (id, tenant_id, nombre, destino, dias, noches, creado_en, actualizado_en)
+             VALUES (gen_random_uuid(), $1, 'Parque del Café', 'Quindío', 2, 1, now(), now())
+             RETURNING id`,
+            [tenant],
+          ),
+        );
+        const cotizacionId = idDe(
+          await c.query(
+            `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+             VALUES (gen_random_uuid(), $1, $2, 'Cobro T-329', now(), now()) RETURNING id`,
+            [tenant, contactoDe[tenant]],
+          ),
+        );
+        await insertarVersion(c, tenant, cotizacionId, paqueteId, 1);
+        archivoDe[tenant] = idDe(
+          await c.query(
+            `INSERT INTO travel_files
+               (id, tenant_id, numero, contacto_id, cotizacion_id, version_cotizacion, paquete_nombre,
+                destino, fecha_salida, noches, adultos, ninos, infantes, venta_unidades, moneda_iso,
+                actualizado_en)
+             VALUES (gen_random_uuid(), $1, 3290, $2, $3, 1, 'Parque del Café', 'Quindío',
+                     '2026-12-05', 1, 2, 1, 0, 980000, 'COP', now())
+             RETURNING id`,
+            [tenant, contactoDe[tenant], cotizacionId],
+          ),
+        );
+        otroArchivoDe[tenant] = (
+          await abrirOtroArchivo(c, tenant, req(contactoDe, tenant), paqueteId, 3291)
+        ).archivo;
+
+        claveDe[tenant] = randomUUID();
+        pagoDe[tenant] = idDe(
+          await insertarMovimiento(c, tenant, {
+            monto: '300000',
+            pagador: pagadorDe[tenant] ?? null,
+            clave: claveDe[tenant],
+          }),
+        );
+        reversoDe[tenant] = idDe(
+          await insertarMovimiento(c, tenant, {
+            tipo: 'REVERSO',
+            monto: '300000',
+            reversoDe: pagoDe[tenant] ?? null,
+            motivo: 'Registrado dos veces',
+          }),
+        );
+        pagoVivoDe[tenant] = idDe(
+          await insertarMovimiento(c, tenant, {
+            monto: '200000',
+            medio: 'EFECTIVO',
+            referencia: 'REC-0001',
+            nota: 'Recibido en oficina',
+          }),
+        );
+        plazoDe[tenant] = idDe(await insertarPlazo(c, tenant));
+        await fijarParametros(c, tenant);
+      });
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    // El libro retiene archivos, contactos y usuarios (NO ACTION) y solo la purga declarada lo
+    // borra (pagos_inmutables): primero él, con la purga de ESTAS dos agencias. Lo demás, el
+    // `borrarTenants` final.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
+        await admin.query("SELECT set_config('viajapro.purga_de_tenants', $1, true)", [tenant]);
+        for (const tabla of [
+          'pagos',
+          'plazos_de_cobro',
+          'parametros_de_cobro',
+          'bookings',
+          'travel_files',
+        ]) {
+          await admin.query(`DELETE FROM ${tabla} WHERE tenant_id = $1`, [tenant]);
+        }
+        await admin.query('DELETE FROM usuarios WHERE identidad_id = $1', [identidadDe[tenant]]);
+        await admin.query('COMMIT');
+      } catch (error) {
+        await admin.query('ROLLBACK');
+        throw error;
+      }
+    }
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [Object.values(identidadDe)]);
+    await app2?.end();
+  }, 60_000);
+
+  // Mutaciones que la ponen en rojo: NO FORCE / DISABLE RLS en cualquiera de las tres, quitar el
+  // WITH CHECK o la política, `tenant_id` nullable, declarar una como excepción, o perder la clave
+  // (id, tenant_id, moneda_iso) de travel_files.
+  it('P-1 — las tres tablas: tenant_id NOT NULL, RLS forzada con USING y WITH CHECK, ninguna excepción; y la clave nueva del archivo', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              (SELECT count(*)::int FROM pg_policy p WHERE p.polrelid = c.oid) AS politicas,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS excepcion
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = ANY($1)
+        ORDER BY 1`,
+      [[...TABLAS_DE_COBRO]],
+    );
+    expect(rows).toEqual(
+      [...TABLAS_DE_COBRO].sort().map((relname) => ({
+        relname,
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        politicas: 1,
+        excepcion: false,
+      })),
+    );
+    const defectos = await admin.query(
+      'SELECT tabla, problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL',
+    );
+    expect(defectos.rows).toEqual([]);
+
+    const clave = await admin.query(
+      `SELECT 1 FROM pg_index i
+        WHERE i.indrelid = 'public.travel_files'::regclass AND i.indisunique AND i.indisvalid
+          AND i.indpred IS NULL
+          AND (SELECT array_agg(a.attname::text ORDER BY k.n)
+                 FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, n)
+                 JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)
+              = ARRAY['id', 'tenant_id', 'moneda_iso']`,
+    );
+    expect(clave.rowCount).toBe(1);
+  });
+
+  // Mutaciones: cambiar una foránea compuesta por una simple, quitar `moneda_iso` de la del archivo,
+  // o dejar la del reverso en dos columnas.
+  it('P-2 — toda foránea de las tres incluye el tenant; la del archivo lleva la moneda y la del reverso, cinco columnas', async () => {
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) =>
+          (TABLAS_DE_COBRO as readonly string[]).includes(r.hija) ||
+          (TABLAS_DE_COBRO as readonly string[]).includes(r.padre),
+      ),
+    ).toEqual([]);
+
+    const { rows } = await admin.query(
+      `SELECT t.relname AS hija, c.conname, p.relname AS padre, c.convalidated,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS destino
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         JOIN pg_class p ON p.oid = c.confrelid
+        WHERE c.contype = 'f' AND t.relname = ANY($1) AND p.relname <> 'tenants'
+        ORDER BY 1, 2`,
+      [[...TABLAS_DE_COBRO]],
+    );
+    expect(
+      rows.map(
+        (r) =>
+          `${r.hija as string}.${r.conname as string}: ${(r.columnas as string[]).join(',')} -> ` +
+          `${r.padre as string}(${(r.destino as string[]).join(',')}) ${String(r.convalidated)}`,
+      ),
+    ).toEqual([
+      'pagos.pagos_pagador_id_tenant_id_fkey: pagador_id,tenant_id -> contactos(id,tenant_id) true',
+      'pagos.pagos_registrado_por_tenant_id_fkey: registrado_por,tenant_id -> usuarios(id,tenant_id) true',
+      'pagos.pagos_reverso_de_id_fkey: reverso_de_id,tenant_id,travel_file_id,monto_unidades,moneda_iso -> pagos(id,tenant_id,travel_file_id,monto_unidades,moneda_iso) true',
+      'pagos.pagos_travel_file_id_tenant_id_moneda_iso_fkey: travel_file_id,tenant_id,moneda_iso -> travel_files(id,tenant_id,moneda_iso) true',
+      'parametros_de_cobro.parametros_de_cobro_actualizado_por_tenant_id_fkey: actualizado_por,tenant_id -> usuarios(id,tenant_id) true',
+      'plazos_de_cobro.plazos_de_cobro_registrado_por_tenant_id_fkey: registrado_por,tenant_id -> usuarios(id,tenant_id) true',
+      'plazos_de_cobro.plazos_de_cobro_travel_file_id_tenant_id_fkey: travel_file_id,tenant_id -> travel_files(id,tenant_id) true',
+    ]);
+  });
+
+  // Mutaciones: GRANT UPDATE/DELETE/TRUNCATE sobre pagos o plazos a viajapro_app, cualquier GRANT a
+  // los otros tres roles de login o a PUBLIC (y la fila correspondiente en privilegios_declarados,
+  // que también vigila el literal PRIVILEGIOS_DECLARADOS).
+  it('P-3 — solo viajapro_app las toca (pagos y plazos: SELECT, INSERT; parámetros: + UPDATE); los otros tres roles y PUBLIC, nada', async () => {
+    const esperado: Record<string, string[]> = {
+      pagos: ['INSERT', 'SELECT'],
+      plazos_de_cobro: ['INSERT', 'SELECT'],
+      parametros_de_cobro: ['INSERT', 'SELECT', 'UPDATE'],
+    };
+    // Lo vigilado más lo declarado que exista (rolesAVigilar): un rol que se cayera de la
+    // vigilancia seguiría probándose.
+    const roles = await rolesAVigilar(admin);
+    expect(roles).toEqual(expect.arrayContaining(['viajapro_app', 'viajapro_webhook']));
+    for (const tabla of TABLAS_DE_COBRO) {
+      for (const rol of roles) {
+        const { rows } = await admin.query(
+          `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+            WHERE has_table_privilege($1, format('public.%I', $2::text), p) ORDER BY 1`,
+          [rol, tabla],
+        );
+        expect(
+          rows.map((r) => r.p as string),
+          `${rol} sobre ${tabla}`,
+        ).toEqual(rol === 'viajapro_app' ? esperado[tabla] : []);
+        const columnas = await admin.query(
+          `SELECT has_any_column_privilege($1, format('public.%I', $2::text), 'UPDATE') AS u,
+                  has_any_column_privilege($1, format('public.%I', $2::text), 'SELECT') AS s`,
+          [rol, tabla],
+        );
+        expect(columnas.rows[0], `privilegios de columna de ${rol} sobre ${tabla}`).toEqual({
+          u: rol === 'viajapro_app' && tabla === 'parametros_de_cobro',
+          s: rol === 'viajapro_app',
+        });
+      }
+      const publico = await admin.query(
+        "SELECT has_table_privilege('public', format('public.%I', $1::text), 'SELECT') AS v",
+        [tabla],
+      );
+      expect(publico.rows[0], `PUBLIC sobre ${tabla}`).toEqual({ v: false });
+    }
+
+    // De COMPORTAMIENTO: el trabajador no lee el libro ni con el contexto de la agencia puesto.
+    await comoRol(admin, 'viajapro_webhook', async () => {
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+      for (const tabla of TABLAS_DE_COBRO) {
+        await esperarPermisoDenegado(
+          admin,
+          () => admin.query(`SELECT * FROM ${tabla}`),
+          `SELECT sobre ${tabla} como viajapro_webhook`,
+        );
+      }
+    });
+  });
+
+  // Mutaciones: borrar cualquiera de los disparadores, deshabilitarlo (`ALTER TABLE … DISABLE
+  // TRIGGER`), volver su función SECURITY DEFINER, quitarle el `SET search_path = ''`, añadirle otro
+  // ajuste, o devolver EXECUTE a PUBLIC.
+  it('P-4 — los cuatro disparadores existen, HABILITADOS (tgenabled = O), con funciones SECURITY INVOKER, search_path vacío y sin EXECUTE', async () => {
+    const { rows } = await admin.query(
+      `SELECT t.tgname, c.relname AS tabla, t.tgenabled, t.tgtype::int AS tipo,
+              t.tgqual IS NULL AS sin_when, p.proname, p.prosecdef, p.proconfig,
+              has_function_privilege('public', p.oid, 'EXECUTE') AS publico
+         FROM pg_trigger t
+         JOIN pg_class c ON c.oid = t.tgrelid
+         JOIN pg_proc p ON p.oid = t.tgfoid
+        WHERE NOT t.tgisinternal
+          AND (c.relname = 'pagos' OR t.tgname = 'travel_files_venta_inmutable')
+        ORDER BY 1`,
+    );
+    const resumen = rows.map((r) => ({
+      tgname: r.tgname as string,
+      tabla: r.tabla as string,
+      habilitado: r.tgenabled as string,
+      tipo: r.tipo as number,
+      sinWhen: r.sin_when as boolean,
+      funcion: r.proname as string,
+      definer: r.prosecdef as boolean,
+      publico: r.publico as boolean,
+    }));
+    const configs = rows.map((r) => ({
+      funcion: r.proname as string,
+      config: r.proconfig as string[] | null,
+    }));
+    // tgtype: 1 fila, 2 BEFORE, 4 INSERT, 8 DELETE, 16 UPDATE, 32 TRUNCATE.
+    const base = { habilitado: 'O', sinWhen: true, definer: false, publico: false };
+    expect(resumen).toEqual([
+      {
+        tgname: 'pagos_inmutables',
+        tabla: 'pagos',
+        tipo: 27,
+        funcion: 'pagos_inmutables',
+        ...base,
+      },
+      {
+        tgname: 'pagos_sin_truncate',
+        tabla: 'pagos',
+        tipo: 34,
+        funcion: 'pagos_inmutables',
+        ...base,
+      },
+      {
+        tgname: 'pagos_validar_alta',
+        tabla: 'pagos',
+        tipo: 7,
+        funcion: 'pagos_validar_alta',
+        ...base,
+      },
+      {
+        tgname: 'travel_files_venta_inmutable',
+        tabla: 'travel_files',
+        tipo: 19,
+        funcion: 'travel_files_venta_inmutable',
+        ...base,
+      },
+    ]);
+    for (const r of configs) {
+      expect(r.config, `proconfig de ${r.funcion}`).toHaveLength(1);
+      expect(r.config?.[0], `proconfig de ${r.funcion}`).toMatch(/^search_path=("")?$/);
+    }
+    for (const rol of await rolesAVigilar(admin)) {
+      for (const fn of ['pagos_inmutables', 'pagos_validar_alta', 'travel_files_venta_inmutable']) {
+        const { rows: puede } = await admin.query(
+          "SELECT has_function_privilege($1, format('public.%I()', $2::text), 'EXECUTE') AS si",
+          [rol, fn],
+        );
+        expect(puede[0]?.si, `${rol} puede ejecutar ${fn}`).toBe(false);
+      }
+    }
+  });
+
+  // E1 (ADR §Seguridad 3 y 4). Mutaciones: quitar el WITH CHECK de la política (el plantado con
+  // tenant de B pasa), o cambiar cualquier foránea compuesta por una simple sin `tenant_id` (la
+  // integridad referencial se evalúa POR ENCIMA de RLS: el id de B se aceptaría), o quitar
+  // `moneda_iso` de la foránea del archivo (el movimiento en USD pasa).
+  it('E1 — no se planta un movimiento, un plazo ni los parámetros en otra agencia, ni se ata al archivo, el pagador o el usuario de otra, ni en otra moneda', async () => {
+    // Con el tenant de B estando en A: WITH CHECK (sin RETURNING, ver insertarMovimiento).
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarMovimiento(
+          c,
+          TENANT_B,
+          { archivo: req(archivoDe, TENANT_B), registradoPor: req(usuarioDe, TENANT_B) },
+          false,
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarPlazo(
+          c,
+          TENANT_B,
+          { archivo: req(archivoDe, TENANT_B), usuario: req(usuarioDe, TENANT_B) },
+          false,
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO parametros_de_cobro (tenant_id, dias_plazo_de_cobro, actualizado_por)
+           VALUES ($1, 10, $2)`,
+          [TENANT_B, usuarioDe[TENANT_B]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    // Con el tenant propio pero ids de B, conocidos: la foránea compuesta (23503).
+    const casos: Array<[string, Movimiento, string]> = [
+      [
+        'archivo de B',
+        { archivo: req(archivoDe, TENANT_B) },
+        'pagos_travel_file_id_tenant_id_moneda_iso_fkey',
+      ],
+      [
+        'otra moneda que la del archivo',
+        { moneda: 'USD' },
+        'pagos_travel_file_id_tenant_id_moneda_iso_fkey',
+      ],
+      ['pagador de B', { pagador: req(pagadorDe, TENANT_B) }, 'pagos_pagador_id_tenant_id_fkey'],
+      [
+        'usuario de B',
+        { registradoPor: req(usuarioDe, TENANT_B) },
+        'pagos_registrado_por_tenant_id_fkey',
+      ],
+    ];
+    for (const [motivo, m, restriccion] of casos) {
+      await expect(
+        comoTenant(TENANT_A, (c) => insertarMovimiento(c, TENANT_A, m)),
+        motivo,
+      ).rejects.toMatchObject({ code: '23503', constraint: restriccion });
+    }
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarPlazo(c, TENANT_A, { archivo: req(archivoDe, TENANT_B) }),
+      ),
+    ).rejects.toMatchObject({
+      code: '23503',
+      constraint: 'plazos_de_cobro_travel_file_id_tenant_id_fkey',
+    });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarPlazo(c, TENANT_A, { usuario: req(usuarioDe, TENANT_B) }),
+      ),
+    ).rejects.toMatchObject({
+      code: '23503',
+      constraint: 'plazos_de_cobro_registrado_por_tenant_id_fkey',
+    });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(`UPDATE parametros_de_cobro SET actualizado_por = $2 WHERE tenant_id = $1`, [
+          TENANT_A,
+          usuarioDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toMatchObject({
+      code: '23503',
+      constraint: 'parametros_de_cobro_actualizado_por_tenant_id_fkey',
+    });
+
+    // Control: lo mismo con ids propios entra (las foráneas no rechazan todo).
+    await yDeshacer(TENANT_A, async (c) => {
+      const r = await insertarMovimiento(c, TENANT_A, { pagador: req(pagadorDe, TENANT_A) });
+      expect(r.rowCount).toBe(1);
+    });
+  });
+
+  // E2 (ADR §Seguridad 2). Mutaciones: borrar la política, `DISABLE`/`NO FORCE ROW LEVEL SECURITY`,
+  // o una política permisiva extra con `USING (true)`.
+  it('E2 — una agencia no ve los movimientos, plazos ni parámetros de otra, ni adivinando el id; sin contexto, nada', async () => {
+    // Control: cada agencia ve exactamente lo suyo (sin esto, «B ve cero» sería verde con tablas vacías).
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      const vistos = await comoTenant(tenant, async (c) => ({
+        pagos: (await c.query('SELECT id, tenant_id FROM pagos')).rows as Array<{
+          id: string;
+          tenant_id: string;
+        }>,
+        plazos: (await c.query('SELECT tenant_id FROM plazos_de_cobro')).rows as Array<{
+          tenant_id: string;
+        }>,
+        parametros: (await c.query('SELECT tenant_id FROM parametros_de_cobro')).rows as Array<{
+          tenant_id: string;
+        }>,
+      }));
+      expect(vistos.pagos.map((p) => p.id).sort()).toEqual(
+        [req(pagoDe, tenant), req(reversoDe, tenant), req(pagoVivoDe, tenant)].sort(),
+      );
+      expect(vistos.pagos.every((p) => p.tenant_id === tenant)).toBe(true);
+      expect(vistos.plazos).toEqual([{ tenant_id: tenant }]);
+      expect(vistos.parametros).toEqual([{ tenant_id: tenant }]);
+    }
+
+    const ajenas = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT 1 FROM pagos WHERE id = $1', [pagoDe[TENANT_A]])).rowCount,
+      (await c.query('SELECT 1 FROM pagos WHERE travel_file_id = $1', [archivoDe[TENANT_A]]))
+        .rowCount,
+      (await c.query('SELECT 1 FROM pagos WHERE tenant_id = $1', [TENANT_A])).rowCount,
+      (await c.query('SELECT 1 FROM plazos_de_cobro WHERE id = $1', [plazoDe[TENANT_A]])).rowCount,
+      (await c.query('SELECT 1 FROM parametros_de_cobro WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      // La suma agrupada de la vista (T-332), por el archivo de A: nada.
+      (
+        await c.query(
+          'SELECT travel_file_id, sum(monto_unidades) FROM pagos WHERE travel_file_id = $1 GROUP BY 1',
+          [archivoDe[TENANT_A]],
+        )
+      ).rowCount,
+    ]);
+    expect(ajenas).toEqual([0, 0, 0, 0, 0, 0]);
+
+    for (const tabla of TABLAS_DE_COBRO) {
+      const { rowCount } = await app.query(`SELECT 1 FROM ${tabla}`);
+      expect(rowCount, `${tabla} sin contexto`).toBe(0);
+    }
+  });
+
+  // E3 (ADR §Seguridad 4). Mutación: dejar la foránea del reverso en (reverso_de_id, tenant_id) —
+  // los casos de otro archivo y otro monto pasan— o en (reverso_de_id) —también el de B—.
+  it('E3 — un reverso no apunta a un movimiento de otra agencia, de otro archivo, de otro monto ni de otra moneda', async () => {
+    const reversoDelVivo = (m: Movimiento): Movimiento => ({
+      tipo: 'REVERSO',
+      monto: '200000',
+      reversoDe: req(pagoVivoDe, TENANT_A),
+      ...m,
+    });
+    const casos: Array<[string, Movimiento, string[]]> = [
+      [
+        'movimiento de B (con archivo y monto de A)',
+        reversoDelVivo({ reversoDe: req(pagoVivoDe, TENANT_B) }),
+        ['pagos_reverso_de_id_fkey'],
+      ],
+      [
+        'movimiento de A desde otro archivo de A',
+        reversoDelVivo({ archivo: req(otroArchivoDe, TENANT_A) }),
+        ['pagos_reverso_de_id_fkey'],
+      ],
+      ['otro monto', reversoDelVivo({ monto: '199999' }), ['pagos_reverso_de_id_fkey']],
+      // La moneda la rechazan las dos foráneas; cuál informa primero es orden interno del motor.
+      [
+        'otra moneda',
+        reversoDelVivo({ moneda: 'USD' }),
+        ['pagos_reverso_de_id_fkey', 'pagos_travel_file_id_tenant_id_moneda_iso_fkey'],
+      ],
+    ];
+    for (const [motivo, m, restricciones] of casos) {
+      const error = await comoTenant(TENANT_A, (c) => insertarMovimiento(c, TENANT_A, m)).then(
+        () => null,
+        (e: unknown) => e as { code?: string; constraint?: string },
+      );
+      expect(error?.code, motivo).toBe('23503');
+      expect(restricciones, motivo).toContain(error?.constraint);
+    }
+
+    // Control: el reverso bien formado del mismo movimiento entra.
+    await yDeshacer(TENANT_A, async (c) => {
+      expect((await insertarMovimiento(c, TENANT_A, reversoDelVivo({}))).rowCount).toBe(1);
+    });
+  });
+
+  // E4 (ADR §Seguridad 6). Mutaciones: borrar `pagos_un_reverso_por_movimiento` (el segundo reverso
+  // pasa, también en carrera), borrar `pagos_validar_alta` (pasa el reverso de un reverso), quitarle
+  // el candado consultivo (en carrera la segunda transacción no espera y el error deja de ser el del
+  // disparador), o quitar el CHECK `pagos_reverso_no_a_si_mismo` (pasa el reverso de sí mismo).
+  it('E4 — un movimiento se reversa una sola vez, un reverso no se reversa y nada se reversa a sí mismo', async () => {
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarMovimiento(c, TENANT_A, {
+          tipo: 'REVERSO',
+          monto: '300000',
+          reversoDe: req(pagoDe, TENANT_A),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '23505', constraint: 'pagos_un_reverso_por_movimiento' });
+
+    // Mismo archivo, agencia, monto y moneda que el reverso, y su índice parcial aún libre: solo
+    // el disparador lo para.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarMovimiento(c, TENANT_A, {
+          tipo: 'REVERSO',
+          monto: '300000',
+          reversoDe: req(reversoDe, TENANT_A),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '23514', message: expect.stringMatching(/no se reversa/) });
+
+    const propio = randomUUID();
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarMovimiento(c, TENANT_A, {
+          id: propio,
+          tipo: 'REVERSO',
+          monto: '300000',
+          reversoDe: propio,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'pagos_reverso_no_a_si_mismo' });
+  });
+
+  it('E4b — en carrera, con dos conexiones de viajapro_app: el segundo reverso choca y el reverso de un reverso sin confirmar espera y se rechaza', async () => {
+    const pidApp = await pidDe(app);
+    const pidApp2 = await pidDe(app2);
+    const fijar = (c: Client) =>
+      c.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+
+    /**
+     * `primero` corre en `app` sin confirmar; `segundo` (con lo que devolvió el primero) se lanza en
+     * `app2` y se mira si queda bloqueado por `app`; luego `app` confirma y se recoge el resultado
+     * del segundo. La limpieza nunca tapa el error original.
+     */
+    const carrera = async (
+      primero: () => Promise<string>,
+      segundo: (delPrimero: string) => Promise<unknown>,
+    ): Promise<{ bloqueada: boolean; resultado: unknown }> => {
+      await app.query('BEGIN');
+      await app2.query('BEGIN');
+      let pendiente: Promise<unknown> | null = null;
+      let confirmada = false;
+      try {
+        await fijar(app);
+        await fijar(app2);
+        const delPrimero = await primero();
+        pendiente = capturar(segundo(delPrimero));
+        const bloqueada = await esperarBloqueo(pidApp2, pidApp);
+        await app.query('COMMIT');
+        confirmada = true;
+        return { bloqueada, resultado: await pendiente };
+      } finally {
+        if (!confirmada) await app.query('ROLLBACK');
+        if (pendiente) await pendiente;
+        await app2.query('ROLLBACK');
+      }
+    };
+
+    // (1) Dos reversos del MISMO pago a la vez.
+    const p2 = await comoTenant(TENANT_A, async (c) =>
+      idDe(await insertarMovimiento(c, TENANT_A, { monto: '50000' })),
+    );
+    const reversoDeP2: Movimiento = { tipo: 'REVERSO', monto: '50000', reversoDe: p2 };
+    const doble = await carrera(
+      async () => idDe(await insertarMovimiento(app, TENANT_A, reversoDeP2)),
+      () => insertarMovimiento(app2, TENANT_A, reversoDeP2),
+    );
+    expect(doble.bloqueada, 'el segundo reverso debía esperar al primero').toBe(true);
+    expect(doble.resultado).toMatchObject({
+      code: '23505',
+      constraint: 'pagos_un_reverso_por_movimiento',
+    });
+
+    // (2) El reverso de un reverso que aún no se ha confirmado.
+    const p3 = await comoTenant(TENANT_A, async (c) =>
+      idDe(await insertarMovimiento(c, TENANT_A, { monto: '60000' })),
+    );
+    const encima = await carrera(
+      async () =>
+        idDe(
+          await insertarMovimiento(app, TENANT_A, {
+            tipo: 'REVERSO',
+            monto: '60000',
+            reversoDe: p3,
+          }),
+        ),
+      (r3) =>
+        insertarMovimiento(app2, TENANT_A, { tipo: 'REVERSO', monto: '60000', reversoDe: r3 }),
+    );
+    expect(encima.bloqueada, 'el reverso del reverso debía esperar en el candado por archivo').toBe(
+      true,
+    );
+    expect(encima.resultado).toMatchObject({
+      code: '23514',
+      message: expect.stringMatching(/no se reversa/),
+    });
+  }, 30_000);
+
+  // E5 (ADR §4, R5). La base garantiza SOLO la unicidad (tenant_id, clave_idempotencia): la misma
+  // clave con otro importe no crea un segundo movimiento. Comparar el contenido y responder 200 con
+  // la fila existente o 409 tipado es de la API (T-330), con el candado por archivo. Mutación:
+  // borrar `pagos_tenant_id_clave_idempotencia_key`, o hacerla global (sin tenant_id: la de B choca).
+  it('E5 — la misma clave de idempotencia con otro importe no entra dos veces en la agencia; en otra agencia sí', async () => {
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarMovimiento(c, TENANT_A, { monto: '310000', clave: req(claveDe, TENANT_A) }),
+      ),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'pagos_tenant_id_clave_idempotencia_key',
+    });
+
+    // La red del paso 3 de §4: ON CONFLICT … DO NOTHING no inserta y no falla.
+    await yDeshacer(TENANT_A, async (c) => {
+      const r = await c.query(
+        `INSERT INTO pagos (id, tenant_id, travel_file_id, tipo, monto_unidades, moneda_iso,
+                            pagado_el, medio, clave_idempotencia, registrado_por)
+         VALUES (gen_random_uuid(), $1, $2, 'PAGO', 310000, 'COP', '2026-11-20', 'EFECTIVO', $3, $4)
+         ON CONFLICT (tenant_id, clave_idempotencia) DO NOTHING`,
+        [TENANT_A, archivoDe[TENANT_A], claveDe[TENANT_A], usuarioDe[TENANT_A]],
+      );
+      expect(r.rowCount).toBe(0);
+    });
+
+    // La clave es POR agencia: B puede usar la misma que A sin enterarse de nada.
+    await yDeshacer(TENANT_B, async (c) => {
+      const r = await insertarMovimiento(c, TENANT_B, { clave: req(claveDe, TENANT_A) });
+      expect(r.rowCount).toBe(1);
+    });
+  });
+
+  // E6 (ADR §Seguridad 5). Mutaciones: GRANT UPDATE/DELETE/TRUNCATE a viajapro_app (los 42501 pasan
+  // a éxito); borrar o deshabilitar `pagos_inmutables`/`pagos_sin_truncate` (el dueño edita y
+  // borra); quitar `v_es_dueno` de una salida (la API ya no la tiene por privilegio, pero sí otro
+  // rol con UPDATE); quitar la comparación de la fila entera del tachado (el tachado cambia el monto).
+  it('E6 — el libro solo crece: viajapro_app no edita, borra ni vacía pagos ni plazos (42501), y el dueño solo purga lo declarado o tacha la nota', async () => {
+    const vivo = req(pagoVivoDe, TENANT_A);
+    for (const [sql, params] of [
+      ['UPDATE pagos SET monto_unidades = 1 WHERE id = $1', [vivo]],
+      ['DELETE FROM pagos WHERE id = $1', [vivo]],
+      ['TRUNCATE pagos', []],
+      ["UPDATE plazos_de_cobro SET vence_el = '2099-01-01' WHERE id = $1", [plazoDe[TENANT_A]]],
+      ['DELETE FROM plazos_de_cobro WHERE id = $1', [plazoDe[TENANT_A]]],
+      ['TRUNCATE plazos_de_cobro', []],
+      ['DELETE FROM parametros_de_cobro WHERE tenant_id = $1', [TENANT_A]],
+      ['TRUNCATE parametros_de_cobro', []],
+    ] as const) {
+      await expect(
+        comoTenant(TENANT_A, (c) => c.query(sql, [...params])),
+        sql,
+      ).rejects.toMatchObject({ code: '42501' });
+    }
+    // Las salidas declaradas tampoco valen para la API: le falta el privilegio (y ser dueña).
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        await c.query("SELECT set_config('viajapro.purga_de_tenants', $1, true)", [TENANT_A]);
+        return c.query('DELETE FROM pagos WHERE id = $1', [vivo]);
+      }),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        await c.query("SELECT set_config('viajapro.tachado_de_notas', $1, true)", [vivo]);
+        return c.query(
+          'UPDATE pagos SET nota = NULL, referencia = NULL, nota_tachada_en = now() WHERE id = $1',
+          [vivo],
+        );
+      }),
+    ).rejects.toMatchObject({ code: '42501' });
+    // Los parámetros SÍ se actualizan (upsert del PUT): control de que el 42501 de arriba es del libro.
+    await yDeshacer(TENANT_A, async (c) => {
+      const r = await c.query(
+        'UPDATE parametros_de_cobro SET dias_plazo_de_cobro = 45 WHERE tenant_id = $1',
+        [TENANT_A],
+      );
+      expect(r.rowCount).toBe(1);
+    });
+
+    // El dueño de la tabla, siempre dentro de BEGIN … ROLLBACK.
+    const inmutable = { code: '23001', message: expect.stringMatching(/libro de cobro inmutable/) };
+    expect(
+      await comoDueno(TENANT_A, {}, [
+        ['UPDATE pagos SET monto_unidades = 1 WHERE id = $1', [vivo]],
+      ]),
+    ).toMatchObject(inmutable);
+    expect(
+      await comoDueno(TENANT_A, {}, [['DELETE FROM pagos WHERE id = $1', [vivo]]]),
+    ).toMatchObject(inmutable);
+    expect(await comoDueno(TENANT_A, {}, [['TRUNCATE pagos', []]])).toMatchObject(inmutable);
+    // Purga declarada para OTRA agencia: no borra la fila de A.
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.purga_de_tenants': TENANT_B }, [
+        ['DELETE FROM pagos WHERE id = $1', [vivo]],
+      ]),
+    ).toMatchObject(inmutable);
+    // La purga declarada no abre el UPDATE.
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.purga_de_tenants': TENANT_A }, [
+        ['UPDATE pagos SET monto_unidades = 1 WHERE id = $1', [vivo]],
+      ]),
+    ).toMatchObject(inmutable);
+    // Purga declarada de SU agencia: borra (y se deshace).
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.purga_de_tenants': TENANT_A }, [
+        ['DELETE FROM pagos WHERE id = $1', [vivo]],
+      ]),
+    ).toBe('aceptada');
+
+    // El tachado: nota y referencia a nulo y nada más, solo del id declarado, una vez.
+    const tachar =
+      'UPDATE pagos SET nota = NULL, referencia = NULL, nota_tachada_en = now() WHERE id = $1';
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.tachado_de_notas': vivo }, [[tachar, [vivo]]]),
+    ).toBe('aceptada');
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.tachado_de_notas': req(pagoDe, TENANT_A) }, [
+        [tachar, [vivo]],
+      ]),
+    ).toMatchObject(inmutable);
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.tachado_de_notas': vivo }, [
+        [
+          'UPDATE pagos SET nota = NULL, referencia = NULL, nota_tachada_en = now(), monto_unidades = 1 WHERE id = $1',
+          [vivo],
+        ],
+      ]),
+    ).toMatchObject(inmutable);
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.tachado_de_notas': vivo }, [
+        ['UPDATE pagos SET referencia = NULL, nota_tachada_en = now() WHERE id = $1', [vivo]],
+      ]),
+    ).toMatchObject(inmutable);
+    expect(
+      await comoDueno(TENANT_A, { 'viajapro.tachado_de_notas': vivo }, [
+        [tachar, [vivo]],
+        ["UPDATE pagos SET nota_tachada_en = now() + interval '1 day' WHERE id = $1", [vivo]],
+      ]),
+    ).toMatchObject(inmutable);
+
+    // Y la fila sigue diciendo lo que dijo.
+    const { rows } = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT monto_unidades, nota, referencia, nota_tachada_en FROM pagos WHERE id = $1', [
+        vivo,
+      ]),
+    );
+    expect(rows).toEqual([
+      {
+        monto_unidades: '200000',
+        nota: 'Recibido en oficina',
+        referencia: 'REC-0001',
+        nota_tachada_en: null,
+      },
+    ]);
+  }, 60_000);
+
+  // E7 (ADR §Seguridad 7). Mutación: borrar o deshabilitar `travel_files_venta_inmutable`, o quitar
+  // una de sus cuatro comparaciones (la columna correspondiente pasa a poder cambiar).
+  it('E7 — el total, la moneda, el id y la agencia del archivo no cambian, ni con viajapro_app ni con el dueño; el estado sí', async () => {
+    const archivo = req(archivoDe, TENANT_A);
+    const fijo = { code: '23001', message: expect.stringMatching(/archivo de viaje: el id/) };
+    for (const set of [
+      'venta_unidades = 1',
+      "moneda_iso = 'USD'",
+      'id = gen_random_uuid()',
+      `tenant_id = '${TENANT_B}'`,
+    ]) {
+      await expect(
+        comoTenant(TENANT_A, (c) =>
+          c.query(`UPDATE travel_files SET ${set} WHERE id = $1`, [archivo]),
+        ),
+        `viajapro_app: ${set}`,
+      ).rejects.toMatchObject(fijo);
+      expect(
+        await comoDueno(TENANT_A, {}, [
+          [`UPDATE travel_files SET ${set} WHERE id = $1`, [archivo]],
+        ]),
+        `dueño: ${set}`,
+      ).toMatchObject(fijo);
+    }
+
+    // Lo demás sigue funcionando: repetir el mismo valor, y cancelar el archivo.
+    await yDeshacer(TENANT_A, async (c) => {
+      const mismo = await c.query(
+        'UPDATE travel_files SET venta_unidades = venta_unidades, moneda_iso = moneda_iso WHERE id = $1',
+        [archivo],
+      );
+      expect(mismo.rowCount).toBe(1);
+      const cancelado = await c.query(
+        `UPDATE travel_files SET estado = 'CANCELADO', motivo_cancelacion = 'CLIENTE_DESISTIO',
+                cancelado_en = now(), cancelado_por = $2, actualizado_en = now()
+          WHERE id = $1`,
+        [archivo, usuarioDe[TENANT_A]],
+      );
+      expect(cancelado.rowCount).toBe(1);
+    });
+
+    const { rows } = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT venta_unidades, moneda_iso, estado FROM travel_files WHERE id = $1', [
+        archivo,
+      ]),
+    );
+    expect(rows).toEqual([{ venta_unidades: '980000', moneda_iso: 'COP', estado: 'ABIERTO' }]);
+  });
+
+  // PUNTO B (encabezado de la migración): `tenants.id` es inmutable por diseño y el disparador no
+  // abre excepción para la cascada. Mutación que la pone en rojo: `GRANT UPDATE (id) ON tenants` (o
+  // UPDATE de tabla) a cualquier rol de login o `viajapro_*`. La segunda mitad documenta que el
+  // dueño tampoco lo logra sobre una agencia con datos; ojo: esa mitad NO aísla al disparador (las
+  // foráneas compuestas ON UPDATE RESTRICT la detienen también), eso lo hace E7 con `tenant_id`.
+  it('P-B — nadie puede cambiar tenants.id: ningún rol del sistema tiene UPDATE sobre la columna, y el dueño falla sobre una agencia con archivo y pagos', async () => {
+    const { rows } = await admin.query(
+      `SELECT r.rolname
+         FROM pg_roles r
+         JOIN pg_class c ON c.oid = 'public.tenants'::regclass
+        WHERE (r.rolname LIKE 'viajapro\\_%' OR r.rolname = ANY($1))
+          AND r.oid <> c.relowner
+          AND (has_column_privilege(r.oid, c.oid, 'id', 'UPDATE')
+               OR has_table_privilege(r.oid, c.oid, 'UPDATE'))
+        ORDER BY 1`,
+      [[...(await rolesAVigilar(admin)), ...ROLES_DE_LOGIN_DECLARADOS]],
+    );
+    expect(rows, 'roles que pueden actualizar tenants.id').toEqual([]);
+
+    const intento = await comoDueno(TENANT_A, {}, [
+      ['UPDATE tenants SET id = gen_random_uuid() WHERE id = $1', [TENANT_A]],
+    ]);
+    expect(intento, 'el dueño cambió el id de una agencia con archivo y pagos').not.toBe(
+      'aceptada',
+    );
+    // Un error del motor, no «ninguna fila afectada». Cuál de las barreras salta primero (RESTRICT de
+    // una foránea compuesta, 23001/23503, o uno de los disparadores de las hijas) es orden interno
+    // de las acciones referenciales: no se fija.
+    expect((intento as { code?: string }).code, JSON.stringify(intento)).toMatch(/^[0-9A-Z]{5}$/);
+  });
+
+  // Mutaciones: no ampliar el CHECK (el INSERT del rol con cobro.ver falla), dar `cobro.corregir` a
+  // ASESOR u otro reparto en el relleno o en ROLES_SEMBRADOS, o que el relleno toque roles propios.
+  it('P-PERM — cobro.* en el catálogo cerrado y sembrados con separación de funciones (migración y agencias nuevas)', async () => {
+    const check = await admin.query(
+      `SELECT pg_get_constraintdef(oid) AS def, convalidated FROM pg_constraint
+        WHERE conrelid = 'public.roles'::regclass AND conname = 'roles_permisos_del_catalogo'`,
+    );
+    expect(check.rows[0]?.convalidated).toBe(true);
+    for (const p of ['cobro.ver', 'cobro.registrar', 'cobro.corregir']) {
+      expect(check.rows[0]?.def as string).toContain(`'${p}'`);
+    }
+
+    // Agencias nuevas: ROLES_SEMBRADOS, el mismo reparto.
+    for (const rol of ROLES_SEMBRADOS) {
+      expect(
+        (rol.permisos as readonly string[]).filter((p) => p.startsWith('cobro.')),
+        rol.clave,
+      ).toEqual(COBRO_POR_ROL[rol.clave]);
+    }
+
+    // Agencias existentes: se reejecuta el relleno de la migración sobre una agencia de prueba con
+    // los roles como eran antes, dentro de una transacción que se deshace (método de
+    // `permisos-de-archivo.spec.ts`). El relleno recorre todas las agencias y es idempotente.
+    const sql = readFileSync(`${rutaMigraciones}${MIGRACION_DE_COBRO}/migration.sql`, 'utf8');
+    const inicio = sql.indexOf('-- [relleno-cobro]');
+    const fin = sql.indexOf('-- [/relleno-cobro]');
+    expect(inicio, 'la migración perdió la marca [relleno-cobro]').toBeGreaterThan(0);
+    expect(fin).toBeGreaterThan(inicio);
+    const relleno = sql.slice(inicio, fin);
+    for (const [clave, permisos] of Object.entries(COBRO_POR_ROL)) {
+      const lista = permisos.map((p) => `'${p.replace('.', '\\.')}'`).join(',\\s*');
+      expect(relleno, clave).toMatch(new RegExp(`\\('${clave}',\\s*ARRAY\\[${lista}\\]\\)`));
+    }
+
+    const tenantD = tenantDeCorrida('d');
+    await admin.query('BEGIN');
+    try {
+      await admin.query(
+        `INSERT INTO tenants (id, slug, nombre, creado_en, actualizado_en)
+         VALUES ($1, $2, 'Agencia de cobros', now(), now())`,
+        [tenantD, `fixture-aislamiento-${MARCA}-d`],
+      );
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenantD]);
+      const rolesAntes: Array<[string | null, string, string[]]> = [
+        ['DUENO', 'Dueño', ['usuarios.administrar', 'archivo.ver', 'archivo.operar']],
+        ['ASESOR', 'Asesor', ['bandeja.operar', 'archivo.ver']],
+        ['OPERACIONES', 'Operaciones', ['archivo.ver', 'archivo.operar']],
+        [null, 'Propio', ['crm.escribir']],
+      ];
+      for (const [clave, nombre, permisos] of rolesAntes) {
+        await admin.query(
+          `INSERT INTO roles (id, tenant_id, nombre, clave, permisos, actualizado_en)
+           VALUES ($1, $2, $3, $4, $5, now())`,
+          [randomUUID(), tenantD, nombre, clave, permisos],
+        );
+      }
+      await admin.query(relleno);
+      const { rows: t } = await admin.query<{ x: string | null }>(
+        "SELECT current_setting('app.current_tenant', true) AS x",
+      );
+      expect(t[0]?.x ?? '', 'el relleno dejó el contexto fijado').toBe('');
+
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenantD]);
+      const { rows: despues } = await admin.query<{ nombre: string; permisos: string[] }>(
+        'SELECT nombre, permisos FROM roles WHERE tenant_id = $1 ORDER BY nombre',
+        [tenantD],
+      );
+      expect(Object.fromEntries(despues.map((r) => [r.nombre, r.permisos]))).toEqual({
+        Asesor: ['bandeja.operar', 'archivo.ver', 'cobro.ver', 'cobro.registrar'],
+        Dueño: [
+          'usuarios.administrar',
+          'archivo.ver',
+          'archivo.operar',
+          'cobro.ver',
+          'cobro.registrar',
+          'cobro.corregir',
+        ],
+        Operaciones: ['archivo.ver', 'archivo.operar', 'cobro.ver'],
+        Propio: ['crm.escribir'],
+      });
+
+      // Asignables a un rol propio; uno inventado lo sigue rechazando la base.
+      await admin.query(
+        `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+         VALUES ($1, $2, 'Caja', ARRAY['cobro.ver', 'cobro.corregir'], now())`,
+        [randomUUID(), tenantD],
+      );
+      await admin.query('SAVEPOINT inventado');
+      await expect(
+        admin.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES ($1, $2, 'Inventado', ARRAY['cobro.borrar'], now())`,
+          [randomUUID(), tenantD],
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
+      await admin.query('ROLLBACK TO SAVEPOINT inventado');
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+  }, 60_000);
+
+  // Mutaciones: quitar un CHECK (monto por tipo, catálogo de medio, pagador solo en PAGO, motivo,
+  // reverso solo en REVERSO, tachado sin texto) o la asignación de `registrado_en` del disparador.
+  it('P-CHK — el dinero y la forma del movimiento los impone la base; registrado_en lo fija ella', async () => {
+    const casos: Array<[string, Movimiento, string]> = [
+      ['PAGO negativo', { monto: '-1' }, 'pagos_monto_por_tipo'],
+      ['monto cero', { tipo: 'AJUSTE', monto: '0' }, 'pagos_monto_por_tipo'],
+      ['monto de 10^15', { monto: '1000000000000000' }, 'pagos_monto_por_tipo'],
+      ['DEVOLUCION negativa', { tipo: 'DEVOLUCION', monto: '-5' }, 'pagos_monto_por_tipo'],
+      ['PENALIDAD negativa', { tipo: 'PENALIDAD', monto: '-5' }, 'pagos_monto_por_tipo'],
+      ['PAGO sin fecha', { pagadoEl: null }, 'pagos_fecha_y_medio_por_tipo'],
+      ['AJUSTE con medio', { tipo: 'AJUSTE', medio: 'EFECTIVO' }, 'pagos_fecha_y_medio_por_tipo'],
+      ['medio fuera del catálogo', { medio: 'BITCOIN' }, 'pagos_medio_del_catalogo'],
+      [
+        'pagador en una DEVOLUCION',
+        { tipo: 'DEVOLUCION', pagador: req(pagadorDe, TENANT_A) },
+        'pagos_pagador_solo_en_pago',
+      ],
+      ['AJUSTE sin motivo', { tipo: 'AJUSTE', motivo: '  ' }, 'pagos_motivo_por_tipo'],
+      ['REVERSO sin original', { tipo: 'REVERSO' }, 'pagos_reverso_solo_en_reverso'],
+      [
+        'PAGO con original',
+        { reversoDe: req(pagoVivoDe, TENANT_A) },
+        'pagos_reverso_solo_en_reverso',
+      ],
+    ];
+    for (const [motivo, m, restriccion] of casos) {
+      await expect(
+        comoTenant(TENANT_A, (c) => insertarMovimiento(c, TENANT_A, m)),
+        motivo,
+      ).rejects.toMatchObject({ code: '23514', constraint: restriccion });
+    }
+    // Un descuento (AJUSTE negativo) y su reverso, que copia el signo: válidos.
+    await yDeshacer(TENANT_A, async (c) => {
+      const ajuste = idDe(
+        await insertarMovimiento(c, TENANT_A, { tipo: 'AJUSTE', monto: '-30000' }),
+      );
+      const reverso = await insertarMovimiento(c, TENANT_A, {
+        tipo: 'REVERSO',
+        monto: '-30000',
+        reversoDe: ajuste,
+      });
+      expect(reverso.rowCount).toBe(1);
+    });
+    // `registrado_en` inventado (en el pasado) no se guarda.
+    await yDeshacer(TENANT_A, async (c) => {
+      const r = await c.query(
+        `INSERT INTO pagos (id, tenant_id, travel_file_id, tipo, monto_unidades, moneda_iso,
+                            pagado_el, medio, clave_idempotencia, registrado_por, registrado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'PAGO', 1000, 'COP', '2026-11-20', 'PSE',
+                 gen_random_uuid(), $3, '2000-01-01T00:00:00Z')
+         RETURNING registrado_en > now() - interval '1 hour' AS reciente`,
+        [TENANT_A, archivoDe[TENANT_A], usuarioDe[TENANT_A]],
+      );
+      expect(r.rows).toEqual([{ reciente: true }]);
+    });
   });
 });

@@ -9,10 +9,11 @@ import { MOCK_DETALLES_ARCHIVOS } from '../../../lib/mock-archivos';
 
 let busqueda = '';
 const replace = vi.fn();
+const push = vi.fn();
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/viajes',
-  useRouter: () => ({ push: vi.fn(), replace, prefetch: vi.fn() }),
+  useRouter: () => ({ push, replace, prefetch: vi.fn() }),
   useSearchParams: () => new URLSearchParams(busqueda),
 }));
 vi.mock('../../../lib/archivos-api', async (importOriginal) => {
@@ -113,17 +114,65 @@ describe('Reservas (T-243)', () => {
     ).toHaveLength(1);
   });
 
-  it('elegir un archivo lo pone en la URL', async () => {
+  it('elegir un archivo lo pone en la URL con push, para que Atrás vuelva (T-318)', async () => {
     render(<ReservasPage />);
     fireEvent.click(await screen.findByText('File 1044'));
-    expect(replace).toHaveBeenCalledWith(`/viajes?id=${MOCK_DETALLES_ARCHIVOS[1]!.id}`, {
+    expect(push).toHaveBeenCalledWith(`/viajes?id=${MOCK_DETALLES_ARCHIVOS[1]!.id}`, {
       scroll: false,
     });
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('elegir A y luego B hace dos push, uno por archivo (T-318)', async () => {
+    render(<ReservasPage />);
+    fireEvent.click(await screen.findByText('File 1043'));
+    fireEvent.click(screen.getByText('File 1044'));
+    expect(push).toHaveBeenCalledTimes(2);
+    expect(push).toHaveBeenNthCalledWith(1, `/viajes?id=${MOCK_DETALLES_ARCHIVOS[0]!.id}`, {
+      scroll: false,
+    });
+    expect(push).toHaveBeenNthCalledWith(2, `/viajes?id=${MOCK_DETALLES_ARCHIVOS[1]!.id}`, {
+      scroll: false,
+    });
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('?id con un archivo que no existe: error claro, sin tumbar la lista ni console.error (T-318)', async () => {
+    const consola = vi.spyOn(console, 'error').mockImplementation(() => {});
+    busqueda = 'id=01932000-0000-7000-8000-00000000dead';
+    vi.mocked(api.obtenerArchivo).mockRejectedValue(
+      new api.ArchivosApiError('ARCHIVO_NO_ENCONTRADO', 'x', 404),
+    );
+    render(<ReservasPage />);
+    const alertas = await screen.findAllByRole('alert');
+    expect(alertas.some((a) => /ya no existe/.test(a.textContent ?? ''))).toBe(true);
+    expect(screen.getByRole('list', { name: 'Archivos de viaje' })).toBeDefined();
+    expect(consola).not.toHaveBeenCalled();
+    consola.mockRestore();
+  });
+
+  it('?id que no es un UUID: avisa y no llama a la API con él (T-318)', async () => {
+    busqueda = "id=1043'; DROP";
+    render(<ReservasPage />);
+    expect((await screen.findByTestId('reservas-enlace-invalido')).textContent).toMatch(
+      /no apunta a un archivo/,
+    );
+    expect(api.obtenerArchivo).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a la lista' }));
+    expect(push).toHaveBeenCalledWith('/viajes', { scroll: false });
   });
 
   describe('detalle', () => {
     beforeEach(() => {
       busqueda = `id=${MOCK_DETALLES_ARCHIVOS[0]!.id}`;
+    });
+
+    it('el estado inicial sale de ?id: abre ese archivo al montar (T-318)', async () => {
+      render(<ReservasPage />);
+      expect(await screen.findByRole('heading', { name: /File 1043/ })).toBeDefined();
+      expect(api.obtenerArchivo).toHaveBeenCalledWith(MOCK_DETALLES_ARCHIVOS[0]!.id);
+      expect(push).not.toHaveBeenCalled();
+      expect(replace).not.toHaveBeenCalled();
     });
 
     it('muestra reservas por mayorista y pasajeros, sin neto si no viene', async () => {
@@ -262,7 +311,7 @@ describe('Reservas (T-243)', () => {
       const alertas = await screen.findAllByRole('alert');
       expect(alertas.some((a) => /ya no existe/.test(a.textContent ?? ''))).toBe(true);
       fireEvent.click(screen.getByRole('button', { name: 'Volver a la lista' }));
-      expect(replace).toHaveBeenCalledWith('/viajes', { scroll: false });
+      expect(push).toHaveBeenCalledWith('/viajes', { scroll: false });
     });
   });
 
