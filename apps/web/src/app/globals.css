@@ -74,6 +74,37 @@
   --color-dorado-500: #c9a24b;
   --color-dorado-600: #ab8635;
 
+  /*
+   * Etiquetas de conversación (T-326, HU-inbox-1 §3): 8 colores de la paleta fija, sin rojo (reservado
+   * a lo vencido y destructivo). Cada color son tres tokens: fondo claro, texto oscuro del mismo tono
+   * y punto. Cada par fondo/texto mide >= 4,5:1 (AA); lo vigila etiquetas-paleta.spec.ts leyendo este
+   * archivo. En oscuro se invierten en `.dark`, más abajo.
+   */
+  --color-etiqueta-gris-fondo: #f5f5f5;
+  --color-etiqueta-gris-texto: #404040;
+  --color-etiqueta-gris-punto: #737373;
+  --color-etiqueta-azul-fondo: #dbeafe;
+  --color-etiqueta-azul-texto: #1e40af;
+  --color-etiqueta-azul-punto: #3b82f6;
+  --color-etiqueta-turquesa-fondo: #cffafe;
+  --color-etiqueta-turquesa-texto: #155e75;
+  --color-etiqueta-turquesa-punto: #06b6d4;
+  --color-etiqueta-verde-fondo: #dcfce7;
+  --color-etiqueta-verde-texto: #166534;
+  --color-etiqueta-verde-punto: #22c55e;
+  --color-etiqueta-ambar-fondo: #fef3c7;
+  --color-etiqueta-ambar-texto: #92400e;
+  --color-etiqueta-ambar-punto: #f59e0b;
+  --color-etiqueta-naranja-fondo: #ffedd5;
+  --color-etiqueta-naranja-texto: #9a3412;
+  --color-etiqueta-naranja-punto: #f97316;
+  --color-etiqueta-rosa-fondo: #fce7f3;
+  --color-etiqueta-rosa-texto: #9d174d;
+  --color-etiqueta-rosa-punto: #ec4899;
+  --color-etiqueta-dorado-fondo: #f6ecd0;
+  --color-etiqueta-dorado-texto: #6b5112;
+  --color-etiqueta-dorado-punto: #c9a24b;
+
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
 
   /* Escala tipográfica */
@@ -100,6 +131,32 @@
 
 .dark {
   color-scheme: dark;
+
+  /* Etiquetas de conversación en oscuro: fondo profundo, texto claro, punto más vivo (>= 4,5:1). */
+  --color-etiqueta-gris-fondo: #262626;
+  --color-etiqueta-gris-texto: #d4d4d4;
+  --color-etiqueta-gris-punto: #a3a3a3;
+  --color-etiqueta-azul-fondo: #172554;
+  --color-etiqueta-azul-texto: #bfdbfe;
+  --color-etiqueta-azul-punto: #60a5fa;
+  --color-etiqueta-turquesa-fondo: #083344;
+  --color-etiqueta-turquesa-texto: #a5f3fc;
+  --color-etiqueta-turquesa-punto: #22d3ee;
+  --color-etiqueta-verde-fondo: #052e16;
+  --color-etiqueta-verde-texto: #bbf7d0;
+  --color-etiqueta-verde-punto: #4ade80;
+  --color-etiqueta-ambar-fondo: #451a03;
+  --color-etiqueta-ambar-texto: #fde68a;
+  --color-etiqueta-ambar-punto: #fbbf24;
+  --color-etiqueta-naranja-fondo: #431407;
+  --color-etiqueta-naranja-texto: #fed7aa;
+  --color-etiqueta-naranja-punto: #fb923c;
+  --color-etiqueta-rosa-fondo: #500724;
+  --color-etiqueta-rosa-texto: #fbcfe8;
+  --color-etiqueta-rosa-punto: #f472b6;
+  --color-etiqueta-dorado-fondo: #3a2c07;
+  --color-etiqueta-dorado-texto: #f0dca0;
+  --color-etiqueta-dorado-punto: #e0b85c;
 }
 
 /* Densidad visual compacta para asesores intensivos (T-111) */

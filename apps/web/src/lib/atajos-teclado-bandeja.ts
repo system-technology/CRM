@@ -7,6 +7,7 @@
  * - `r`: Enfocar compositor de redacción de mensaje.
  * - `c`: Abrir modal «Enviar cotización».
  * - `s`: Crear seguimiento comercial / oportunidad.
+ * - `e`: Abrir el selector de etiquetas de la conversación (T-326).
  * - `?`: Abrir modal de ayuda de atajos de teclado.
  * - `Escape`: Cerrar modales o paneles abiertos.
  *
@@ -56,6 +57,12 @@ export const CATALOGO_ATAJOS_BANDEJA: DefinicionAtajo[] = [
     tecla: 's',
     etiquetaTecla: 'S',
     descripcion: 'Crear seguimiento comercial',
+    categoria: 'accion',
+  },
+  {
+    tecla: 'e',
+    etiquetaTecla: 'E',
+    descripcion: 'Etiquetar la conversación',
     categoria: 'accion',
   },
   {

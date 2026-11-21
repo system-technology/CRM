@@ -92,7 +92,7 @@ export class InboxErrorApi extends Error {
   }
 }
 
-async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
+export async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${obtenerBaseApi()}${ruta}`, {
@@ -126,7 +126,12 @@ async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
         );
       }
 
-      if (code === 'CONVERSACION_NO_ENCONTRADA' || res.status === 404) {
+      // Una etiqueta que no existe también responde 404, pero NO es «la conversación no existe»
+      // (T-326): conserva su código para que la pantalla diga cuál de las dos falta.
+      if (
+        code === 'CONVERSACION_NO_ENCONTRADA' ||
+        (res.status === 404 && code !== 'ETIQUETA_NO_ENCONTRADA')
+      ) {
         throw new InboxErrorApi(
           'CONVERSACION_NO_ENCONTRADA',
           'La conversación no existe o fue reasignada a otro asesor.',
@@ -164,6 +169,10 @@ export const inboxApi = {
     if (consulta.filtro) params.set('filtro', consulta.filtro);
     if (consulta.buscar) params.set('buscar', consulta.buscar);
     if (consulta.estado) params.set('estado', consulta.estado);
+    if (consulta.etiquetas && consulta.etiquetas.length > 0) {
+      params.set('etiquetas', consulta.etiquetas.join(','));
+      if (consulta.modo) params.set('modo', consulta.modo);
+    }
     if (consulta.cursor) params.set('cursor', consulta.cursor);
     if (consulta.limite) params.set('limite', consulta.limite.toString());
 
