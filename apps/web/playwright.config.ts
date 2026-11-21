@@ -63,6 +63,7 @@ export default defineConfig({
         '**/06-etiquetas.e2e-spec.ts',
         '**/07-cobros.e2e-spec.ts',
         '**/08-ingreso-por-usuario.e2e-spec.ts',
+        '**/09-reportes-por-alcance.e2e-spec.ts',
       ],
       dependencies: ['ingreso'],
       use: {
