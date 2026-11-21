@@ -336,6 +336,45 @@ T-590 en `ready` colgando de T-582, que todavía no estaba integrada. **Lo pill�
 diez líneas que recomendó el turno anterior** («ninguna `ready` depende de algo sin terminar»), no mi
 lectura. Correrla después de editar la cola, no solo antes.
 
+## 1.15 EL CIERRE AUTOMÁTICO DE TAREAS NO ESTÁ ROTO: lo envenenamos nosotras (2026-11-21, 20:40 UTC)
+
+**Corrige la creencia heredada más repetida de los últimos turnos.** El traspaso decía, en mayúsculas:
+«El cierre automático de tareas NO cierra nada. Lo comprobé CINCO veces en un solo lote». La
+observación era cierta. **El diagnóstico era falso, y nadie lo miró.**
+
+**La causa, con el texto literal del job:**
+
+> `Run node scripts/cerrar-tarea.mjs --rama "$RAMA" --pr "$PR" --sha "$SHA"`
+> `RAMA: a/T-582-pasajeros-en-cobros`
+> `T-584: blocked sin blocked_reason`
+> `##[error]Process completed with exit code 1.`
+
+`scripts/cerrar-tarea.mjs` **valida la cola entera antes de cerrar nada**. Una sola tarea `blocked`
+sin `blocked_reason` lo aborta, y entonces **ningún** PR cierra su tarea, aunque la suya esté
+perfecta.
+
+**Quién la envenenó, y es lo incómodo:** la madre del lote nocturno pasó **T-334 y T-336** a `blocked`
+—con buen criterio, porque las bloquea el propietario— **sin `blocked_reason`**. Desde ese commit, el
+cierre automático quedó roto para todo PR posterior. Ella vio el síntoma cinco veces, lo anotó cinco
+veces, y nunca abrió el log del job. **Y yo repetí exactamente el mismo error con T-584**, lo que
+volvió a tumbarlo en #480.
+
+**Arreglado:** las tres tienen ya su `blocked_reason` (`human_required: …`).
+
+**La regla que queda:** *toda tarea que pase a `blocked` lleva `blocked_reason` en el mismo commit.*
+No es cosmética: es lo que mantiene viva la compuerta de cierre de todo el repositorio. Añádelo a las
+comprobaciones de diez líneas sobre `tasks.yaml`, junto a los ids duplicados y a «ninguna `ready`
+depende de algo sin terminar»:
+
+```python
+sin = [t['id'] for t in ts if t.get('status')=='blocked' and not t.get('blocked_reason')]
+```
+
+**La lección de método, que es la misma de §1.5 y §1.14 por tercera vez en un día:** *contar las veces
+que algo falla no es diagnosticarlo.* Cinco observaciones idénticas sin abrir un log no valen lo que
+una lectura del log. Un síntoma repetido **invita** a tratarlo como constante del entorno, y es justo
+cuando conviene desconfiar.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.

@@ -7959,6 +7959,7 @@ tasks:
     priority: P1
     effort: M
     status: blocked
+    blocked_reason: "human_required: exige las columnas de la hoja real del piloto JD Tours. Esa muestra (sin nombres ni telefonos, R10) no existe en el repositorio y solo la puede entregar el propietario. Es el punto 12 de PENDIENTES-DEL-PROPIETARIO.md"
     depends_on:
       - T-316
       - T-327
@@ -7994,6 +7995,7 @@ tasks:
     priority: P1
     effort: L
     status: blocked
+    blocked_reason: "human_required: importar la hoja del piloto exige la hoja del piloto. Misma muestra que bloquea T-334, punto 12 de PENDIENTES-DEL-PROPIETARIO.md"
     depends_on:
       - T-334
       - T-327
@@ -12535,7 +12537,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-332
     acceptance:
@@ -12562,6 +12564,7 @@ tasks:
     priority: P1
     effort: S
     status: blocked
+    blocked_reason: "human_required: solo el propietario puede abrir una sesion orquestadora nueva DESDE LA RAIZ, que es lo unico que devuelve la profundidad de linaje a 1. Ninguna configuracion de usuario ni de organizacion cambia el limite de 8."
     acceptance:
       - "HECHO verificado el 2026-11-21 contra el error literal de la herramienta, no deducido:
         create_session y create_trigger responden «this session is at lineage depth 8 (limit 8), so it
@@ -12585,6 +12588,30 @@ tasks:
     notes: "Esta en blocked y no en ready a proposito: ninguna sesion de codigo puede resolverla.
       Ademas, create_trigger quedo denegado por el clasificador del modo automatico («Destructive or
       Unwanted Actions») antes incluso de toparse con el limite de linaje."
+  - id: T-592
+    title: "QA: la e2e 09-reportes-por-alcance rompe el job navegador al azar y bloquea integraciones ajenas"
+    type: test
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "MEDIDO, no supuesto (2026-11-21, 20:30 UTC): el job navegador salio rojo a la vez en #480 y
+        #481, dos PR sin nada en comun (uno toca clases de color, el otro anade tres enteros al
+        contrato de cobros). Se relanzo el job SIN CAMBIAR UNA LINEA en los dos y los dos pasaron.
+        Eso es inestabilidad demostrada por experimento, no por argumento"
+      - "El fallo siempre es el mismo: 09-reportes-por-alcance.e2e-spec.ts:164, «No se pudo ingresar
+        con ana@agenciademo.test. La pantalla dijo: Error de autenticacion». La prueba la introdujo
+        #477 (T-346) el mismo dia"
+      - "Es P1 porque no rompe una funcionalidad: rompe LA COMPUERTA. Una prueba que tumba al azar PR
+        que no la tocan obliga a relanzar a mano y, peor, ensena a integrar con rojos"
+      - "T-548 ya cerro una fragilidad identica en otra e2e; mirar como se resolvio alli antes de
+        inventar"
+      - "LO QUE NO SE HACE: desactivar, saltar ni marcar como permitido-que-falle la prueba para ver
+        verde. Si el ingreso de la siembra es lo fragil, se arregla el ingreso"
+    source: "dos relanzamientos limpios medidos por la madre del lote (2026-11-21)"
+    owner: qa
+
   - id: T-585
     title: "Reportes: el dashboard de administracion esta duplicado (ReportesListo repite reportes-reales)"
     type: refactor
@@ -12690,7 +12717,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: ready
     depends_on:
       - T-582
     acceptance:
@@ -12731,7 +12758,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: done
     depends_on:
       - T-346
     acceptance:
