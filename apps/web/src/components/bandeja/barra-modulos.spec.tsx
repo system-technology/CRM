@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import React from 'react';
 import { BarraModulos, calcularIniciales } from './barra-modulos';
 import * as authApi from '../../lib/auth-api';
+import * as crmApi from '../../lib/crm-api';
+import { pedirAperturaDeBusquedaGlobal } from '../../lib/busqueda-global-evento';
 import type { SesionActual } from '@viajapro/contracts';
 
 const mockPush = vi.fn();
@@ -91,6 +93,61 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
     });
   });
 
+  describe('Hoy y Seguimientos con contador (T-317)', () => {
+    const pendiente = (id: string) => ({
+      id,
+      descripcion: 'x',
+      venceEn: '2026-10-27T16:00:00.000Z',
+      completadoEn: null,
+      asesorId: null,
+      asesorNombre: null,
+      contactoId: null,
+      contactoNombre: null,
+      oportunidadId: null,
+      oportunidadTitulo: null,
+      conversacionId: null,
+    });
+
+    it('muestra Hoy primero y Seguimientos, con la cifra en el nombre accesible', async () => {
+      vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+        fecha: '2026-10-27',
+        vencidos: [pendiente('01932000-0000-7000-8000-000000000071')],
+        deHoy: [
+          pendiente('01932000-0000-7000-8000-000000000072'),
+          pendiente('01932000-0000-7000-8000-000000000073'),
+        ],
+      } as never);
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      const sidebar = screen.getByTestId('sidebar-escritorio');
+      expect(await within(sidebar).findByRole('link', { name: 'Hoy, 3 pendientes' })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Seguimientos, 1 vencido' })).toBeDefined();
+      const nombres = within(sidebar)
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('aria-label'))
+        .filter(Boolean);
+      expect(nombres[0]).toBe('Hoy, 3 pendientes');
+      expect(nombres[1]).toBe('Conversaciones');
+      expect(nombres.indexOf('Seguimientos, 1 vencido')).toBeGreaterThan(
+        nombres.indexOf('Archivos de viaje'),
+      );
+      expect(nombres.indexOf('Seguimientos, 1 vencido')).toBeLessThan(nombres.indexOf('Contactos'));
+    });
+
+    it('con cero pendientes no pinta contador y el nombre es solo la etiqueta', () => {
+      vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+        fecha: '2026-10-27',
+        vencidos: [],
+        deHoy: [],
+      });
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      const sidebar = screen.getByTestId('sidebar-escritorio');
+      expect(within(sidebar).getByRole('link', { name: 'Hoy' })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Seguimientos' })).toBeDefined();
+      expect(within(sidebar).queryByTestId('contador-menu-hoy')).toBeNull();
+      expect(within(sidebar).queryByTestId('contador-menu-seguimientos')).toBeNull();
+    });
+  });
+
   describe('Renderizado y Navegación de Módulos', () => {
     it('renderiza la barra lateral con enlaces a los módulos principales', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);
@@ -103,16 +160,62 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(within(sidebar).getByRole('link', { name: 'Archivos de viaje' })).toBeDefined();
     });
 
-    it('renderiza la barra de navegación inferior móvil con touch targets >= 44px', () => {
+    it('la barra inferior móvil es Hoy · Conversaciones · Cotizar · Archivos · Más (T-320)', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);
 
       const navMovil = screen.getByRole('navigation', { name: /Navegación móvil inferior/i });
-      expect(navMovil).toBeDefined();
+      const nombres = [
+        ...within(navMovil).getAllByRole('link'),
+        ...within(navMovil).getAllByRole('button'),
+      ].map((e) => e.getAttribute('aria-label'));
+      expect(nombres).toEqual(['Hoy', 'Conversaciones', 'Cotizar', 'Archivos de viaje', 'Más']);
+      // Buscar ya no ocupa pestaña (la lupa vive en la cabecera del marco).
+      expect(within(navMovil).queryByText('Buscar')).toBeNull();
+      expect(within(navMovil).queryByText('Perfil')).toBeNull();
+    });
 
-      const botonPerfilMovil = screen.getByTestId('boton-perfil-movil');
-      expect(botonPerfilMovil).toBeDefined();
-      expect(botonPerfilMovil.className).toContain('min-h-[44px]');
-      expect(botonPerfilMovil.className).toContain('min-w-[44px]');
+    it('«Más» abre la hoja con el resto de módulos, y esta se cierra con Esc', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
+
+      fireEvent.click(screen.getByTestId('barra-boton-mas'));
+      const hoja = screen.getByRole('dialog', { name: 'Más opciones' });
+      // Esta sesión no tiene permisos de administración: Configuración se oculta (solo oculta).
+      expect(
+        within(hoja)
+          .getAllByRole('link')
+          .map((e) => e.getAttribute('aria-label') ?? e.textContent?.trim()),
+      ).toEqual([
+        'Oportunidades',
+        'Cotizaciones',
+        'Seguimientos',
+        'Contactos',
+        'Catálogo',
+        'Reportes',
+        'Privacidad',
+        'Términos',
+        'Cookies',
+      ]);
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
+    });
+
+    it('la campana de la hoja «Más» abre el panel de notificaciones', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      fireEvent.click(screen.getByTestId('barra-boton-mas'));
+      fireEvent.click(screen.getByTestId('mas-notificaciones'));
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
+      expect(screen.getByRole('dialog', { name: /notificaciones/i })).toBeDefined();
+    });
+
+    it('el evento de la lupa móvil abre la misma paleta de búsqueda', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      expect(screen.queryByRole('dialog', { name: /búsqueda|buscar/i })).toBeNull();
+      act(() => {
+        pedirAperturaDeBusquedaGlobal();
+      });
+      expect(screen.getByRole('dialog', { name: /búsqueda|buscar/i })).toBeDefined();
     });
 
     it('permite expandir y contraer la barra lateral de escritorio con botón toggle (T-034)', () => {
@@ -175,12 +278,15 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(screen.getByTestId('indicador-agencia-unica').textContent).toContain('Viajes El Sol');
     });
 
-    it('abre el diálogo de sesión al pulsar el botón de perfil móvil', () => {
+    it('abre el diálogo de sesión desde la entrada de perfil de la hoja «Más»', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      fireEvent.click(screen.getByTestId('barra-boton-mas'));
       const perfilMovilBtn = screen.getByTestId('boton-perfil-movil');
+      expect(perfilMovilBtn.className).toContain('min-h-[48px]');
 
       fireEvent.click(perfilMovilBtn);
 
+      expect(screen.queryByTestId('hoja-mas')).toBeNull();
       expect(screen.getByTestId('dialogo-perfil-sesion')).toBeDefined();
     });
 

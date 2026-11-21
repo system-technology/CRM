@@ -31,8 +31,10 @@ import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import { POLITICA_POR_DEFECTO } from '@viajapro/domain';
 import {
+  CONSULTA_DEL_INDICE_DE_APODOS,
   decidirSiSePuedeSembrarLaAgencia,
   DOMINIO_DE_LA_SEMILLA,
+  elIndiceDeApodosEsGlobal,
   esAnfitrionLocal,
   estaDentroDelRepositorio,
   SLUG_DE_LA_AGENCIA_DEMO,
@@ -80,6 +82,15 @@ function leerCatalogo(ruta: string | undefined): LecturaDelCatalogo {
   }
 }
 
+/**
+ * Lee el catálogo con el rol propietario (el catálogo es legible por cualquiera). Si la consulta
+ * falla, el error sube y la siembra aborta: la guarda falla cerrada.
+ */
+async function leerSiElIndiceDeApodosEsGlobal(plataforma: PrismaClient): Promise<boolean> {
+  const filas = await plataforma.$queryRawUnsafe<unknown[]>(CONSULTA_DEL_INDICE_DE_APODOS);
+  return elIndiceDeApodosEsGlobal(filas[0]);
+}
+
 async function principal(): Promise<void> {
   const lectura = leerCatalogo(process.env['CATALOGO_JSON']);
   const urlPlataforma = process.env['DATABASE_URL'];
@@ -102,6 +113,8 @@ async function principal(): Promise<void> {
     ...entrada,
     agenciasAjenas: 0,
     identidadesAjenas: 0,
+    otrasAgencias: 0,
+    indiceDeApodosGlobal: true,
   });
   if (!decision.permitido) throw new Error(decision.motivo);
   if (!lectura.datos || !lectura.catalogo) throw new Error('Catálogo no disponible.');
@@ -112,20 +125,33 @@ async function principal(): Promise<void> {
   const plataforma = new PrismaClient({ datasources: { db: { url: urlPlataforma } } });
   const app = new PrismaClient({ datasources: { db: { url: urlApp } } });
   try {
-    // Segunda pasada, solo en remoto: contar lo ajeno.
-    if (!esAnfitrionLocal(anfitrion)) {
-      const [agenciasAjenas, identidadesAjenas] = await Promise.all([
-        plataforma.tenant.count({ where: { slug: { notIn: [SLUG_DE_LA_AGENCIA_DEMO, slug] } } }),
-        plataforma.identidad.count({
-          where: { NOT: { correo: { endsWith: DOMINIO_DE_LA_SEMILLA } } },
-        }),
+    // Segunda pasada, con la base. En local y en remoto: la precondición de ADR-0031 §4 (con el
+    // índice de apodos global, ninguna segunda agencia). Solo en remoto: contar lo ajeno.
+    const remoto = !esAnfitrionLocal(anfitrion);
+    const [agenciasAjenas, identidadesAjenas, otrasAgencias, indiceDeApodosGlobal] =
+      await Promise.all([
+        remoto
+          ? plataforma.tenant.count({
+              where: { slug: { notIn: [SLUG_DE_LA_AGENCIA_DEMO, slug] } },
+            })
+          : Promise.resolve(0),
+        remoto
+          ? plataforma.identidad.count({
+              where: { NOT: { correo: { endsWith: DOMINIO_DE_LA_SEMILLA } } },
+            })
+          : Promise.resolve(0),
+        plataforma.tenant.count({ where: { slug: { not: slug } } }),
+        leerSiElIndiceDeApodosEsGlobal(plataforma),
       ]);
-      decision = decidirSiSePuedeSembrarLaAgencia({
-        ...entrada,
-        agenciasAjenas,
-        identidadesAjenas,
-      });
-      if (!decision.permitido) throw new Error(decision.motivo);
+    decision = decidirSiSePuedeSembrarLaAgencia({
+      ...entrada,
+      agenciasAjenas,
+      identidadesAjenas,
+      otrasAgencias,
+      indiceDeApodosGlobal,
+    });
+    if (!decision.permitido) throw new Error(decision.motivo);
+    if (remoto) {
       console.warn(
         `AVISO: se está sembrando una agencia de DESARROLLO en una base REMOTA (anfitrión: ${anfitrion}). ` +
           'La base solo contiene agencias e identidades de la semilla.',

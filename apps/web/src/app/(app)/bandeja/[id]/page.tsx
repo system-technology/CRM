@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type {
   ConversacionDetalle,
   EventoBandeja,
@@ -23,6 +23,7 @@ import {
   PanelRight,
   Sparkles,
   FileText,
+  Calculator,
   Zap,
   Lock,
 } from 'lucide-react';
@@ -66,6 +67,7 @@ import { useViajesBandeja } from '../../../../lib/viajes-bandeja';
 import {
   componerViaje,
   cotizacionVigente,
+  enlaceParaCotizar,
   type CotizacionParaViaje,
 } from '../../../../lib/viaje-solicitado-logica';
 import { TarjetaCotizacionEnviada } from '../../../../components/bandeja/tarjeta-cotizacion-enviada';
@@ -456,6 +458,35 @@ export default function BandejaConversacionPage() {
         : null,
     [fichaContacto, indiceDeViajes, cotizacionDelViaje],
   );
+
+  // «Cotizar» desde el compositor: lleva el contacto, esta conversación y lo que ya se sabe del viaje.
+  const hrefCotizarDesdeElChat = useMemo(
+    () =>
+      enlaceParaCotizar({
+        contactoId: detalle?.contactoId ?? fichaContacto?.contacto.id ?? '',
+        conversacionId: id,
+        oportunidadId: viajeDelPanel?.oportunidadId ?? null,
+        paqueteId: viajeDelPanel?.paqueteId ?? null,
+        destino: viajeDelPanel?.destino ?? null,
+        fechaSalida: viajeDelPanel?.fechaSalida ?? null,
+        pasajeros: viajeDelPanel?.pasajeros ?? null,
+      }),
+    [detalle?.contactoId, fichaContacto, id, viajeDelPanel],
+  );
+
+  // Llegada desde «Enviar en esta conversación» (detalle de la cotización): abre el MISMO diálogo de
+  // envío por el canal con esa cotización elegida. Se consume una vez y se quita de la URL.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const cotizacionParaEnviar = searchParams.get('enviarCotizacion');
+  const [cotizacionInicialId, setCotizacionInicialId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!cotizacionParaEnviar || !detalle) return;
+    if (!cotizacionesContacto.some((c) => c.id === cotizacionParaEnviar)) return;
+    setCotizacionInicialId(cotizacionParaEnviar);
+    setModalEnviarCotizacionAbierto(true);
+    router.replace(`/bandeja/${id}`, { scroll: false });
+  }, [cotizacionParaEnviar, detalle, cotizacionesContacto, id, router]);
 
   // Evaluar cierre de ventana con borrador (0c.19)
   useEffect(() => {
@@ -922,8 +953,25 @@ export default function BandejaConversacionPage() {
       'BANDEJA_CONVERSACION',
     );
     return (
-      <div className="flex h-full w-full items-center justify-center p-6">
-        <AvisoErrorAccionable error={errorDetallado} onReintentar={() => void cargarHistorial()} />
+      <div className="flex h-full w-full flex-col">
+        {/* Sin barra inferior en la conversación a pantalla completa: la salida es esta flecha (T-320). */}
+        <div className="flex h-14 shrink-0 items-center border-b border-neutral-200 bg-white px-2.5 md:hidden dark:border-neutral-800 dark:bg-neutral-900">
+          <Link
+            href="/bandeja"
+            data-testid="volver-a-conversaciones"
+            className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-300 dark:hover:bg-neutral-800"
+            title="Volver a lista de conversaciones"
+            aria-label="Volver a lista de conversaciones"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
+          <AvisoErrorAccionable
+            error={errorDetallado}
+            onReintentar={() => void cargarHistorial()}
+          />
+        </div>
       </div>
     );
   }
@@ -939,7 +987,7 @@ export default function BandejaConversacionPage() {
         <div className="hidden border-b border-neutral-100 bg-neutral-50/50 px-4 py-1 sm:block dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <MigasDePan
             elementos={[
-              { etiqueta: 'Inicio', href: '/' },
+              { etiqueta: 'Hoy', href: '/' },
               { etiqueta: 'Bandeja', href: '/bandeja' },
               { etiqueta: detalle.contactoNombre || detalle.contactoTelefono || 'Conversación' },
             ]}
@@ -961,22 +1009,22 @@ export default function BandejaConversacionPage() {
 
             {/* Avatar determinista */}
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold sm:h-9 sm:w-9 ${avatarColores.bg} ${avatarColores.text}`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:h-9 sm:w-9 ${avatarColores.bg} ${avatarColores.text}`}
             >
               {iniciales}
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <h2 className="truncate text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                <h2 className="truncate text-sm font-bold text-neutral-900 dark:text-neutral-100">
                   {detalle.contactoNombre || detalle.contactoTelefono}
                 </h2>
-                <span className="cifra hidden text-[11px] text-neutral-400 sm:inline">
+                <span className="cifra hidden text-sm text-neutral-400 sm:inline">
                   {detalle.contactoTelefono}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-[10px] text-neutral-400">
+                <p className="truncate text-sm text-neutral-400">
                   {detalle.asignadoANombre
                     ? `Asignado a: ${detalle.asignadoANombre}`
                     : 'Sin asignar'}
@@ -988,7 +1036,7 @@ export default function BandejaConversacionPage() {
                     onClick={() => void manejarTomar()}
                     disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-tomar"
-                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px]"
+                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] md:min-w-0"
                     title={
                       !puedeOperarBandeja
                         ? explicacionFaltaPermiso('bandeja.operar')
@@ -996,7 +1044,7 @@ export default function BandejaConversacionPage() {
                     }
                   >
                     <UserPlus className="h-3 w-3" />
-                    <span>Tomar</span>
+                    <span className="sr-only md:not-sr-only">Tomar</span>
                   </button>
                 )}
                 {permisosAsignacion.puedeSoltar && (
@@ -1005,7 +1053,7 @@ export default function BandejaConversacionPage() {
                     onClick={() => void manejarSoltar()}
                     disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-soltar"
-                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] md:min-w-0 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     title={
                       !puedeOperarBandeja
                         ? explicacionFaltaPermiso('bandeja.operar')
@@ -1013,7 +1061,7 @@ export default function BandejaConversacionPage() {
                     }
                   >
                     <UserMinus className="h-3 w-3" />
-                    <span>Soltar</span>
+                    <span className="sr-only md:not-sr-only">Soltar</span>
                   </button>
                 )}
                 {permisosAsignacion.puedeReasignar && (
@@ -1022,7 +1070,7 @@ export default function BandejaConversacionPage() {
                     onClick={() => setModalReasignarAbierto(true)}
                     disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-reasignar"
-                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] md:min-w-0 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     title={
                       !puedeOperarBandeja
                         ? explicacionFaltaPermiso('bandeja.operar')
@@ -1030,7 +1078,7 @@ export default function BandejaConversacionPage() {
                     }
                   >
                     <UserCheck className="h-3 w-3" />
-                    <span>Reasignar</span>
+                    <span className="sr-only md:not-sr-only">Reasignar</span>
                   </button>
                 )}
               </div>
@@ -1044,7 +1092,7 @@ export default function BandejaConversacionPage() {
 
             {/* SLA Badge (visible a partir de sm) */}
             {detalle.slaVenceEn && (
-              <span className="bg-alerta-50 text-alerta-700 dark:bg-alerta-950/40 dark:text-alerta-300 hidden shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold sm:inline-flex">
+              <span className="bg-alerta-50 text-alerta-700 dark:bg-alerta-950/40 dark:text-alerta-300 hidden shrink-0 rounded-md px-2 py-1 text-sm font-semibold sm:inline-flex">
                 SLA Activo
               </span>
             )}
@@ -1053,7 +1101,7 @@ export default function BandejaConversacionPage() {
             <button
               type="button"
               onClick={() => setMostrarFichaLateral((p) => !p)}
-              className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 px-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 xl:hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 px-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 xl:hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
               title="Ver la solicitud de viaje y la ficha del viajero"
               aria-label="Alternar ficha de cliente"
             >
@@ -1068,13 +1116,13 @@ export default function BandejaConversacionPage() {
           <div
             role="alert"
             data-testid="aviso-conversacion-retirada"
-            className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-100 px-4 py-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-200"
+            className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-100 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-200"
           >
             <div className="flex items-center gap-2.5">
               <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
                 <p className="font-bold">Esta conversación se asignó a otra persona</p>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                <p className="text-sm text-amber-800 dark:text-amber-300">
                   Ya no tienes acceso para enviar mensajes. Tu borrador sigue aquí para que no
                   pierdas lo que escribiste.
                 </p>
@@ -1082,7 +1130,7 @@ export default function BandejaConversacionPage() {
             </div>
             <Link
               href="/bandeja"
-              className="flex min-h-[44px] shrink-0 items-center justify-center rounded-xl bg-amber-200 px-3.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-300 dark:bg-amber-900 dark:text-amber-100"
+              className="flex min-h-[44px] shrink-0 items-center justify-center rounded-xl bg-amber-200 px-3.5 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-300 dark:bg-amber-900 dark:text-amber-100"
             >
               Ir a mi bandeja
             </Link>
@@ -1107,11 +1155,11 @@ export default function BandejaConversacionPage() {
           {detalle.notas.map((nota) => (
             <div
               key={nota.id}
-              className="mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-950 shadow-2xs dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
+              className="mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-950 shadow-2xs dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
             >
               <div className="flex items-center justify-between font-bold text-amber-900 dark:text-amber-300">
                 <span>📌 Nota Interna (Equipo)</span>
-                <span className="text-[10px] font-normal">{nota.autorNombre}</span>
+                <span className="text-sm font-normal">{nota.autorNombre}</span>
               </div>
               <p className="mt-1 whitespace-pre-wrap">{nota.texto}</p>
             </div>
@@ -1133,10 +1181,14 @@ export default function BandejaConversacionPage() {
               >
                 {/* Renderizado de tarjeta de cotización si tiene referencia */}
                 {m.cotizacionId ? (
-                  <TarjetaCotizacionEnviada cotizacionId={m.cotizacionId} texto={m.texto} />
+                  <TarjetaCotizacionEnviada
+                    cotizacionId={m.cotizacionId}
+                    conversacionId={id}
+                    texto={m.texto}
+                  />
                 ) : (
                   <div
-                    className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-2xs sm:max-w-[70%] ${
+                    className={`max-w-[85%] rounded-2xl p-3 text-sm shadow-2xs sm:max-w-[70%] ${
                       esEntrante
                         ? 'rounded-tl-xs border border-neutral-200 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100'
                         : esFallido
@@ -1145,7 +1197,7 @@ export default function BandejaConversacionPage() {
                     }`}
                   >
                     {!esEntrante && m.autorNombre && (
-                      <div className="text-acento-100 mb-1 text-[10px] font-semibold opacity-80">
+                      <div className="text-acento-100 mb-1 text-sm font-semibold opacity-80">
                         {m.autorNombre}
                       </div>
                     )}
@@ -1153,7 +1205,7 @@ export default function BandejaConversacionPage() {
                     <p className="whitespace-pre-wrap">{m.texto}</p>
 
                     <div
-                      className={`mt-1.5 flex items-center justify-end gap-1.5 text-[10px] ${
+                      className={`mt-1.5 flex items-center justify-end gap-1.5 text-sm ${
                         esEntrante
                           ? 'text-neutral-400'
                           : esFallido
@@ -1180,7 +1232,7 @@ export default function BandejaConversacionPage() {
 
                     {esFallido && (
                       <div className="border-alerta-200 dark:border-alerta-900 mt-2 border-t pt-1.5">
-                        <p className="text-alerta-800 dark:text-alerta-300 text-[11px] font-medium">
+                        <p className="text-alerta-800 dark:text-alerta-300 text-sm font-medium">
                           {
                             interpretarErrorDeEnvio(
                               m.motivoFallo || 'Error al conectar con WhatsApp API.',
@@ -1208,7 +1260,7 @@ export default function BandejaConversacionPage() {
                 onClick={() => scrollToBottom('smooth')}
                 role="status"
                 aria-live="polite"
-                className="flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-bold text-white shadow-xl hover:bg-black"
+                className="flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-1.5 text-sm font-bold text-white shadow-xl hover:bg-black"
               >
                 <span>⬇️ Hay {mensajesNuevosSinVer} mensaje(s) nuevo(s)</span>
               </button>
@@ -1236,6 +1288,15 @@ export default function BandejaConversacionPage() {
                 mostrarAvisoBorrador={avisoBorrador.debeMostrar}
                 onAbrirPlantillas={() => setModalPlantillasAbierto(true)}
               />
+              {/* Con la ventana cerrada también se cotiza: enviarla es lo que exige plantilla */}
+              <Link
+                href={hrefCotizarDesdeElChat}
+                data-testid="boton-cotizar-desde-chat"
+                className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1 text-sm font-bold shadow-2xs"
+              >
+                <Calculator className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Cotizar</span>
+              </Link>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1256,12 +1317,12 @@ export default function BandejaConversacionPage() {
 
               <form onSubmit={(e) => void manejarEnvio(e)} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="flex rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 dark:border-neutral-700 dark:bg-neutral-800">
                       <button
                         type="button"
                         onClick={() => setModoNota(false)}
-                        className={`flex min-h-[40px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
+                        className={`flex min-h-[44px] items-center rounded-md px-2.5 py-1 text-sm font-medium transition-colors sm:min-h-[32px] ${
                           !modoNota
                             ? 'bg-white font-semibold text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-neutral-100'
                             : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
@@ -1272,7 +1333,7 @@ export default function BandejaConversacionPage() {
                       <button
                         type="button"
                         onClick={() => setModoNota(true)}
-                        className={`flex min-h-[40px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
+                        className={`flex min-h-[44px] items-center rounded-md px-2.5 py-1 text-sm font-medium transition-colors sm:min-h-[32px] ${
                           modoNota
                             ? 'bg-amber-400 font-bold text-amber-950 shadow-2xs'
                             : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
@@ -1282,10 +1343,20 @@ export default function BandejaConversacionPage() {
                       </button>
                     </div>
 
+                    {/* «Cotizar» a un toque, con el contexto de este chat (para quién y desde dónde) */}
+                    <Link
+                      href={hrefCotizarDesdeElChat}
+                      data-testid="boton-cotizar-desde-chat"
+                      className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-1 text-sm font-bold shadow-2xs sm:min-h-[32px]"
+                    >
+                      <Calculator className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Cotizar</span>
+                    </Link>
+
                     <button
                       type="button"
                       onClick={() => setSugerenciasAbierto((p) => !p)}
-                      className={`flex min-h-[40px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
+                      className={`flex min-h-[44px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm font-semibold transition-colors sm:min-h-[32px] ${
                         sugerenciasAbierto
                           ? 'border-acento-300 bg-acento-100 text-acento-900 dark:border-acento-800 dark:bg-acento-950 dark:text-acento-200'
                           : 'border-acento-200 bg-acento-50 text-acento-700 hover:bg-acento-100 dark:border-acento-900/60 dark:bg-acento-950/40 dark:text-acento-300'
@@ -1302,7 +1373,7 @@ export default function BandejaConversacionPage() {
                       data-testid="boton-abrir-enviar-cotizacion"
                       onClick={() => setModalEnviarCotizacionAbierto(true)}
                       disabled={conversacionRetirada || !puedeOperarBandeja}
-                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[32px] dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                       title={
                         !puedeOperarBandeja
                           ? explicacionFaltaPermiso('bandeja.operar')
@@ -1324,7 +1395,7 @@ export default function BandejaConversacionPage() {
                         setDisparadorSlashInfo(null);
                         setIndiceSeleccionadoRR(0);
                       }}
-                      className={`flex min-h-[40px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
+                      className={`flex min-h-[44px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm font-semibold transition-colors sm:min-h-[32px] ${
                         menuRespuestasAbierto
                           ? 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200'
                           : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
@@ -1334,7 +1405,7 @@ export default function BandejaConversacionPage() {
                     >
                       <Zap className="h-3.5 w-3.5 text-amber-500" />
                       <span className="hidden sm:inline">Respuestas</span>
-                      <span className="rounded bg-amber-100 px-1 font-mono text-[10px] text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                      <span className="rounded bg-amber-100 px-1 font-mono text-sm text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
                         /
                       </span>
                     </button>
@@ -1354,7 +1425,7 @@ export default function BandejaConversacionPage() {
                 {!puedeOperarBandeja && (
                   <div
                     data-testid="aviso-solo-lectura-bandeja"
-                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100/90 p-2 text-xs text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300"
+                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100/90 p-2 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300"
                   >
                     <Lock className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
                     <span>
@@ -1390,7 +1461,7 @@ export default function BandejaConversacionPage() {
                           : 'Escribe tu respuesta a cliente o «/» para respuestas rápidas...'
                     }
                     disabled={enviando || conversacionRetirada || !puedeOperarBandeja}
-                    className={`flex-1 rounded-lg border p-2.5 text-xs focus:outline-none ${
+                    className={`flex-1 rounded-lg border p-2.5 text-sm focus:outline-none ${
                       modoNota
                         ? 'border-amber-300 bg-amber-50/50 focus:border-amber-500 dark:border-amber-900/60 dark:bg-amber-950/20'
                         : 'focus:border-acento-600 border-neutral-200 bg-neutral-50 focus:bg-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100'
@@ -1412,7 +1483,7 @@ export default function BandejaConversacionPage() {
                           : 'Enviar mensaje'
                     }
                     aria-label={modoNota ? 'Guardar nota interna' : 'Enviar mensaje'}
-                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 ${
                       modoNota
                         ? 'bg-amber-600 hover:bg-amber-700'
                         : 'bg-acento-700 hover:bg-acento-800'
@@ -1489,6 +1560,7 @@ export default function BandejaConversacionPage() {
       {modalEnviarCotizacionAbierto && detalle && (
         <ModalEnviarCotizacion
           conversacionId={detalle.id}
+          cotizacionInicialId={cotizacionInicialId}
           contactoNombre={detalle.contactoNombre}
           contactoTelefono={detalle.contactoTelefono}
           ventanaAbierta={detalle.ventana.abierta && !tiempoVentana.cerrada}

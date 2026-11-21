@@ -30,7 +30,7 @@ interface Props {
 }
 
 const CLASE_INPUT =
-  'min-h-[44px] w-20 rounded-lg border border-neutral-300 bg-white p-2 text-center text-xs text-neutral-900 focus-visible:ring-2 focus-visible:ring-acento-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white';
+  'min-h-[44px] w-20 rounded-lg border border-neutral-300 bg-white p-2 text-center text-sm text-neutral-900 focus-visible:ring-2 focus-visible:ring-acento-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white';
 
 export function EdadesDePasajeros(props: Props) {
   const { ninos, infantes } = props;
@@ -54,7 +54,7 @@ export function EdadesDePasajeros(props: Props) {
         <div key={`nino-${i}`} className="flex items-center justify-between gap-2">
           <label
             htmlFor={`edad-nino-${i}`}
-            className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+            className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
           >
             Edad del niño {i + 1}
           </label>
@@ -82,7 +82,7 @@ export function EdadesDePasajeros(props: Props) {
           <div className="flex items-center justify-between gap-2">
             <label
               htmlFor={`edad-infante-${i}`}
-              className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+              className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
             >
               Edad del infante {i + 1}
             </label>
@@ -103,7 +103,7 @@ export function EdadesDePasajeros(props: Props) {
               className={CLASE_INPUT}
             />
           </div>
-          <label className="flex min-h-[44px] items-center gap-2 text-xs text-neutral-700 dark:text-neutral-300">
+          <label className="flex min-h-[44px] items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
             <input
               type="checkbox"
               checked={silla[i] ?? false}

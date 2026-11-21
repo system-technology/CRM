@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   BarChart3,
@@ -13,6 +14,7 @@ import {
 import { EsqueletoReportes } from '../../../components/comun/esqueletos';
 import { formatearDinero, ZONA_HORARIA_COLOMBIA, formatearFecha } from '../../../lib/formato';
 import { usePermisos } from '../../../lib/permisos';
+import { hrefDePestana, leerPestanaDeUrl } from '../../../lib/parametros-url';
 import {
   ErrorReportesApi,
   obtenerResumenDeReportesApi,
@@ -61,10 +63,26 @@ interface ReportesPageProps {
   ahora?: () => Date;
 }
 
-export default function ReportesPage({ ahora }: ReportesPageProps) {
+/** Lista cerrada de `?pestana=` (la vista del reporte); la primera es la de por defecto (T-318). */
+const PESTANAS_REPORTES = ['dueno', 'asesor'] as const;
+const ROL_POR_PESTANA: Record<(typeof PESTANAS_REPORTES)[number], RolVistaReporte> = {
+  dueno: 'DUENO',
+  asesor: 'ASESOR',
+};
+
+function ReportesContenido({ ahora }: ReportesPageProps) {
   const { puedeVerNetoYMargen } = usePermisos();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const parametros = searchParams ?? new URLSearchParams();
+  const rol = ROL_POR_PESTANA[leerPestanaDeUrl(parametros, PESTANAS_REPORTES)];
+  // `replace`: cambiar de vista no es navegar; Atrás sale de Reportes.
+  const setRol = (r: RolVistaReporte) =>
+    router.replace(
+      hrefDePestana('/reportes', r === 'DUENO' ? 'dueno' : 'asesor', PESTANAS_REPORTES, parametros),
+      { scroll: false },
+    );
   const [periodo, setPeriodo] = useState<RangoPeriodo>('ultimos_30_dias');
-  const [rol, setRol] = useState<RolVistaReporte>('DUENO');
   const [estado, setEstado] = useState<EstadoReportes>({ tipo: 'cargando' });
   const [intento, setIntento] = useState(0);
   // Zona IANA de la agencia (R9). `null` mientras se lee; si falla, respaldo a Bogotá.
@@ -511,5 +529,13 @@ function ReportesListo({
         </section>
       )}
     </div>
+  );
+}
+
+export default function ReportesPage({ ahora }: ReportesPageProps) {
+  return (
+    <Suspense fallback={<div aria-busy="true" className="min-h-64 flex-1" />}>
+      <ReportesContenido {...(ahora ? { ahora } : {})} />
+    </Suspense>
   );
 }

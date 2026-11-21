@@ -61,13 +61,13 @@ export function SolicitudDeViaje({
       <div className="flex items-center justify-between gap-2">
         <h3
           id="titulo-solicitud-de-viaje"
-          className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300"
+          className="text-sm font-bold text-neutral-600 dark:text-neutral-300"
         >
           Solicitud de viaje
         </h3>
         {oportunidad && (
           <div className="flex items-center gap-2">
-            <span className="rounded-xs border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold text-neutral-800 dark:border-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+            <span className="rounded-xs border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 text-sm font-bold text-neutral-800 dark:border-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
               {oportunidad.etapa.nombre}
             </span>
             {onCrearOportunidad && (
@@ -75,7 +75,7 @@ export function SolicitudDeViaje({
                 type="button"
                 data-testid="btn-crear-oportunidad"
                 onClick={onCrearOportunidad}
-                className="text-acento-700 dark:text-acento-100 text-[11px] font-semibold hover:underline"
+                className="text-acento-700 dark:text-acento-100 flex min-h-[44px] items-center px-2 text-sm font-semibold hover:underline"
                 title="Crear una oportunidad nueva para este viajero"
               >
                 + Nueva
@@ -96,7 +96,7 @@ export function SolicitudDeViaje({
               type="button"
               data-testid="btn-crear-oportunidad"
               onClick={onCrearOportunidad}
-              className="text-acento-700 dark:text-acento-100 inline-flex min-h-[44px] items-center gap-1.5 text-xs font-semibold hover:underline md:min-h-[32px]"
+              className="text-acento-700 dark:text-acento-100 inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold hover:underline md:min-h-[32px]"
             >
               <PlusCircle className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Crear oportunidad</span>
@@ -120,7 +120,7 @@ export function SolicitudDeViaje({
             >
               {destino ?? 'Destino por definir'}
               {oportunidad && oportunidad.titulo && (
-                <span className="mt-0.5 block text-[11px] font-normal text-neutral-600 dark:text-neutral-400">
+                <span className="mt-0.5 block text-sm font-normal text-neutral-600 dark:text-neutral-400">
                   {oportunidad.titulo}
                 </span>
               )}
@@ -169,7 +169,7 @@ export function SolicitudDeViaje({
           data-testid="cotizacion-vigente"
           className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 dark:border-neutral-700 dark:bg-neutral-900"
         >
-          <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
             Cotización vigente · v{viaje.cotizacion.version}
           </p>
           <p className="cifra mt-0.5 font-bold text-neutral-900 dark:text-neutral-100">
@@ -177,14 +177,14 @@ export function SolicitudDeViaje({
           </p>
           {vigencia && (
             <p
-              className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${CLASES_POR_NIVEL[vigencia.nivel]}`}
+              className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-sm font-semibold ${CLASES_POR_NIVEL[vigencia.nivel]}`}
             >
               Vence {vigencia.cuando}
             </p>
           )}
           <Link
             href={`/cotizaciones/${viaje.cotizacion.id}`}
-            className="text-acento-700 dark:text-acento-100 mt-1.5 flex min-h-[44px] items-center gap-1.5 text-xs font-semibold hover:underline md:min-h-[28px]"
+            className="text-acento-700 dark:text-acento-100 mt-1.5 flex min-h-[44px] items-center gap-1.5 text-sm font-semibold hover:underline md:min-h-[28px]"
           >
             <FileText className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Ver cotización</span>
@@ -196,7 +196,7 @@ export function SolicitudDeViaje({
         <Link
           href={`/viajes?id=${viaje.archivo.id}`}
           data-testid="enlace-archivo"
-          className="text-acento-700 dark:text-acento-100 flex min-h-[44px] items-center gap-1.5 text-xs font-semibold hover:underline md:min-h-[28px]"
+          className="text-acento-700 dark:text-acento-100 flex min-h-[44px] items-center gap-1.5 text-sm font-semibold hover:underline md:min-h-[28px]"
         >
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Archivo de viaje {viaje.archivo.numero} en Reservas</span>
@@ -206,7 +206,7 @@ export function SolicitudDeViaje({
       <Link
         href={hrefCotizar}
         data-testid="boton-cotizar"
-        className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold shadow-sm transition-colors"
+        className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold shadow-sm transition-colors"
       >
         <PlusCircle className="h-4 w-4" aria-hidden="true" />
         <span>Cotizar</span>

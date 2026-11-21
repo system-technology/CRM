@@ -285,7 +285,7 @@ describe('Cotizador — Accesibilidad, foco, etiquetas y teclado (T-129)', () =>
     render(<CotizadorPage />);
 
     // Esperar a que renderice el botón de guardar
-    const btnGuardar = await screen.findByRole('button', { name: /guardar oficial/i });
+    const btnGuardar = await screen.findByRole('button', { name: /^guardar cotización$/i });
     expect(btnGuardar).toBeDefined();
 
     // Enfocar y abrir el modal

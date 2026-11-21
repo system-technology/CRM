@@ -90,10 +90,13 @@ model Tenant {
   cambiosDeEtapa    OportunidadCambioEtapa[]
   motivosDePerdida  MotivoDePerdida[]
 
-  conversaciones Conversacion[]
-  mensajes       Mensaje[]
-  adjuntos       Adjunto[]
-  plantillas     PlantillaWhatsapp[]
+  conversaciones            Conversacion[]
+  mensajes                  Mensaje[]
+  adjuntos                  Adjunto[]
+  plantillas                PlantillaWhatsapp[]
+  /// T-324: el catálogo de etiquetas de conversación de la agencia y sus asignaciones.
+  etiquetas                 Label[]
+  etiquetasDeConversaciones ConversationLabel[]
 
   cotizaciones        Cotizacion[]
   versionesCotizacion VersionCotizacion[]
@@ -629,6 +632,9 @@ model Usuario {
   pasajerosActualizados        Passenger[]              @relation("PassengerActualizadoPor")
   notificaciones               Notification[]
   cambiosDeReservaHechos       ReservaCambioEstado[]
+  etiquetasCreadas             Label[]                  @relation("LabelCreadoPor")
+  etiquetasActualizadas        Label[]                  @relation("LabelActualizadoPor")
+  etiquetasAsignadas           ConversationLabel[]      @relation("ConversationLabelAsignadaPor")
 
   @@unique([tenantId, correo])
   @@unique([tenantId, identidadId])
@@ -1867,8 +1873,13 @@ model Conversacion {
   slaVenceEn         DateTime? @map("sla_vence_en") @db.Timestamptz(3)
   primeraRespuestaEn DateTime? @map("primera_respuesta_en") @db.Timestamptz(3)
 
-  /// Etiquetas libres por agencia, R12. Mismo tratamiento que en contactos.
+  /// LEGADO (T-324): arreglo libre, sin catálogo ni color. La migración 20261121110000 lo copió a
+  /// `etiquetas` + `conversacion_etiquetas` y desde entonces NADIE lo escribe. Se retira en una
+  /// migración posterior, cuando T-325 cambie `ConversacionResumen.etiquetas`. Ver `etiquetasAsignadas`.
   etiquetas String[] @default([])
+
+  /// Las etiquetas de la agencia puestas en esta conversación (T-324, HU-inbox-1).
+  etiquetasAsignadas ConversationLabel[]
 
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
@@ -1897,6 +1908,71 @@ model Conversacion {
   /// El filtro SLA_VENCIDO. Parcial: solo las que aún no han tenido respuesta.
   @@index([tenantId, slaVenceEn], map: "idx_conversaciones_sla_pendiente")
   @@map("conversaciones")
+}
+
+/// Etiqueta de conversación de la agencia (`Label`, T-324, HU-inbox-1). **Tabla por agencia, no
+/// enum** (R12): cada agencia define las suyas; nacen tres sembradas (Pagado, Pago pendiente,
+/// Seguimiento). Ayuda visual del chat: ningún saldo ni estado de cobro se calcula con ella.
+///
+/// En la migración, y no expresable aquí:
+/// - `UNIQUE (tenant_id, lower(btrim(nombre)))` (`etiquetas_tenant_id_nombre_normalizado_key`):
+///   «Pagado» y «pagado » chocan. Prisma no sabe hacer `upsert` sobre una unicidad de expresión:
+///   se crea con `createMany({ skipDuplicates: true })` (ON CONFLICT DO NOTHING).
+/// - CHECK `etiquetas_nombre_forma`: 1 a 30 caracteres, sin espacios a los lados ni de control.
+/// - CHECK `etiquetas_color_de_la_paleta`: gris, azul, turquesa, verde, ambar, naranja, rosa, dorado.
+///
+/// Borrado FÍSICO (HU-inbox-1 §3): se lleva sus asignaciones en cascada. Los topes (50 por agencia,
+/// 10 por conversación) los impone la API, no la base. El nombre es texto libre de la agencia:
+/// logs, eventos y outbox llevan solo el id.
+model Label {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  nombre String @db.VarChar(30)
+  /// Clave de la paleta del sistema de diseño (CHECK en la migración). No es enum de Postgres:
+  /// ampliar la paleta es ampliar el CHECK, sin reescribir la tabla.
+  color  String @db.VarChar(16)
+  orden  Int    @default(0) @db.SmallInt
+
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn    DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  creadoPorId      String?  @map("creado_por") @db.Uuid
+  actualizadoPorId String?  @map("actualizado_por") @db.Uuid
+  creadoPor        Usuario? @relation("LabelCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  actualizadoPor   Usuario? @relation("LabelActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  conversaciones ConversationLabel[]
+
+  /// Destino de la foránea compuesta de `conversacion_etiquetas`.
+  @@unique([id, tenantId])
+  @@index([tenantId, orden])
+  @@map("etiquetas")
+}
+
+/// Qué etiquetas tiene cada conversación (T-324). La clave es la terna con el tenant: poner dos
+/// veces la misma no duplica (ON CONFLICT DO NOTHING). Foráneas COMPUESTAS con el tenant hacia la
+/// conversación, la etiqueta y el usuario: una asignación no cruza agencias ni aunque falle un
+/// `WHERE`. Sin UPDATE para el rol de aplicación: se pone o se quita.
+model ConversationLabel {
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  conversacionId String       @map("conversacion_id") @db.Uuid
+  conversacion   Conversacion @relation(fields: [conversacionId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+  etiquetaId     String       @map("etiqueta_id") @db.Uuid
+  etiqueta       Label        @relation(fields: [etiquetaId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  /// UTC (R9). En lo copiado del arreglo libre por la migración, el instante de la copia.
+  asignadaEn    DateTime @default(now()) @map("asignada_en") @db.Timestamptz(3)
+  /// Nulo en lo copiado por la migración.
+  asignadaPorId String?  @map("asignada_por") @db.Uuid
+  asignadaPor   Usuario? @relation("ConversationLabelAsignadaPor", fields: [asignadaPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  @@id([tenantId, conversacionId, etiquetaId])
+  /// El filtro de la bandeja por etiqueta, con el tenant delante.
+  @@index([tenantId, etiquetaId, conversacionId], map: "conversacion_etiquetas_tenant_etiqueta_conversacion_idx")
+  @@map("conversacion_etiquetas")
 }
 
 enum EstadoConversacion {

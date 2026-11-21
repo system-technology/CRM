@@ -79,6 +79,8 @@ export function estaUsandoApiRealInbox(): boolean {
   return true;
 }
 
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class InboxErrorApi extends Error {
   constructor(
     readonly code: string,
@@ -189,6 +191,10 @@ export const inboxApi = {
     if (!estaUsandoApiRealInbox()) {
       return obtenerConversacionDetalleMock(id);
     }
+
+    // La API solo conoce UUID: un id que no lo es («/bandeja/inexistente») no puede existir, y
+    // preguntar devolvería un 400 de validación en vez del «no encontrada» que la pantalla explica.
+    if (!ES_UUID.test(id)) return null;
 
     try {
       const bruto = await pedirInbox<unknown>(`/api/v1/conversaciones/${id}`);

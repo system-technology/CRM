@@ -46,14 +46,14 @@ export function MigasDePan({
           className="focus-visible:ring-acento-600 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only sm:not-sr-only sm:ml-1.5 sm:text-xs sm:font-medium">
+          <span className="sr-only sm:not-sr-only sm:ml-1.5 sm:text-sm sm:font-medium">
             {volverTexto}
           </span>
         </Link>
       )}
 
       <nav aria-label="Migas de pan" data-testid="migas-de-pan" className="flex items-center">
-        <ol className="flex flex-wrap items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+        <ol className="flex flex-wrap items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400">
           {elementos.map((item, index) => {
             const esUltimo = index === elementos.length - 1;
             const Icono = item.icono;
@@ -81,7 +81,7 @@ export function MigasDePan({
                 ) : item.href ? (
                   <Link
                     href={item.href}
-                    className="focus-visible:ring-acento-600 hover:text-acento-700 dark:hover:text-acento-400 flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                    className="focus-visible:ring-acento-600 hover:text-acento-700 dark:hover:text-acento-400 flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:underline focus-visible:ring-2 focus-visible:outline-none md:min-h-0 md:min-w-0 md:px-1"
                   >
                     {Icono && <Icono className="h-3.5 w-3.5" />}
                     <span>{item.etiqueta}</span>

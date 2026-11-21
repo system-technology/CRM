@@ -2,15 +2,16 @@ import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
+let busqueda = '';
+const push = vi.fn();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push,
     replace: vi.fn(),
     prefetch: vi.fn(),
   }),
-  useSearchParams: () => ({
-    get: vi.fn(() => null),
-  }),
+  useSearchParams: () => new URLSearchParams(busqueda),
   usePathname: () => '/catalogo',
 }));
 
@@ -24,11 +25,13 @@ vi.mock('../../../lib/catalogo-api', async (importOriginal) => {
 });
 
 import { estaUsandoCatalogoReal, listarSalidasApi } from '../../../lib/catalogo-api';
+import { MOCK_PAQUETES_CATALOGO } from '../../../lib/mock-catalogo';
 import CatalogoPage from './page';
 
 describe('CatalogoPage — Explorar y Estado Sin Catálogo (T-018, T-019)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    busqueda = '';
     localStorage.clear();
   });
 
@@ -92,6 +95,53 @@ describe('CatalogoPage — Explorar y Estado Sin Catálogo (T-018, T-019)', () =
       expect(screen.getByText('Tour Islas del Rosario VIP')).toBeDefined();
       expect(screen.getByTestId('chip-cupos-salida')).toBeDefined();
       expect(screen.getByTestId('tarjeta-salida-publicada')).toBeDefined();
+    });
+  });
+
+  describe('?id= (T-318)', () => {
+    const PAQUETE = MOCK_PAQUETES_CATALOGO[0]!;
+
+    beforeEach(() => {
+      vi.mocked(estaUsandoCatalogoReal).mockReturnValue(false);
+      vi.mocked(listarSalidasApi).mockResolvedValue([]);
+    });
+
+    it('/catalogo?id=X abre la ficha del paquete X al montar', async () => {
+      busqueda = `id=${PAQUETE.id}`;
+      render(<CatalogoPage />);
+      const ficha = await screen.findByRole('dialog', { name: /San Andrés/ });
+      expect(ficha).toBeDefined();
+      expect(screen.queryByTestId('catalogo-aviso-enlace')).toBeNull();
+    });
+
+    it('abrir un paquete hace push con su id (Atrás cierra la ficha)', async () => {
+      render(<CatalogoPage />);
+      fireEvent.click((await screen.findAllByRole('button', { name: /Ver tarifario/ }))[0]!);
+      expect(push).toHaveBeenCalledWith(`/catalogo?id=${PAQUETE.id}`, { scroll: false });
+    });
+
+    it('cerrar la ficha abierta por enlace empuja /catalogo', async () => {
+      busqueda = `id=${PAQUETE.id}`;
+      render(<CatalogoPage />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Cerrar detalle' }));
+      expect(push).toHaveBeenCalledWith('/catalogo', { scroll: false });
+    });
+
+    it('un UUID que no existe avisa con claridad y el catálogo sigue usable', async () => {
+      busqueda = 'id=01932000-0000-7000-8000-00000000dead';
+      render(<CatalogoPage />);
+      expect((await screen.findByTestId('catalogo-aviso-enlace')).textContent).toMatch(
+        /No encontramos el paquete/,
+      );
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(screen.getAllByRole('button', { name: /Ver tarifario/ }).length).toBeGreaterThan(0);
+    });
+
+    it('un valor que no es UUID avisa y no abre nada', async () => {
+      busqueda = 'id=../../etc/passwd';
+      render(<CatalogoPage />);
+      expect((await screen.findByTestId('catalogo-aviso-enlace')).textContent).toMatch(/no apunta/);
+      expect(screen.queryByRole('dialog')).toBeNull();
     });
   });
 });

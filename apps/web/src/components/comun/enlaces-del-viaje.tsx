@@ -11,7 +11,7 @@ const ICONOS = {
 } as const;
 
 const BASE =
-  'inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold';
+  'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 py-1 text-sm font-semibold';
 
 /**
  * Una fila de enlaces entre las piezas del mismo viaje (conversación, contacto, cotización, file).
@@ -38,7 +38,7 @@ export function EnlacesDelViaje({
             <span
               key={e.clave}
               aria-hidden="true"
-              className="h-9 w-32 animate-pulse rounded-lg bg-neutral-100 motion-reduce:animate-none dark:bg-neutral-800"
+              className="h-11 w-32 animate-pulse rounded-lg bg-neutral-100 motion-reduce:animate-none dark:bg-neutral-800"
             />
           );
         }

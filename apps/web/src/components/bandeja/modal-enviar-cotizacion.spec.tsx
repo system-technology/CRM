@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ModalEnviarCotizacion } from './modal-enviar-cotizacion';
 import type { CotizacionResumen, Mensaje } from '@viajapro/contracts';
 import { inboxApi } from '../../lib/inbox-api';
+import * as cotizacionesApi from '../../lib/cotizaciones-api';
 
 const cotizacionesEjemplo: CotizacionResumen[] = [
   {
@@ -30,9 +31,118 @@ const cotizacionesEjemplo: CotizacionResumen[] = [
   },
 ];
 
+const mensajeEnviado: Mensaje = {
+  id: '00000000-0000-4000-a000-000000000098',
+  conversacionId: '00000000-0000-4000-a000-000000000001',
+  direccion: 'SALIENTE',
+  tipo: 'TEXTO',
+  texto: 'Cotización enviada',
+  adjuntos: [],
+  estado: 'ENTREGADO',
+  motivoFallo: null,
+  autorId: '00000000-0000-4000-a000-000000000001',
+  autorNombre: 'Asesor',
+  ocurridoEn: '2026-11-20T12:00:00.000Z',
+  cotizacionId: cotizacionesEjemplo[0]!.id,
+};
+
 describe('ModalEnviarCotizacion (T-074)', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  function montar(extra: Partial<React.ComponentProps<typeof ModalEnviarCotizacion>> = {}) {
+    return render(
+      <ModalEnviarCotizacion
+        conversacionId="00000000-0000-4000-a000-000000000001"
+        contactoNombre="Laura Gómez"
+        contactoTelefono="+573109876543"
+        ventanaAbierta={true}
+        cotizaciones={cotizacionesEjemplo}
+        onCerrar={vi.fn()}
+        onCotizacionEnviada={vi.fn()}
+        {...extra}
+      />,
+    );
+  }
+
+  // T-347: la cotización solo pasa a ENVIADA cuando el envío por el canal salió.
+  it('marca la cotización ENVIADA solo DESPUÉS de que el envío por el canal salió', async () => {
+    const orden: string[] = [];
+    vi.spyOn(inboxApi, 'enviarCotizacion').mockImplementation(() => {
+      orden.push('canal');
+      return Promise.resolve(mensajeEnviado);
+    });
+    const estado = vi
+      .spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi')
+      .mockImplementation(() => {
+        orden.push('estado');
+        return Promise.resolve({} as never);
+      });
+
+    montar();
+    fireEvent.click(screen.getByTestId('boton-confirmar-enviar-cotizacion'));
+
+    await waitFor(() => expect(estado).toHaveBeenCalledTimes(1));
+    expect(estado).toHaveBeenCalledWith(cotizacionesEjemplo[0]!.id, 'ENVIADA');
+    expect(orden).toEqual(['canal', 'estado']);
+  });
+
+  it('si el envío por el canal FALLA, la cotización NO se marca ENVIADA (T-347)', async () => {
+    vi.spyOn(inboxApi, 'enviarCotizacion').mockRejectedValue(
+      new Error('VENTANA_CERRADA: La ventana de 24h está cerrada'),
+    );
+    const estado = vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi');
+
+    montar();
+    fireEvent.click(screen.getByTestId('boton-confirmar-enviar-cotizacion'));
+
+    await waitFor(() => expect(screen.getByTestId('alerta-error-envio-cotizacion')).toBeDefined());
+    expect(estado).not.toHaveBeenCalled();
+  });
+
+  it('una cotización que ya salió antes no vuelve a pedir la transición a ENVIADA', async () => {
+    vi.spyOn(inboxApi, 'enviarCotizacion').mockResolvedValue(mensajeEnviado);
+    const estado = vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi');
+
+    montar({
+      cotizaciones: [{ ...cotizacionesEjemplo[0]!, enviadaEn: '2026-11-19T10:00:00.000Z' }],
+    });
+    fireEvent.click(screen.getByTestId('boton-confirmar-enviar-cotizacion'));
+
+    await waitFor(() => expect(screen.getByTestId('alerta-exito-envio-cotizacion')).toBeDefined());
+    expect(estado).not.toHaveBeenCalled();
+  });
+
+  it('si el mensaje salió pero no se pudo marcar ENVIADA, lo dice sin esconder el envío', async () => {
+    vi.spyOn(inboxApi, 'enviarCotizacion').mockResolvedValue(mensajeEnviado);
+    vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi').mockRejectedValue(new Error('409'));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    montar();
+    fireEvent.click(screen.getByTestId('boton-confirmar-enviar-cotizacion'));
+
+    await waitFor(() => expect(screen.getByTestId('aviso-estado-cotizacion')).toBeDefined());
+    expect(screen.getByTestId('alerta-exito-envio-cotizacion')).toBeDefined();
+    expect(screen.getByTestId('aviso-estado-cotizacion').textContent).toContain(
+      'sigue como Borrador',
+    );
+  });
+
+  it('llega con la cotización elegida cuando viene de su detalle (cotizacionInicialId)', () => {
+    montar({ cotizacionInicialId: cotizacionesEjemplo[1]!.id });
+    const selector = screen.getByTestId<HTMLSelectElement>('selector-cotizacion-conversacion');
+    expect(selector.value).toBe(cotizacionesEjemplo[1]!.id);
+    expect(screen.getByTestId('vista-previa-texto-cotizacion').textContent).toContain(
+      'Tour Europa Soñada',
+    );
+  });
+
+  it('una cotización inicial que no está en la lista cae a la primera', () => {
+    montar({ cotizacionInicialId: 'no-existe' });
+    const selector = screen.getByTestId<HTMLSelectElement>('selector-cotizacion-conversacion');
+    expect(selector.value).toBe(cotizacionesEjemplo[0]!.id);
   });
 
   it('la vista previa es un resumen honesto, con nota de que no lleva neto ni margen', () => {
@@ -150,6 +260,7 @@ describe('ModalEnviarCotizacion (T-074)', () => {
     };
 
     const spyEnviar = vi.spyOn(inboxApi, 'enviarCotizacion').mockResolvedValue(mockMensaje);
+    vi.spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi').mockResolvedValue({} as never);
     const onCotizacionEnviada = vi.fn();
     const onCerrar = vi.fn();
 
