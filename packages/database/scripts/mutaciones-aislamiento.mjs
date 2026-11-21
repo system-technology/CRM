@@ -19,6 +19,7 @@
  */
 import { Client } from 'pg';
 import { execFileSync } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { evaluarGuarda } from './guarda-base-desechable.mjs';
 
@@ -103,6 +104,60 @@ async function definicionSana(cliente) {
   }
   return definicionSincronizar;
 }
+
+/** La definición sana de `proteger_verificacion_del_perfil`, leída del catálogo una vez (M24). */
+let definicionPerfiles;
+async function definicionSanaPerfiles(cliente) {
+  if (!definicionPerfiles) {
+    const { rows } = await cliente.query(
+      "SELECT pg_get_functiondef('public.proteger_verificacion_del_perfil()'::regprocedure) AS def",
+    );
+    definicionPerfiles = rows[0].def;
+  }
+  return definicionPerfiles;
+}
+
+/**
+ * El cuerpo de `proteger_verificacion_del_perfil` tal como lo dejó T-268 (20261120140000): la
+ * lógica de verificación íntegra, SIN fijar `creado_en` ni `actualizado_en` (eso lo añadió T-307).
+ */
+const PERFILES_COMO_EN_T268 = `
+CREATE OR REPLACE FUNCTION public.proteger_verificacion_del_perfil()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  v_plataforma boolean;
+  v_dato_cambiado boolean;
+BEGIN
+  v_plataforma := pg_catalog.pg_has_role(
+    current_user,
+    (SELECT c.relowner FROM pg_catalog.pg_class c WHERE c.oid = TG_RELID),
+    'USAGE'
+  );
+  IF TG_OP = 'INSERT' THEN
+    IF NOT v_plataforma THEN
+      NEW.verificado_en := NULL;
+    END IF;
+    RETURN NEW;
+  END IF;
+  v_dato_cambiado := NEW.rnt IS DISTINCT FROM OLD.rnt
+                  OR NEW.nit IS DISTINCT FROM OLD.nit
+                  OR NEW.digito_verificacion IS DISTINCT FROM OLD.digito_verificacion;
+  IF NOT v_plataforma THEN
+    IF v_dato_cambiado THEN
+      NEW.verificado_en := NULL;
+    ELSE
+      NEW.verificado_en := OLD.verificado_en;
+    END IF;
+  ELSIF v_dato_cambiado
+        AND NEW.verificado_en IS NOT DISTINCT FROM OLD.verificado_en THEN
+    NEW.verificado_en := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$`;
 
 /**
  * Quita los codigos de color ANSI de la salida de vitest.
@@ -324,6 +379,21 @@ const MUTACIONES = [
     // plataforma y `viajapro_app` podría fijar verificado_en.
     nombre:
       'M22 — viajapro_app es miembro del dueño de perfiles_de_agencia (pasaría por «la plataforma»)',
+    // NO APLICABLE si el dueño ya es miembro de `viajapro_app`: en el CI el dueño es `viajapro`
+    // (POSTGRES_USER del servicio), que PostgreSQL hace miembro de los roles que crea, y entonces
+    // `GRANT viajapro TO viajapro_app` cierra un ciclo y se rechaza (0LP01). Un rol intermedio no
+    // lo evita (app -> X -> dueño -> app sigue siendo un ciclo). Se declara no aplicable, a la
+    // vista en el informe, en vez de fingir que se mutó; en una base con otra topología sí corre.
+    noAplicable: async (cliente) => {
+      const dueno = await duenoDePerfiles(cliente);
+      const { rows } = await cliente.query(
+        "SELECT pg_has_role($1, 'viajapro_app', 'MEMBER') AS ciclo",
+        [dueno],
+      );
+      return rows[0].ciclo
+        ? `el dueño «${dueno}» ya es miembro de viajapro_app: el GRANT cerraría un ciclo de roles`
+        : null;
+    },
     sql: async (cliente) => {
       const dueno = await duenoDePerfiles(cliente);
       await cliente.query(`GRANT ${cliente.escapeIdentifier(dueno)} TO viajapro_app`);
@@ -340,6 +410,19 @@ const MUTACIONES = [
     sql: `ALTER TABLE perfiles_de_agencia DISABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,
     prueba: 'T-261',
     restaurar: `ALTER TABLE perfiles_de_agencia ENABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,
+  },
+  // --- perfiles_de_agencia (T-307): las fechas de auditoría las fija el disparador ---
+  {
+    // Vuelve a la función de T-268 (verificación intacta, fechas libres). P-7 es la prueba que
+    // cubre T-307: si no se pusiera en rojo, la fijación de fechas no tendría quien la vigile.
+    nombre:
+      'M24 — proteger_verificacion_del_perfil como en T-268: viajapro_app falsea creado_en y actualizado_en',
+    sql: async (cliente) => {
+      await definicionSanaPerfiles(cliente);
+      await cliente.query(PERFILES_COMO_EN_T268);
+    },
+    prueba: 'P-7',
+    restaurar: async (cliente) => cliente.query(await definicionSanaPerfiles(cliente)),
   },
 ];
 
@@ -365,17 +448,37 @@ await admin.connect();
 console.log('\n--- MUTACIONES ---');
 const resultados = [];
 for (const m of MUTACIONES) {
-  // Sin valor inicial: si `correr` lanzara, la mutacion quedaria contada como VERDE, que es
-  // justo el falso positivo que este arnes existe para no tener. Que reviente es preferible.
+  // Tres desenlaces, ninguno silencioso: ROJO (la aserción detectó la rotura), VERDE (no la
+  // detectó: hallazgo) y ERROR (la mutación o su restauración reventó: no dice nada de la
+  // aserción). Un ERROR no tumba el proceso, para no ocultar a las mutaciones siguientes, pero
+  // el proceso sale distinto de cero al final. NUNCA se cuenta como VERDE ni como ROJO.
+  const motivoNoAplicable = m.noAplicable ? await m.noAplicable(admin) : null;
+  if (motivoNoAplicable) {
+    resultados.push({ nombre: m.nombre, estado: 'NO_APLICABLE', salida: motivoNoAplicable });
+    console.log(`N/A    ${m.nombre}\n        ->  ${motivoNoAplicable}`);
+    continue;
+  }
   let r;
+  let error;
   try {
     await ejecutar(admin, m.sql);
     r = correr(m.prueba);
+  } catch (e) {
+    error = e;
   } finally {
-    if (m.restaurar) await ejecutar(admin, m.restaurar);
-    for (const t of TABLAS) await admin.query('SELECT aplicar_aislamiento_tenant($1)', [t]);
+    try {
+      if (m.restaurar) await ejecutar(admin, m.restaurar);
+      for (const t of TABLAS) await admin.query('SELECT aplicar_aislamiento_tenant($1)', [t]);
+    } catch (e) {
+      error ??= new Error(`la restauración falló: ${e.message}`);
+    }
   }
-  resultados.push({ nombre: m.nombre, rojo: !r.verde, salida: r.salida });
+  if (error) {
+    resultados.push({ nombre: m.nombre, estado: 'ERROR', salida: String(error.message) });
+    console.log(`ERROR  ${m.nombre}\n        ->  ${error.message}`);
+    continue;
+  }
+  resultados.push({ nombre: m.nombre, estado: r.verde ? 'VERDE' : 'ROJO', salida: r.salida });
   console.log(`${r.verde ? 'VERDE' : 'ROJO '}  ${m.nombre}\n        ->  ${r.salida}`);
 }
 
@@ -385,15 +488,34 @@ const { rows } = await admin.query(
 await admin.end();
 
 console.log('\n================ RESUMEN ================');
-for (const r of resultados) {
-  console.log(`${r.rojo ? '[OK]    se puso ROJA  ' : '[FALLO] paso VERDE    '} ${r.nombre}`);
-}
+const ETIQUETA = {
+  ROJO: '[OK]    se puso ROJA  ',
+  VERDE: '[FALLO] paso VERDE    ',
+  ERROR: '[ERROR] no se pudo ejecutar',
+  NO_APLICABLE: '[N/A]   no aplicable  ',
+};
+for (const r of resultados) console.log(`${ETIQUETA[r.estado]} ${r.nombre}`);
 console.log(
   `\nEstado final de tablas_sin_aislamiento: ${rows.length === 0 ? 'vacia (sana)' : JSON.stringify(rows)}`,
 );
 
-if (resultados.some((r) => !r.rojo) || rows.length > 0) {
-  console.error('\nHALLAZGO BLOQUEANTE: hay aserciones que no detectan su propia rotura.');
+// El resumen también va al del job (GitHub lo muestra en la página de la corrida): un N/A o un
+// ERROR no deben vivir solo en el log, que nadie abre cuando todo salió en verde.
+if (process.env.GITHUB_STEP_SUMMARY) {
+  const lineas = resultados.map((r) => `| ${r.estado} | ${r.nombre} | ${r.salida.replace(/\|/g, '/')} |`);
+  appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    ['### Mutaciones de aislamiento', '', '| Estado | Mutación | Detalle |', '|---|---|---|', ...lineas, ''].join('\n'),
+  );
+}
+
+const cuenta = (e) => resultados.filter((r) => r.estado === e).length;
+if (cuenta('VERDE') > 0 || cuenta('ERROR') > 0 || rows.length > 0) {
+  console.error(
+    `\nHALLAZGO BLOQUEANTE: ${cuenta('VERDE')} aserciones no detectan su rotura, ${cuenta('ERROR')} mutaciones con ERROR.`,
+  );
   process.exit(1);
 }
-console.log(`\nLas ${resultados.length} mutaciones se detectaron. Ninguna asercion es decorativa.`);
+console.log(
+  `\n${cuenta('ROJO')} mutaciones detectadas, ${cuenta('NO_APLICABLE')} no aplicables en esta topologia de roles. Ninguna asercion es decorativa.`,
+);

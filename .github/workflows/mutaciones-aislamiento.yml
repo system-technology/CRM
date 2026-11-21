@@ -1,0 +1,96 @@
+# T-377. Corre el arnes de mutaciones del aislamiento entre agencias
+# (packages/database/scripts/mutaciones-aislamiento.mjs): rompe RLS a proposito, una rotura cada vez,
+# y exige que la asercion correspondiente falle. Una asercion que nunca se ve en rojo es una esperanza.
+#
+# Coste MEDIDO (corrida de T-377): el arnes tarda 43 s y el job entero 1 min 45 s. Cabe en cada PR,
+# por eso corre en TODO PR contra main, sin filtro de rutas, ademas de cada noche y a demanda.
+#
+# Hoy NO es un check obligatorio por un solo motivo: la lista de checks obligatorios vive en
+# .github/proteccion-main.json, que es del propietario. El dia que la anada, este workflow ya sirve
+# sin tocar nada mas (sin filtro de rutas, el check siempre produce resultado).
+name: Mutaciones de aislamiento
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutaciones-aislamiento-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '9.12.0'
+
+jobs:
+  mutaciones-aislamiento:
+    name: mutaciones-aislamiento
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viajapro
+          POSTGRES_PASSWORD: viajapro
+          POSTGRES_DB: neondb
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # La cadena se compone con `format` por el guardian de secretos (ver ci.yml, aislamiento-tenants).
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+      - name: Migraciones y políticas RLS
+        run: pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+      # Fija las contraseñas de los roles de login y exporta DATABASE_APP_URL (y las demas) por GITHUB_ENV.
+      - name: Contraseñas de desarrollo para los roles de login
+        run: node packages/database/scripts/roles-de-desarrollo.mjs
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DB_DEV_PASSWORD: clave-de-integracion-continua
+
+      # Se invoca el script directo (no `pnpm run mutaciones`, que carga ../../.env con dotenv): en CI
+      # no hay .env y las variables llegan por el entorno. La guarda exige base desechable + loopback.
+      - name: Romper el aislamiento a propósito y exigir que cada aserción falle
+        working-directory: packages/database
+        run: |
+          start=$(date +%s)
+          node scripts/mutaciones-aislamiento.mjs
+          echo "Duracion del arnes: $(( $(date +%s) - start )) s" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          VIAJAPRO_BASE_DESECHABLE: '1'
