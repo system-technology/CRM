@@ -7,6 +7,7 @@ import {
   aUnidadesMinimas,
   admiteCentavos,
   decimalesDe,
+  ecoDeMonto,
   esSobrepagoSinConfirmar,
   fraseDeSaldo,
   hoyEnLaAgencia,
@@ -14,6 +15,7 @@ import {
   saldoEnPantalla,
   sinSigno,
 } from './cobros-logica';
+import { MONEDAS, Money, type CodigoMoneda } from '@viajapro/domain';
 import { formatearDinero } from './formato';
 
 /**
@@ -240,5 +242,75 @@ describe('etiquetas y color con significado', () => {
     for (const etiqueta of Object.values(ETIQUETA_ESTADO_DE_COBRO)) {
       expect(etiqueta).not.toMatch(/_|tenant|RLS|T-\d/);
     }
+  });
+});
+
+/**
+ * T-520 + T-521. Lo que se escribe, lo que se envía y lo que se lee (el eco, el historial) tienen
+ * que ser la misma cifra en TODAS las monedas habilitadas. Se recorre `MONEDAS` entera: una moneda
+ * nueva en el dominio entra sola en estas pruebas.
+ */
+describe('toda moneda de MONEDAS: escribir → unidades → pintar → volver a escribir', () => {
+  const codigos = Object.keys(MONEDAS) as CodigoMoneda[];
+
+  it.each(codigos)('%s: decimalesDe coincide con MONEDAS y con el dominio', (moneda) => {
+    expect(decimalesDe(moneda)).toBe(MONEDAS[moneda].decimales);
+    expect(admiteCentavos(moneda)).toBe(MONEDAS[moneda].decimales > 0);
+  });
+
+  it.each(codigos)('%s: lo que pinta formatearDinero se vuelve a entender igual', (moneda) => {
+    const unidades = 123456789n;
+    const pintado = formatearDinero({ unidades: unidades.toString(), moneda });
+    const numero = /[\d.]+(?:,\d+)?/.exec(pintado)?.[0] ?? '';
+    const r = aUnidadesMinimas(numero, moneda);
+    expect(r, `${moneda}: «${pintado}» → «${numero}»`).toEqual({
+      ok: true,
+      unidades: unidades.toString(),
+    });
+  });
+
+  it.each(codigos)('%s: el eco muestra las mismas unidades que se enviarían', (moneda) => {
+    const decimales = MONEDAS[moneda].decimales;
+    // «1.250» y, si la moneda tiene decimales, «1.250,5…» con todos los decimales de la moneda.
+    const escrito = decimales > 0 ? `1.250,${'5'.padEnd(decimales, '0')}` : '1.250';
+    const cifra = aUnidadesMinimas(escrito, moneda);
+    expect(cifra.ok).toBe(true);
+    const unidades = cifra.ok ? cifra.unidades : '0';
+    // Lo que el dominio entiende por esas unidades, sin pasar por el formateo.
+    expect(Money.desdeUnidades(BigInt(unidades), moneda).aDecimal()).toBe(
+      decimales > 0 ? `1250.${'5'.padEnd(decimales, '0')}` : '1250',
+    );
+    expect(ecoDeMonto(escrito, moneda)).toBe(
+      `Vas a registrar ${formatearDinero({ unidades, moneda }, { conCodigo: true })}`,
+    );
+  });
+});
+
+describe('ecoDeMonto — lo que se va a registrar, a la vista antes de pulsar (T-521)', () => {
+  it('el caso que lo motivó: 1.250 en USD es mil doscientos cincuenta dólares, y el eco lo dice', () => {
+    // Quien teclea a la americana quiso un dólar con veinticinco; la regla no cambia, se hace visible.
+    expect(aUnidadesMinimas('1.250', 'USD')).toEqual({ ok: true, unidades: '125000' });
+    const eco = ecoDeMonto('1.250', 'USD') ?? '';
+    expect(eco).toContain('1.250,00');
+    expect(eco).toContain('USD');
+    expect(eco.startsWith('Vas a registrar')).toBe(true);
+  });
+
+  it('en COP el eco dice pesos enteros, con el código de la moneda', () => {
+    expect(ecoDeMonto('1.250.000', 'COP')).toBe('Vas a registrar $ 1.250.000 COP');
+  });
+
+  it('1.250,50 en USD se lee 1.250,50 y no otra cosa', () => {
+    expect(ecoDeMonto('1.250,50', 'USD') ?? '').toContain('1.250,50');
+  });
+
+  it('no hay eco mientras lo escrito no sea una cifra válida', () => {
+    expect(ecoDeMonto('', 'COP')).toBeNull();
+    expect(ecoDeMonto('   ', 'COP')).toBeNull();
+    expect(ecoDeMonto('1.25', 'USD')).toBeNull(); // a medio teclear / ambiguo: la regla lo rechaza
+    expect(ecoDeMonto('1.250,50', 'COP')).toBeNull(); // centavos en pesos
+    expect(ecoDeMonto('0', 'COP')).toBeNull();
+    expect(ecoDeMonto('-5', 'COP')).toBeNull();
+    expect(ecoDeMonto('abc', 'COP')).toBeNull();
   });
 });

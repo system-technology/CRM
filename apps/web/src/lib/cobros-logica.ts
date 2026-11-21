@@ -184,6 +184,25 @@ export function aUnidadesMinimas(texto: string, moneda: string): MontoEscrito {
   return { ok: true, unidades: monto.unidades.toString() };
 }
 
+/**
+ * El eco bajo el campo «Cuánto pagó» (T-521): lo que **se va a registrar**, ya normalizado.
+ *
+ * Existe por una ambigüedad que la regla de interpretación no puede evitar: `1.250` en USD es mil
+ * doscientos cincuenta (es-CO: el punto separa miles), pero quien teclea a la americana quiso decir
+ * un dólar con veinticinco. Cambiar la regla estaría mal en un sentido u otro; lo que sí se puede es
+ * **hacerla visible** antes de pulsar «Registrar pago». Por eso no hay aquí una conversión propia:
+ * el eco es `aUnidadesMinimas` (lo mismo que se envía) pasado por `formatearDinero` (lo mismo que
+ * pinta el historial), así que lo que se lee es, por construcción, lo que se registra.
+ *
+ * Mientras lo escrito no sea una cifra válida (campo vacío, `1.25` a medio teclear) no hay eco: el
+ * motivo concreto lo da `aUnidadesMinimas` al registrar, y regañar tecla a tecla estorba.
+ */
+export function ecoDeMonto(texto: string, moneda: string): string | null {
+  const cifra = aUnidadesMinimas(texto, moneda);
+  if (!cifra.ok) return null;
+  return `Vas a registrar ${formatearDinero({ unidades: cifra.unidades, moneda }, { conCodigo: true })}`;
+}
+
 /* ---------- Fecha de pago ---------- */
 
 /** `AAAA-MM-DD` de hoy en la zona de la agencia (R9): el tope del campo «Fecha del pago». */
