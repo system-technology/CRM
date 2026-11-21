@@ -18,6 +18,7 @@ import { PrismaClient } from '@prisma/client';
 import { sembrarCatalogoReal } from './semilla-catalogo-real.js';
 import {
   sembrarEtapas,
+  sembrarEtiquetas,
   sembrarFormatos,
   sembrarMotivosDePerdida,
   sembrarRoles,
@@ -136,6 +137,7 @@ async function main() {
   // agencias de prospecto).
   await sembrarEtapas(prisma, tenant.id);
   await sembrarMotivosDePerdida(prisma, tenant.id);
+  await sembrarEtiquetas(prisma, tenant.id);
 
   // --- Campos personalizados ---------------------------------------------
   // Se siembran para que la columna jsonb y las definiciones se ejerciten desde el principio.

@@ -6,12 +6,16 @@ import * as authApi from '../../../lib/auth-api';
 import * as reportesApi from '../../../lib/reportes-api';
 import type { ResumenDeReportes, SesionActual } from '@viajapro/contracts';
 
+let busqueda = '';
+const replace = vi.fn();
+
 vi.mock('next/navigation', () => ({
   usePathname: () => '/reportes',
   useRouter: () => ({
     push: vi.fn(),
-    replace: vi.fn(),
+    replace,
   }),
+  useSearchParams: () => new URLSearchParams(busqueda),
 }));
 
 const SESION_ASESOR: SesionActual = {
@@ -122,6 +126,8 @@ function fixtureDosMonedas(conMargen: boolean): ResumenDeReportes {
 describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T-142)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    busqueda = '';
+    replace.mockClear();
   });
 
   it('sin permiso cotizacion.ver_neto_y_margen: no muestra margen ni costo neto en dos monedas', async () => {
@@ -177,20 +183,39 @@ describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T
     expect(screen.getAllByText(/Margen Comercial:/i).length).toBe(2);
   });
 
-  it('permite alternar a vista asesor ocultando el margen aunque el dueño tenga permiso', async () => {
+  it('alternar a vista asesor escribe ?pestana=asesor con replace (no ensucia el historial)', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
     vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(fixtureDosMonedas(true));
 
     render(<ReportesPage />);
 
     await screen.findByTestId('seccion-margen-confidencial');
+    fireEvent.click(screen.getByRole('button', { name: /Vista Asesor/i }));
+    expect(replace).toHaveBeenCalledWith('/reportes?pestana=asesor', { scroll: false });
+  });
 
-    const btnAsesor = screen.getByRole('button', { name: /Vista Asesor/i });
-    fireEvent.click(btnAsesor);
+  it('?pestana=asesor abre la vista asesor oculta el margen aunque el dueño tenga permiso', async () => {
+    busqueda = 'pestana=asesor';
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(fixtureDosMonedas(true));
 
-    // Al alternar voluntariamente a asesor, la sección confidencial desaparece
+    render(<ReportesPage />);
+
+    await screen.findByTestId('kpi-ventas');
     expect(screen.queryByTestId('seccion-margen-confidencial')).toBeNull();
     expect(screen.queryByText(/Costo Neto Mayoristas:/i)).toBeNull();
+  });
+
+  it('?pestana inválida cae a la vista de dueño; volver a ella limpia el parámetro', async () => {
+    busqueda = 'pestana=hackeame';
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(fixtureDosMonedas(true));
+
+    render(<ReportesPage />);
+
+    expect(await screen.findByTestId('seccion-margen-confidencial')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Vista Dueño/i }));
+    expect(replace).toHaveBeenCalledWith('/reportes', { scroll: false });
   });
 
   it('el selector de periodo convierte a instantes UTC con la zona horaria de la agencia y filtra', async () => {

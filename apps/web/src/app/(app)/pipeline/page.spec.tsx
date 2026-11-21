@@ -5,12 +5,15 @@ import PipelinePage from './page';
 import * as crmApi from '../../../lib/crm-api';
 import { obtenerMockTableroPipeline } from '../../../lib/mock-pipeline';
 
+let busqueda = '';
+
 // Mock de next/navigation
 vi.mock('next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/navigation')>();
   return {
     ...actual,
     usePathname: () => '/pipeline',
+    useSearchParams: () => new URLSearchParams(busqueda),
     useRouter: () => ({
       push: vi.fn(),
       replace: vi.fn(),
@@ -23,6 +26,7 @@ describe('PipelinePage (T-102) — Tablero Kanban y Lista de Oportunidades', () 
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    busqueda = '';
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.clear();
     }
@@ -315,5 +319,49 @@ describe('PipelinePage — datos del viaje en las tarjetas (auditoría UX, I2)',
     expect(within(juan).getByTestId('linea-de-viaje').textContent).toMatch(
       /^Cancún · dic( \d{4})?$/,
     );
+  });
+
+  describe('?op= (T-318)', () => {
+    const OP_FELIPE = '00000000-0010-4000-8000-000000000001';
+
+    it('enfoca y marca la oportunidad del enlace, sin avisos', async () => {
+      busqueda = `op=${OP_FELIPE}`;
+      render(<PipelinePage />);
+      const tarjeta = screen.getByRole('article', { name: /Felipe Morales/ });
+      await waitFor(() => expect(document.activeElement).toBe(tarjeta));
+      expect(tarjeta.getAttribute('data-enfocada')).toBe('true');
+      expect(screen.queryByTestId('pipeline-aviso-enlace')).toBeNull();
+      const otra = screen.getByRole('article', { name: /Juan Pérez/ });
+      expect(otra.getAttribute('data-enfocada')).toBeNull();
+    });
+
+    it('un UUID que no está en el tablero avisa con claridad y deja el tablero entero', async () => {
+      busqueda = 'op=00000000-0010-4000-8000-00000000dead';
+      render(<PipelinePage />);
+      expect((await screen.findByTestId('pipeline-aviso-enlace')).textContent).toMatch(
+        /No encontramos la oportunidad/,
+      );
+      expect(screen.getByRole('article', { name: /Felipe Morales/ })).toBeDefined();
+    });
+
+    it('un valor que no es UUID avisa y no enfoca nada', () => {
+      busqueda = 'op=<script>alert(1)</script>';
+      render(<PipelinePage />);
+      expect(screen.getByTestId('pipeline-aviso-enlace').textContent).toMatch(/no apunta/);
+      expect(document.querySelector('[data-enfocada="true"]')).toBeNull();
+    });
+
+    it('si los filtros ocultan la oportunidad, lo dice y ofrece limpiarlos', async () => {
+      window.localStorage.setItem(
+        'viajapro_filtros_pipeline',
+        JSON.stringify({ vista: 'kanban', filtroTexto: 'zzz-nada', filtroAsesor: 'todos' }),
+      );
+      busqueda = `op=${OP_FELIPE}`;
+      render(<PipelinePage />);
+      const aviso = await screen.findByTestId('pipeline-aviso-enlace');
+      await waitFor(() => expect(aviso.textContent).toMatch(/oculta por los filtros/));
+      fireEvent.click(within(aviso).getByRole('button', { name: 'Limpiar filtros' }));
+      await waitFor(() => expect(screen.queryByTestId('pipeline-aviso-enlace')).toBeNull());
+    });
   });
 });

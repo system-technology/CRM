@@ -6983,7 +6983,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-315]
     acceptance:
       - "e2e: elegir un archivo, luego otro, y Atrás vuelve al primero; /catalogo?id=X abre el paquete X"
@@ -6991,6 +6991,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:40:00.000Z
+    evidence: "Integrada en main por el PR #371 (b9a7702) con los 14 checks en verde, incluido navegador. Archivos de viaje con router.push y ?id (Atrás vuelve al archivo anterior sin salir del módulo), ?id en Catálogo, ?op en Pipeline (tarjeta enfocada, avisos para id inválido, inexistente y oculta por filtros), ?pestana= en Configuración, Reportes y la ficha del contacto con `replace`, y parámetros validados (lib/parametros-url.ts: UUID o lista cerrada) antes de usarse en la API. SIN e2e nuevo (dependería de datos sembrados del CI; cubierto con pruebas de componente y corrida manual en demo). Sin verificar con la API real: el UUID inexistente en /viajes depende de que el servidor responda 404. Cola: T-393 y T-394."
   - id: T-319
     title: 'N6: la paleta busca en la misma fuente que cada pantalla y tiene comando para todo módulo'
     type: feature
@@ -7973,3 +7975,31 @@ tasks:
     source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo BAJO"
     created_at: 2026-11-21T01:25:00.000Z
     owner: backend
+  - id: T-393
+    title: "La ficha del contacto no vuelca un console.error en el primer render, antes de cargar"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-318]
+    acceptance:
+      - "construirMensajeErrorAccionable hace console.error en el primer render de /contactos/[id], antes de que cargue la ficha (previo a T-318); el vigilante de los e2e lo contaría como defecto de la página"
+      - "El error solo se registra cuando hay un error real; spec que falla si el primer render, sin error, escribe en la consola"
+    source: "cola de T-318 (2026-11-21)"
+    created_at: 2026-11-21T01:40:00.000Z
+    owner: frontend
+  - id: T-394
+    title: "El estado de pestañas y periodo de Catálogo y Reportes también vive en la URL"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-318]
+    acceptance:
+      - "Catálogo guarda su pestaña activa en ?pestana= y Reportes guarda el periodo elegido en la URL, con la misma validación contra lista cerrada de lib/parametros-url.ts; recargar o compartir el enlace conserva el sitio"
+      - "Pruebas de componente como las de T-318; sin recorrer rutas pesadas en el e2e"
+    source: "cola de T-318 (2026-11-21): quedó fuera de su alcance"
+    created_at: 2026-11-21T01:40:00.000Z
+    owner: frontend

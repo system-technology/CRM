@@ -137,6 +137,18 @@ describe('semilla de agencia desde JSON', () => {
           expect.arrayContaining(['archivo.ver', 'archivo.operar']),
         );
       }
+      // T-324: el DUEÑO gestiona las etiquetas, y la agencia nace con las tres por defecto.
+      expect(roles.find((x) => x.clave === 'DUENO')?.permisos).toContain('etiquetas.administrar');
+      const etiquetas = await tx.label.findMany({
+        where: { tenantId: tenantA },
+        orderBy: { orden: 'asc' },
+        select: { nombre: true, color: true },
+      });
+      expect(etiquetas).toEqual([
+        { nombre: 'Pagado', color: 'verde' },
+        { nombre: 'Pago pendiente', color: 'ambar' },
+        { nombre: 'Seguimiento', color: 'azul' },
+      ]);
       expect(await tx.politicaDePrecio.count({ where: { tenantId: tenantA } })).toBe(1);
       expect(await tx.usuario.count({ where: { tenantId: tenantA, correo: CORREO_A } })).toBe(1);
 

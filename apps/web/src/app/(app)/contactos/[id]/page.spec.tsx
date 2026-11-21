@@ -5,6 +5,9 @@ import Contacto360Page from './page';
 import * as crmApi from '../../../../lib/crm-api';
 import { obtenerMockFichaDeContacto } from '../../../../lib/mock-crm';
 
+let busqueda = '';
+const replace = vi.fn();
+
 // Mock de next/navigation
 vi.mock('next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/navigation')>();
@@ -12,9 +15,10 @@ vi.mock('next/navigation', async (importOriginal) => {
     ...actual,
     useParams: () => ({ id: '00000000-0002-4000-8000-000000000001' }),
     usePathname: () => '/contactos/00000000-0002-4000-8000-000000000001',
+    useSearchParams: () => new URLSearchParams(busqueda),
     useRouter: () => ({
       push: vi.fn(),
-      replace: vi.fn(),
+      replace,
       prefetch: vi.fn(),
     }),
   };
@@ -25,6 +29,8 @@ describe('Contacto360Page (T-100) — Pantalla Ficha 360 del Contacto', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    busqueda = '';
+    replace.mockClear();
     vi.spyOn(crmApi, 'obtenerFichaDeContacto').mockResolvedValue(fichaMock);
     vi.spyOn(crmApi, 'listarSeguimientosApi').mockResolvedValue({
       datos: [
@@ -71,27 +77,50 @@ describe('Contacto360Page (T-100) — Pantalla Ficha 360 del Contacto', () => {
     expect(screen.getByText(/Archivos de Viaje/i)).toBeDefined();
   });
 
-  it('3. Muestra la línea de tiempo 360 y permite alternar a pestañas de oportunidades y seguimientos', async () => {
-    render(<Contacto360Page />);
+  it('3. Muestra la línea de tiempo 360 y las pestañas viven en ?pestana= (T-318)', async () => {
+    const { rerender } = render(<Contacto360Page />);
 
     await waitFor(() => {
       expect(screen.getByText(/Línea de Tiempo 360/i)).toBeDefined();
     });
 
-    // Cambiar a pestaña Oportunidad & Cotizaciones
-    const tabOportunidades = screen.getByRole('button', { name: /Oportunidad & Cotizaciones/i });
-    fireEvent.click(tabOportunidades);
+    // Elegir una pestaña escribe la URL con replace (Atrás sale de la ficha)
+    fireEvent.click(screen.getByRole('button', { name: /Oportunidad & Cotizaciones/i }));
+    expect(replace).toHaveBeenLastCalledWith(
+      '/contactos/00000000-0002-4000-8000-000000000001?pestana=oportunidades',
+      { scroll: false },
+    );
 
+    // La URL manda: con el parámetro puesto, se ve esa pestaña
+    busqueda = 'pestana=oportunidades';
+    rerender(<Contacto360Page />);
     expect(screen.getByText(/Oportunidad en Pipeline/i)).toBeDefined();
     expect(screen.getByText(fichaMock.oportunidadActual!.titulo)).toBeDefined();
     expect(screen.getByText(/Cotizaciones Oficiales/i)).toBeDefined();
 
-    // Cambiar a pestaña Seguimientos
-    const tabSeguimientos = screen.getByRole('button', { name: /Seguimientos/i });
-    fireEvent.click(tabSeguimientos);
-
+    busqueda = 'pestana=seguimientos';
+    rerender(<Contacto360Page />);
     expect(screen.getByText(/Llamar para verificar anticipo/i)).toBeDefined();
     expect(screen.getByRole('button', { name: /Completar/i })).toBeDefined();
+
+    // Volver a la primera pestaña deja la URL limpia
+    fireEvent.click(screen.getByRole('button', { name: /Línea de Tiempo 360/i }));
+    expect(replace).toHaveBeenLastCalledWith('/contactos/00000000-0002-4000-8000-000000000001', {
+      scroll: false,
+    });
+  });
+
+  it('3b. Abrir con ?pestana= válida muestra esa pestaña al montar', async () => {
+    busqueda = 'pestana=seguimientos';
+    render(<Contacto360Page />);
+    expect(await screen.findByText(/Llamar para verificar anticipo/i)).toBeDefined();
+  });
+
+  it('3c. Una ?pestana inválida cae a la línea de tiempo, sin romper la ficha', async () => {
+    busqueda = 'pestana=../../admin';
+    render(<Contacto360Page />);
+    expect(await screen.findByText(/Línea de Tiempo 360/i)).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Completar/i })).toBeNull();
   });
 
   it('4. Abre el modal de edición de contacto y permite guardar cambios', async () => {
