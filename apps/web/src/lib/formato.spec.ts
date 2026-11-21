@@ -17,6 +17,9 @@ import {
   fechaIsoADiaMesAnio,
   diaMesAnioAFechaIso,
 } from './formato';
+import { formatearDeltaDinero } from './cotizaciones-diff';
+import { parsearMontoAUnidades } from './dinero-entrada';
+import { decimalesDe } from './cobros-logica';
 
 describe('Módulo único de formato es-CO (T-022)', () => {
   describe('1. Formato de Dinero (R8: Enteros COP sin decimales, punto de miles)', () => {
@@ -102,6 +105,9 @@ describe('Módulo único de formato es-CO (T-022)', () => {
       expect(pintadoFraccion).toHaveLength(decimales);
     });
 
+    // `Dinero.moneda` (contracts) solo admite las monedas habilitadas: KWD no lo es hasta que entre.
+    const KWD = 'KWD' as CodigoMoneda;
+
     it('una moneda nueva en MONEDAS se formatea con sus decimales sin tocar formato.ts', () => {
       // Es lo que protege el día de KWD: si `formato.ts` volviera a tener su propia tabla, esta
       // moneda saldría con 2 decimales. Se añade a la tabla del dominio solo durante la prueba.
@@ -111,11 +117,21 @@ describe('Módulo único de formato es-CO (T-022)', () => {
         expect(decimalesDeMoneda('KWD')).toBe(3);
         const texto = formatearDinero({ unidades: '1234567', moneda: 'KWD' });
         expect(texto).toContain('1.234,567');
+        // Los otros dos caminos que tenían su propia copia de la tabla (T-544).
+        expect(formatearDeltaDinero({ unidades: '1234567', moneda: KWD })).toBe(
+          '+ $ 1.234,567 KWD',
+        );
+        expect(formatearDeltaDinero({ unidades: '-5', moneda: KWD })).toBe('- $ 0,005 KWD');
+        expect(parsearMontoAUnidades('12,50', 'KWD')).toBe('12500');
+        expect(parsearMontoAUnidades('12', 'KWD')).toBe('12000');
+        expect(decimalesDe('KWD')).toBe(3);
       } finally {
         delete tabla['KWD'];
       }
       // Y al retirarla, deja de ser una moneda conocida: vuelve al valor por defecto de `Intl`.
       expect(decimalesDeMoneda('KWD')).toBe(2);
+      expect(parsearMontoAUnidades('12,50', 'KWD')).toBe('1250');
+      expect(formatearDeltaDinero({ unidades: '1234567', moneda: KWD })).toBe('+ $ 12.345,67 KWD');
     });
   });
 

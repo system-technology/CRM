@@ -10,6 +10,7 @@
  */
 
 import type { VersionDeCotizacion, Dinero } from '@viajapro/contracts';
+import { decimalesDeMoneda } from './formato';
 
 export type TipoCambioLinea = 'SIN_CAMBIO' | 'MODIFICADA' | 'AGREGADA' | 'ELIMINADA';
 export type EfectoMonetario = 'AUMENTO' | 'DISMINUCION' | 'NEUTRO';
@@ -124,19 +125,23 @@ export function determinarEfectoMonetario(delta: Dinero): EfectoMonetario {
 
 /**
  * Formatea una diferencia de dinero con signo explícito y código de moneda ISO.
- * Ej: "+ $ 250.000 COP", "- $ 120.000 COP", "$ 0 COP"
+ * Ej: "+ $ 250.000 COP", "- $ 120.000 COP", "$ 0 COP", "+ $ 1.250,50 USD"
  */
 export function formatearDeltaDinero(delta: Dinero): string {
   const val = BigInt(delta.unidades || '0');
   const esNegativo = val < 0n;
   const absVal = esNegativo ? -val : val;
 
-  const formateador = new Intl.NumberFormat('es-CO', {
-    maximumFractionDigits: delta.moneda === 'COP' ? 0 : 2,
-    minimumFractionDigits: delta.moneda === 'COP' ? 0 : 2,
-  });
-
-  const numeroFormateado = formateador.format(Number(absVal));
+  // R8: `unidades` son unidades MÍNIMAS. Hay que partirlas por los decimales de la moneda (los del
+  // dominio, vía `decimalesDeMoneda`) y no pasarlas a `Intl` como si ya fueran la unidad principal.
+  // Aritmética de BigInt: la parte entera nunca pasa por un `float`.
+  const decimales = decimalesDeMoneda(delta.moneda);
+  const divisor = 10n ** BigInt(decimales);
+  const enteros = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(
+    absVal / divisor,
+  );
+  const fraccion = decimales > 0 ? (absVal % divisor).toString().padStart(decimales, '0') : '';
+  const numeroFormateado = fraccion ? `${enteros},${fraccion}` : enteros;
   const signo = esNegativo ? '-' : val > 0n ? '+' : '';
 
   if (signo) {
