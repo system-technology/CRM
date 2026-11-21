@@ -46,7 +46,7 @@ para San Andrés en diciembre, somos 2 adultos y 2 niños».
 | 4 | Pulsa «Cotizar» en «Solicitud de viaje»: el cotizador se abre con paquete, fecha y ocupación cargados **y dice para quién cotiza y desde qué chat** | Cotizador (`/cotizador`), sin ítem propio en el menú (D2) | 1 | Abre prellenado; **falta el contexto** (T-321) |
 | 5 | Guarda la cotización: versión 1, con el mismo total que vio | Detalle de cotización (`/cotizaciones/[id]`) | 2 | Existe; **el total difiere** (T-321) |
 | 6 | «Enviar por WhatsApp» y vuelve al chat | Conversación | 1–2 | Existe |
-| 7 | El viajero acepta. Valentina marca la cotización aceptada y **abre el archivo de viaje** («File 1044») | Detalle de cotización → Archivos de viaje (`/viajes?id=`) | 2 | Existe |
+| 7 | El viajero acepta. Valentina marca la cotización aceptada y **abre el archivo de viaje** («File 1044») | Detalle de cotización → Archivos de viaje (`/viajes?id=`) | 2 | **La API existe** (`POST /api/v1/cotizaciones/:id/estado` y la apertura del archivo, probadas por e2e), **el botón no**: la web solo lleva la cotización hasta «Enviada» (T-563) |
 | 8 | Pide los cupos al mayorista: cada **reserva** dentro del archivo, con su *time limit* y su fecha de pago total | Archivo de viaje | ≤ 3 por reserva | Existe |
 | 9 | El viajero transfiere el **anticipo**. Valentina **registra el pago en el archivo**; el saldo se recalcula | Archivo de viaje | ≤ 3 | **No existe** (T-330, T-331) |
 | 10 | El archivo aparece como «Saldo pendiente» en la vista de cobros; cuando el saldo llega a cero, «Al día» | Archivos de viaje, filtro de cobros | — | **No existe** (T-332) |

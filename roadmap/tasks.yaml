@@ -11657,7 +11657,7 @@ tasks:
     phase: 1
     priority: P2
     effort: L
-    status: backlog
+    status: in_progress
     acceptance:
       - "Dos recorridos completos: el del asesor (entrar, atender la conversacion, cotizar, enviar, aceptar, abrir
         el archivo de viaje, registrar un pago, ver sus numeros) y el del dueno (lo anterior mas configuracion de
@@ -11674,3 +11674,47 @@ tasks:
     source: "lo pidio el propietario el 2026-11-21: «un manual de usuario funcional de lo que tenemos que tenga fotos»"
     created_at: 2026-11-21T15:46:00.000Z
     owner: documentador
+  - id: T-563
+    title: "Web: no se puede aceptar una cotizacion desde la pantalla, y sin eso no se abre el archivo de viaje"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - "Hoy, aceptar una cotizacion solo se puede por API: cambiarEstadoCotizacionApi se invoca unicamente con
+        'ENVIADA' desde modal-enviar-cotizacion.tsx; en cotizaciones/page.tsx ACEPTADA solo aparece como filtro y
+        como estado pintado, nunca como accion. Las e2e (07-cobros) aceptan con page.request.post. Hallado al
+        documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre"
+      - "Por que es P1 y no «el dia que...»: aceptar y abrir el archivo de viaje es el corazon del producto. Si el
+        propietario ensena esto a una agencia, no puede cerrar una venta en pantalla. Bloquea la demo aunque no
+        bloquee main"
+      - "El detalle de una cotizacion ENVIADA ofrece una accion para marcarla aceptada (y rechazada), con el permiso
+        que corresponda a POST /api/v1/cotizaciones/:id/estado; al aceptar, la pantalla lleva al archivo de viaje que
+        abrio el evento CotizacionAceptada, o dice que se esta abriendo"
+      - "Una prueba de navegador recorre el paso con un clic en vez de page.request.post"
+      - "Al cerrarla, corregir el paso 7 de docs/01-producto/04-flujos-criticos.md y el paso 7 del manual
+        (docs/06-manual/01-recorrido-del-asesor.md)"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T15:50:00.000Z
+    owner: frontend
+  - id: T-564
+    title: "Web: no hay forma de corregir un pago (devolver, ajustar o reversar) aunque exista el permiso del dueno"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "ADR-0034 reserva cobro.corregir al dueno. panel-de-cobro.tsx solo muestra un aviso a quien no lo tiene
+        (cobro-sin-permiso-corregir) y a quien lo tiene no le ofrece nada: el permiso existe y la pantalla no. Hallado
+        al documentar el recorrido del dueno (T-562)"
+      - "El dueno puede devolver, ajustar o reversar un pago desde el historial del archivo de viaje; la correccion
+        se agrega al libro (un pago nunca se borra) y queda a nombre de quien la hizo"
+      - "Antes de construir la pantalla, confirmar con la API de cobros (T-330) que ofrece la operacion de
+        correccion; si no la ofrece, se abre tarea de backend primero"
+      - "Al cerrarla, quitar la advertencia de docs/06-manual/02-recorrido-del-dueno.md (paso 7) y la fila de
+        docs/06-manual/03-lo-que-no-cubre.md"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T15:50:00.000Z
+    owner: frontend

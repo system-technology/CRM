@@ -59,6 +59,9 @@ los que tus asesores cierran una oportunidad perdida («Precio alto frente a pre
 
 ![Etapas del pipeline](imagenes/dueno-02-etapas.png)
 
+- Por cada etapa pones el **nombre**, el **orden** (con las flechas de subir y bajar) y la
+  **probabilidad de cierre** en porcentaje. **Ganada** y **Perdida** son etapas de cierre; **Perdida «exige
+  motivo»**.
 - Las etapas y los motivos son **política de tu agencia**: cada agencia puede tener otros. Lo que no se
   puede cambiar son las reglas de fondo (una oportunidad termina ganada o perdida).
 - Un **motivo desactivado** deja de ofrecerse, pero las oportunidades que ya lo usaron lo conservan.
@@ -98,6 +101,8 @@ alimentación*), y **importar un archivo CSV** (hay plantillas para descargar).
 - **El RNT** se imprime en la propuesta al viajero **solo cuando está verificado**. Hoy esa
   verificación no la hace el dueño desde la pantalla, la marca el equipo de ViajaPro. Hasta entonces la
   propuesta sale sin RNT.
+- En la demostración el RNT aparece como «Verificado» para que se vea cómo queda; en una agencia real
+  aparece sin verificar hasta que el equipo de ViajaPro lo marque.
 - Cambiar estos datos requiere el rol de dueño o administrador.
 
 ---
@@ -140,4 +145,4 @@ reversar), y un pago nunca se borra. Ver el
 
 > ⚠ **Hoy el dueño no tiene pantalla para corregir un pago.** El permiso y el libro que lo permite
 > existen en el servidor, pero la web solo ofrece registrar pagos. Una corrección no se puede hacer
-> desde la aplicación todavía.
+> desde la aplicación todavía (T-564).

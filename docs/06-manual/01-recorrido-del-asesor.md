@@ -43,7 +43,7 @@ navegador. Las demás capturas de este manual se tomaron con el aviso ya resuelt
 ## 2. «Hoy»: qué toca atender
 
 **Qué ves.** El resumen de tu día: conversaciones pendientes (y cuántas están sin asignar), oportunidades
-en el pipeline, cotizaciones abiertas, y la lista de **seguimientos del día** con la hora, el viajero y lo
+en el pipeline, **cotizaciones abiertas** (borradores y enviadas, y cuántas llevan días sin respuesta), el **saldo por cobrar** de los archivos abiertos por moneda, y la lista de **seguimientos del día** con la hora, el viajero y lo
 que prometiste. Abajo, accesos directos al Cotizador, la bandeja, el catálogo y el pipeline.
 
 ![Pantalla «Hoy»](imagenes/asesor-02-hoy.png)
@@ -69,8 +69,10 @@ lleva más tiempo sin respuesta del que la agencia se fijó.
 
 ![Lista de conversaciones](imagenes/asesor-03-conversaciones.png)
 
-Al abrirla, el hilo del chat ocupa el centro y a la derecha queda el **panel del viajero** (contacto,
-solicitud de viaje, oportunidad y cotizaciones).
+Al abrirla, el hilo del chat ocupa el centro y a la derecha queda la **ficha del viajero**: la
+**solicitud de viaje** (destino, fecha de salida, pasajeros y valor estimado), la cotización vigente con
+sus botones **«Cotizar»** y **«Ver cotización»**, el próximo paso pactado, los datos del contacto, sus
+preferencias y sus consentimientos.
 
 ![Conversación abierta](imagenes/asesor-04-conversacion-abierta.png)
 
@@ -80,7 +82,12 @@ solicitud de viaje, oportunidad y cotizaciones).
   al último mensaje del viajero. Pasado ese plazo la conversación aparece como **«Ventana cerrada»** y
   hay que usar una plantilla aprobada por Meta.
 - **Responder.** Escribes y envías; el mensaje pasa a la cola de envío y la conversación te muestra su
-  estado.
+  estado. Junto al cuadro de texto hay **«Nota interna»** (solo la ve tu equipo, no el viajero),
+  **«Sugerencias»**, **«Respuestas»** (escribe `/`) y **«Enviar cotización»**.
+- **Asignación.** Arriba del chat ves quién lo atiende; con **«Soltar»** lo devuelves a la bandeja y con
+  **«Reasignar»** se lo pasas a otro asesor.
+- **Aviso de la ventana.** Cuando faltan pocos minutos para que se cierre la ventana de 24 horas, un
+  recuadro amarillo te lo dice y te lleva a **«Ver plantillas»**.
 
 ---
 
@@ -125,7 +132,7 @@ tarifa por tipo de pasajero y el subtotal. Todo en pesos colombianos (COP).
 
 ## 6. Enviar la cotización
 
-**Qué haces.** En el detalle de la cotización o desde la conversación eliges **«Enviar en esta
+**Qué haces.** Desde la conversación pulsas **«Enviar cotización»**, o en el detalle de la cotización eliges **«Enviar en esta
 conversación»**. Va por el canal oficial de WhatsApp de la agencia, queda en el chat y la cotización pasa
 a **ENVIADA**.
 
@@ -148,7 +155,7 @@ Duplicar**.
 > ⚠ **Esto todavía no tiene botón en la pantalla.** El sistema sabe pasar una cotización a **Aceptada** y
 > ese cambio es lo que **abre el archivo de viaje** automáticamente, pero hoy la web solo permite llevar
 > la cotización hasta **Enviada**. La aceptación se ha probado por la API, no desde una pantalla. Hasta
-> que exista el botón, el equipo técnico debe hacerla. Está anotado como pendiente.
+> que exista el botón, el equipo técnico debe hacerla. Está anotado como pendiente (T-563).
 
 Lo que sí ocurre cuando una cotización pasa a **Aceptada**: el sistema abre el **archivo de viaje** con su
 número («File 1043») y una **reserva por cada mayorista**, con la TRM del día congelada.
@@ -211,7 +218,7 @@ límite y el estado (*Por vencer*, al día…). Cada pago queda en el **historia
 - **No escribas números de tarjeta** en la referencia ni en la nota: quedan guardados en el historial y
   no se pueden borrar.
 - **Un pago registrado no se borra, y tú no puedes deshacerlo.** Revisa el monto antes de guardar.
-  Corregirlo (devolver, ajustar o reversar) es del dueño y **hoy no tiene pantalla**: la pantalla
+  Corregirlo (devolver, ajustar o reversar) es del dueño y **hoy no tiene pantalla** (T-564): la pantalla
   solo te lo explica con un aviso. Si te equivocas, avisa al dueño.
 - Registrar el pago **no cobra nada ni mueve dinero**: es el libro donde la agencia anota lo que ya
   recibió. No hay pasarela de pago.
@@ -230,6 +237,10 @@ por cobrar de tus archivos.
 
 - Si tu perfil solo ve lo propio, el título es **«Mis números»**; el dueño ve **«Reportes de la
   agencia»** (ver [su recorrido](02-recorrido-del-dueno.md#6-reportes-de-toda-la-agencia)).
+- ⚠ **La captura de arriba no es la vista de un asesor puro.** El usuario de la demostración tiene
+  permisos de dueño, así que la pantalla se titula «Reportes de la agencia»; para acercarse a lo que ve
+  un asesor se eligió el filtro **«Míos»**. Con un asesor real, el título y el menú dicen «Mis números» y
+  desaparece la comparación entre asesores.
 - Cuando hay pocos datos (por ejemplo, menos de 20 cotizaciones enviadas), el sistema **no muestra
   porcentaje** en vez de mostrar uno engañoso.
 - Algunas cifras propias, como tus cotizaciones abiertas y tus cobros por cobrar, **aún no se calculan

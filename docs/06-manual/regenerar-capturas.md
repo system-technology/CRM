@@ -48,26 +48,20 @@ Por eso: compila con `NEXT_PUBLIC_USE_REAL_AUTH=true`, toma solo `asesor-01-ingr
 compilar **sin** esa variable para todas las demás. El recuadro verde del formulario («Conectado a la
 API y PostgreSQL en vivo») sale igual aunque no haya API: refleja la configuración, no una comprobación.
 
-## Esqueleto del script
+## Generar las capturas: un comando
 
-```js
-const { chromium } = require('playwright');
-const base = 'http://localhost:3000';
-(async () => {
-  const b = await chromium.launch();
-  const c = await b.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 });
-  await c.addInitScript(() => localStorage.setItem('viajapro_modo_demo', 'true'));
-  const p = await c.newPage();
-  await p.goto(base + '/viajes', { timeout: 120000 });
-  await p.waitForTimeout(2500);
-  // Aceptar el aviso de cookies si aparece (la primera captura NO lo hace, para documentarlo).
-  const solo = p.getByRole('button', { name: 'Solo necesarias' });
-  if (await solo.count()) await solo.first().click();
-  await p.getByText('File 1043').first().click();
-  await p.screenshot({ path: 'docs/06-manual/imagenes/asesor-09-archivo-de-viaje.png' });
-  await b.close();
-})();
+[`capturas.mjs`](capturas.mjs) toma **todas** las capturas de una pasada, acepta el aviso de cookies una
+sola vez y escribe cada imagen con su nombre final en `imagenes/`. Con la web ya sirviendo en :3000:
+
+```bash
+node docs/06-manual/capturas.mjs                      # todas menos el ingreso
+node docs/06-manual/capturas.mjs --solo=asesor-02-hoy # solo algunas
+node docs/06-manual/capturas.mjs --ingreso            # solo el ingreso (compilación con autenticación)
 ```
+
+Si una captura falla, el script lo dice y sale con error; las demás se toman igual. Las que no se
+pueden tomar o salen distintas a lo que describe el texto están anotadas dentro del propio script
+(por ejemplo, «Mis números» en demostración: el usuario de muestra es dueño).
 
 ## Qué ruta da cada captura
 

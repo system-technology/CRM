@@ -16,8 +16,8 @@ quedó fuera y por qué. La fuente es la sección «Es real» y «Es maqueta» d
 
 | Qué | Estado |
 |---|---|
-| **Marcar una cotización como «Aceptada»** | El servidor lo sabe hacer (y eso abre el archivo de viaje), pero la web solo llega hasta «Enviada». Ver [paso 7 del asesor](01-recorrido-del-asesor.md#7-cuando-el-viajero-acepta) |
-| **Corregir un pago** (devolver, ajustar, reversar) | Existe el permiso del dueño y el libro, no la pantalla |
+| **Marcar una cotización como «Aceptada»** | El servidor lo sabe hacer (y eso abre el archivo de viaje), pero la web solo llega hasta «Enviada». Ver [paso 7 del asesor](01-recorrido-del-asesor.md#7-cuando-el-viajero-acepta). Tarea T-563 |
+| **Corregir un pago** (devolver, ajustar, reversar) | Existe el permiso del dueño y el libro, no la pantalla. Tarea T-564 |
 | **Ingreso con código de 6 dígitos por correo** | La pantalla lo marca como «próximamente» |
 | **Registrarse como agencia nueva** | Existe la base de datos, sin API ni pantalla: hoy nadie puede darse de alta solo |
 | **Verificar el RNT** de la agencia | Lo marca el equipo de ViajaPro; sin verificar, la propuesta sale sin RNT |
