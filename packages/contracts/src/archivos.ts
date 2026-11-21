@@ -218,7 +218,11 @@ export type ArchivoSinResponsable = z.infer<typeof ArchivoSinResponsable>;
  */
 export const ListarArchivosSinResponsable = z
   .object({
-    /** Cuántos archivos abiertos se revisan, de los más urgentes hacia abajo. */
+    /**
+     * Cuántos archivos SIN RESPONSABLE se devuelven como mucho, de los más urgentes hacia abajo.
+     * Es un tope sobre el resultado, no una ventana de archivos a revisar: el filtro se aplica
+     * antes (T-549).
+     */
     limite: z.coerce.number().int().min(1).max(500).default(200),
   })
   .strict();
@@ -228,8 +232,12 @@ export const ListaDeArchivosSinResponsable = z.object({
   /** En el mismo orden de urgencia que `GET /api/v1/archivos`: el plazo más próximo primero. */
   datos: z.array(ArchivoSinResponsable),
   /**
-   * Se revisaron `limite` archivos abiertos y había al menos esos: puede quedar alguno sin
-   * responsable fuera de la ventana. La lista es un mínimo, no el total.
+   * Hay MÁS archivos sin responsable que el `limite` pedido: la lista es un mínimo, no el total.
+   *
+   * Se cuenta después de filtrar (T-549). Antes se marcaba en cuanto se llenaba la ventana de
+   * archivos revisados, aunque ninguno estuviera huérfano, y al revés: un huérfano que cayera
+   * bajo esa ventana no salía nunca y `datos.length` era un mínimo disfrazado de total. Mientras
+   * esto sea `false`, `datos` son TODOS los archivos abiertos sin responsable de la agencia.
    */
   truncado: z.boolean(),
 });
