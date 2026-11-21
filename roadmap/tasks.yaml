@@ -2092,6 +2092,9 @@ tasks:
       al replantearla, decidir si se renombra a 'proceso unico en staging'."
     prior_evidence: "PR #195 (commit 098e70c, rama i/T-079-redis-staging-render): cierre automatico por el
       runbook, con el CI en verde."
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0. Verificado: no hay servicio desplegado (ESTADO.md: deploy
+      de staging configurado y sin ejecutar, ADR-0028). Falta que el propietario siga la guia de paneles y que
+      un mensaje de la app de prueba de Meta aparezca como conversacion alli."
   - id: T-080
     title: Iniciar la verificación del negocio en Meta y la solicitud de Tech Provider
     type: docs
@@ -2109,12 +2112,15 @@ tasks:
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: "Solo el propietario puede hacerla: exige documentos legales de la empresa y su cuenta de
       Meta; tarda semanas"
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0 pese a estar bloqueada, porque tarda semanas y solo la
+      inicia el propietario. Verificado: ESTADO.md la lista como «sin iniciar» y no hay fecha de solicitud
+      registrada."
   - id: T-081
     title: "Ensayo de la jornada piloto: 20 conversaciones, 5 cotizaciones recibidas, seguimientos y sin abrir el
       WhatsApp del celular"
     type: test
     phase: 1
-    priority: P0
+    priority: P1
     effort: M
     status: blocked
     depends_on:
@@ -2130,6 +2136,10 @@ tasks:
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: Depende de Redis y trabajador en staging y del número de prueba de Meta con el propietario presente
+    reprioritized_at: "2026-11-21T18:00:00.000Z"
+    reprioritized_note: "Bajada de P0 a P1 (T-574, 2026-11-21). Es un ensayo y depende de T-079 (nada desplegado) y del numero de
+      prueba de Meta con el propietario presente: no se puede hacer antes que T-079. Sube a P0 cuando T-079
+      tenga un servicio vivo."
   - id: T-082
     title: "Migración: tabla seguimientos con RLS para varios seguimientos por oportunidad y por conversación
       (T-077)"
@@ -2383,6 +2393,9 @@ tasks:
     created_at: 2026-10-28T02:16:36.573Z
     blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
       sobre el texto y los plazos
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0 y bloqueada. Las paginas /privacidad y /terminos ya
+      existen en apps/web/src/app/ con la insignia «Borrador en revision juridica» (page.spec.tsx); falta solo
+      la revision de un abogado y que el propietario apruebe el texto y los plazos."
   - id: T-094
     title: Inventario de cookies y almacenamiento del navegador, y política de cookies
     type: docs
@@ -3014,7 +3027,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - GET/POST/PATCH /api/v1/crm/etapas con contratos en packages/contracts y permiso crm.escribir para
@@ -3027,6 +3040,11 @@ tasks:
       - packages/contracts/src/crm.ts
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.915Z
+    done_at: "2026-11-21T18:00:00.000Z"
+    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). crm.controller.ts expone GET/POST/PATCH etapas y POST
+      etapas/reordenar (crm.escribir para mutar); etapas.e2e-spec.ts prueba crear, editar, reordenar y el
+      aislamiento entre agencias (con crm-aislamiento.e2e-spec.ts). La web guarda contra la API real en
+      apps/web/src/lib/crm-api.ts (PATCH por etapa y POST /crm/etapas/reordenar)."
   - id: T-121
     title: "Web: la lista de miembros llama GET /identidad/usuarios que no existe; usar el endpoint real de
       miembros"
@@ -3034,7 +3052,7 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Determinar si el endpoint correcto es /api/v1/identidad/miembros (miembros.controller) y alinear la
@@ -3046,6 +3064,11 @@ tasks:
       - apps/api/src/modules/identity/interface/miembros.controller.ts
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
+    done_at: "2026-11-21T18:00:00.000Z"
+    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). miembros.controller.ts expone GET
+      /api/v1/identidad/miembros (ListarMiembrosUseCase, T-121) y la web lo consume en modo real; equipo-
+      api.spec.ts («modo real: GET /api/v1/identidad/miembros») prueba la respuesta real y el error.
+      dashboard-admin-api.ts reutiliza listarMiembrosEquipoApi."
   - id: T-122
     title: "API: estado del canal de WhatsApp de la agencia (conectado, numero, ultimo mensaje, errores) para la
       pantalla de Configuracion"
@@ -3087,7 +3110,7 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - .env.example deja USE_REAL_CRM, USE_REAL_INBOX y NEXT_PUBLIC_USE_REAL_AUTH en modo real; la maqueta es
@@ -3100,6 +3123,11 @@ tasks:
       - README.md
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
+    done_at: "2026-11-21T18:00:00.000Z"
+    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). .env.example deja NEXT_PUBLIC_USE_REAL_CRM,
+      NEXT_PUBLIC_USE_REAL_INBOX y NEXT_PUBLIC_USE_REAL_AUTH en true (lineas 34, 38 y 42) y el README abre con
+      «La web arranca en modo real» y documenta el arranque local; la frase «todavia no hay codigo» ya no
+      existe."
   - id: T-124
     title: "Web: reportes sin margen ni costo inventados; las pantallas que solo usan localStorage dicen que son
       locales o hablan con la API"
@@ -3182,6 +3210,9 @@ tasks:
       automatizar. ALCANCE REDUCIDO: recorrido manual con bitacora de hallazgos ANTES de la primera
       demostracion al piloto. AVISO OPERATIVO: una rama cuyo nombre contenga T-126 la cierra sola
       (cerrar-tarea.yml)."
+    reconciled_note: "Reconciliada con T-574 (2026-11-21): sigue P0. docs/_bitacora/hallazgos-funcionales-2026-11-05.md
+      declara «recorrido NO ejecutado» y no hay otro: falta que una persona recorra H1 a H6 en un navegador y
+      deje la bitacora de hallazgos antes de ensenar el producto."
   - id: T-127
     title: Atajos de teclado en la bandeja con ayuda en pantalla
     type: feature
@@ -3284,7 +3315,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "Tabla nueva oportunidad_cambios_etapa con tenant_id, RLS (aplicar_aislamiento_tenant) y foraneas
@@ -3308,13 +3339,20 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.630Z
     owner: datos
+    done_at: "2026-11-21T18:00:00.000Z"
+    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). La tabla oportunidad_cambios_etapa existe (migracion
+      20261104150000_historial_de_etapas_de_oportunidad, con aplicar_aislamiento_tenant).
+      CrmPrisma.moverOportunidad (crm.prisma.ts) y EscrituraCrmPrisma.crearOportunidad (escritura-
+      crm.prisma.ts) escriben la fila y cerrada_en en la misma transaccion. Lo demuestran historial-de-
+      etapas.e2e-spec.ts (A->B->perdida->A deja cuatro filas y cerrada_en vacia; aislamiento entre agencias) e
+      historial-de-etapas.prisma.spec.ts."
   - id: T-132
     title: "Captura: historial de estados de la cotizacion con instante de aceptacion, rechazo o vencimiento"
     type: feature
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "Tabla nueva cotizacion_cambios_estado con tenant_id, RLS y foranea COMPUESTA: cotizacion_id,
@@ -3334,11 +3372,17 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.632Z
     owner: datos
+    done_at: "2026-11-21T18:00:00.000Z"
+    evidence: "Verificada contra el codigo el 2026-11-21 (T-574). La tabla cotizacion_cambios_estado existe (migracion
+      20261104160000_historial_de_estados_de_cotizacion, con aplicar_aislamiento_tenant). cotizaciones.use-
+      case.ts:104 (tx.cotizacionCambioEstado.create) la escribe en la transaccion del cambio. Lo demuestran
+      historial-de-estados.e2e-spec.ts y cotizaciones-historial.spec.ts; cotizaciones-para-reportes.prisma.ts
+      ya la consume."
   - id: T-133
     title: "Captura: origen del lead como tabla por agencia (R12) y columna en la oportunidad"
     type: feature
     phase: 1
-    priority: P0
+    priority: P2
     effort: M
     status: backlog
     depends_on: []
@@ -3361,12 +3405,17 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.632Z
     owner: datos
+    reprioritized_at: "2026-11-21T18:00:00.000Z"
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Hoy no hay tabla origenes_lead ni oportunidades.origen_id
+      (busqueda por esos nombres en packages/ y apps/: cero resultados), asi que sigue pendiente entera. Pero
+      atribuir el origen del lead alimenta un reporte que ninguna agencia ha pedido todavia: sin agencia real
+      ni mensajes reales, no es lo mas urgente."
   - id: T-134
     title: "Captura: referral de Click-to-WhatsApp en el primer mensaje entrante y origen «Anuncio de Meta»
       automatico"
     type: feature
     phase: 1
-    priority: P0
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3387,12 +3436,17 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.632Z
     owner: backend
+    reprioritized_at: "2026-11-21T18:00:00.000Z"
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Sigue pendiente entera: el parseo del change no extrae
+      messages[].referral (cero resultados de referral/ctwa en apps/api/src ni en el esquema). Depende de
+      T-133 y sirve a anuncios de Click-to-WhatsApp que ninguna agencia ha activado; por debajo de desplegar y
+      de la primera agencia."
   - id: T-135
     title: "Captura: politica de atencion por agencia (minutos de SLA, horario semanal, horas de silencio) como
       tabla, no constante"
     type: feature
     phase: 1
-    priority: P0
+    priority: P2
     effort: M
     status: backlog
     depends_on: []
@@ -3414,12 +3468,17 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.633Z
     owner: datos
+    reprioritized_at: "2026-11-21T18:00:00.000Z"
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). Sigue pendiente: no existe la tabla politica_de_atencion ni
+      GET/PUT /configuracion/atencion. El SLA de primera respuesta ya funciona con el valor por defecto de 15
+      minutos (MINUTOS_SLA_PRIMERA_RESPUESTA_POR_DEFECTO en plazo-de-primera-respuesta.ts), asi que falta solo
+      volverlo dato por agencia (R12), que no bloquea al piloto."
   - id: T-136
     title: "Armar conversaciones.sla_vence_en en cada entrante que abre un episodio: hoy nadie lo escribe y el
       filtro SLA_VENCIDO siempre sale vacio"
     type: bug
     phase: 1
-    priority: P0
+    priority: P2
     effort: S
     status: backlog
     depends_on:
@@ -3438,6 +3497,13 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.633Z
     owner: backend
+    reprioritized_at: "2026-11-21T18:00:00.000Z"
+    reprioritized_note: "Bajada de P0 a P2 (T-574, 2026-11-21). El diagnostico del titulo ya es falso: bandeja.prisma.ts:181-190
+      fija sla_vence_en en el primer entrante (slaTrasEntrante, T-182) y inbox-
+      visibilidad.e2e-spec.ts:1105-1137 prueba que SLA_VENCIDO lo lista y que responder lo anula. Lo que FALTA
+      es solo el segundo episodio: slaTrasEntrante no rearma si ya hubo primera respuesta (primeraRespuestaEn
+      se fija una vez en la vida de la conversacion), y no usa horas de silencio ni los minutos de T-135.
+      Sigue dependiendo de T-135."
   - id: T-137
     title: "Reportes: primera respuesta por episodio, % dentro del SLA y muestra insuficiente (la mediana, el p90
       y los sin responder ya están en el resumen)"

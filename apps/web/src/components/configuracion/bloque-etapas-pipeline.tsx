@@ -109,7 +109,7 @@ export function BloqueEtapasPipeline() {
     <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+          <div className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
             <GitCommit className="h-5 w-5" />
           </div>
           <div>
@@ -128,7 +128,7 @@ export function BloqueEtapasPipeline() {
           onClick={() => void guardarCambios()}
           disabled={guardando || cargando || !puedeEscribirCrm || etapas.length === 0}
           title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
-          className="bg-primary-600 hover:bg-primary-700 flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-2xs transition-colors disabled:opacity-50 sm:w-auto"
+          className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-2xs transition-colors disabled:opacity-50 sm:w-auto"
         >
           <Save className="h-4 w-4" />
           <span>{guardando ? 'Guardando...' : 'Guardar etapas'}</span>

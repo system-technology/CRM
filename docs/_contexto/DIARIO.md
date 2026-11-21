@@ -582,3 +582,4 @@ Se retira el conmutador Vista Dueño/Asesor; la vista la decide la respuesta de 
 - **Hay criterios de aceptación que cruzan carriles por su cuenta** (T-565 y T-566 pedían tocar `docs/06-manual/` desde una tarea de `apps/web`). Avisar al repartir; el rastro va aparte (T-576).
 - El **sha truncado** de un monitor propio usado en `update-branch` da 422: leerlo entero con `--jq '.head.sha'`.
 - Un monitor que imprime el estado **cada vuelta** inunda de notificaciones: emitir solo al cambiar.
+- **2026-11-21 · T-574**: las 14 P0 abiertas se contrastaron contra el código. 5 ya estaban hechas (T-120, T-121, T-123, T-131, T-132; la hipótesis de T-131/T-132 se confirmó), 5 bajaron (T-133, T-134, T-135, T-136 a P2; T-081 a P1) y 4 siguen P0 (T-079, T-080, T-093, T-126). El título de T-136 era falso. Detalle: [bitácora](../_bitacora/2026-11-21-reconciliacion-de-las-p0-abiertas.md).
