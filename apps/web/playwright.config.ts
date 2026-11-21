@@ -56,6 +56,7 @@ export default defineConfig({
       name: 'flujo',
       testMatch: [
         '**/02-flujo-h1-h6.e2e-spec.ts',
+        '**/02b-aceptar-cotizacion.e2e-spec.ts',
         '**/03-paginas.e2e-spec.ts',
         '**/04-nombres.e2e-spec.ts',
         '**/05-movil.e2e-spec.ts',

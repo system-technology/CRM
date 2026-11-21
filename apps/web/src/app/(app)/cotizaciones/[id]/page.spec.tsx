@@ -5,7 +5,13 @@ import PaginaCotizacionGuardada from './page';
 import * as cotizacionesApi from '../../../../lib/cotizaciones-api';
 import * as authApi from '../../../../lib/auth-api';
 import * as crmApi from '../../../../lib/crm-api';
-import type { CotizacionGuardada, SesionActual } from '@viajapro/contracts';
+import * as archivosApi from '../../../../lib/archivos-api';
+import type {
+  CotizacionGuardada,
+  EstadoCotizacion,
+  ResumenDeArchivo,
+  SesionActual,
+} from '@viajapro/contracts';
 
 // Los parámetros de la URL que cada prueba quiere ver (p. ej. `?conversacion=`).
 const parametrosDeUrl = vi.hoisted(() => ({ actuales: new URLSearchParams() }));
@@ -296,5 +302,236 @@ describe('PaginaCotizacionGuardada (Detalle T-107)', () => {
       expect(screen.getByRole('dialog')).toBeDefined();
       expect(screen.getByText('Comparar Versiones Lado a Lado')).toBeDefined();
     });
+  });
+
+  // ===========================================================================
+  // T-563 — marcar aceptada desde el detalle
+  // ===========================================================================
+
+  /** Una cotización que el viajero ya recibió: la única que puede aceptarse. */
+  const cotizacionEnviada: CotizacionGuardada = {
+    ...cotizacionPrueba,
+    estado: 'ENVIADA',
+    versionEnviada: 1,
+    enviadaEn: '2026-10-26T09:00:00.000Z',
+  };
+
+  /** El archivo de viaje que abre el consumidor del evento de aceptación (ADR-0024 §1). */
+  const archivoDeLaCotizacion: ResumenDeArchivo = {
+    id: '01932000-0000-7000-8000-0000000000f1',
+    numero: 1043,
+    contactoId: cotizacionPrueba.contactoId,
+    oportunidadId: null,
+    cotizacionId: cotizacionPrueba.id,
+    versionCotizacion: 1,
+    paqueteNombre: 'Escape Caribeño San Andrés',
+    destino: 'San Andrés',
+    fechaSalida: '2026-11-10',
+    noches: 4,
+    adultos: 2,
+    ninos: 0,
+    infantes: 0,
+    venta: { unidades: '5000000', moneda: 'COP' },
+    trm: null,
+    estado: 'ABIERTO',
+    avance: null,
+    motivoCancelacion: null,
+    notaCancelacion: null,
+    canceladoEn: null,
+    proximoPlazo: null,
+    semaforo: null,
+    reservas: [],
+    creadoEn: '2026-10-26T12:00:00.000Z',
+  };
+
+  const sesionQueEscribeCotizaciones: SesionActual = {
+    ...sesionSinPermisoNeto,
+    acceso: {
+      usuarioId: '01932000-0000-7000-8000-000000000002',
+      rol: 'asesor',
+      permisos: ['cotizacion.escribir'],
+    },
+  };
+
+  /** Sin `cotizacion.escribir`: es el permiso que exige `POST /cotizaciones/:id/estado`. */
+  const sesionSinEscribirCotizaciones: SesionActual = {
+    ...sesionSinPermisoNeto,
+    acceso: {
+      usuarioId: '01932000-0000-7000-8000-000000000002',
+      rol: 'asesor',
+      permisos: ['conversaciones.ver_todas'],
+    },
+  };
+
+  const prepararAceptacion = (opciones: {
+    cotizacion: CotizacionGuardada;
+    sesion: SesionActual;
+    archivos?: ResumenDeArchivo[];
+  }) => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(opciones.sesion);
+    vi.spyOn(cotizacionesApi, 'obtenerCotizacionGuardadaApi').mockResolvedValue(
+      opciones.cotizacion,
+    );
+    vi.spyOn(archivosApi, 'listarArchivos').mockResolvedValue(opciones.archivos ?? []);
+    return vi
+      .spyOn(cotizacionesApi, 'cambiarEstadoCotizacionApi')
+      .mockResolvedValue({ ...opciones.cotizacion, estado: 'ACEPTADA' });
+  };
+
+  it('T-563: ofrece marcar aceptada sobre una cotización ENVIADA, y solo tras confirmar llama al servidor', async () => {
+    const cambiarEstado = prepararAceptacion({
+      cotizacion: cotizacionEnviada,
+      sesion: sesionQueEscribeCotizaciones,
+      archivos: [archivoDeLaCotizacion],
+    });
+
+    render(<PaginaCotizacionGuardada />);
+
+    const boton = await screen.findByTestId<HTMLButtonElement>('btn-marcar-aceptada');
+    expect(boton.disabled).toBe(false);
+
+    fireEvent.click(boton);
+
+    // Abrir el diálogo no cambia nada todavía: confirmar es un acto aparte.
+    const dialogo = await screen.findByTestId('dialogo-aceptar-cotizacion');
+    expect(cambiarEstado).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('btn-confirmar-aceptada'));
+
+    await waitFor(() => {
+      expect(cambiarEstado).toHaveBeenCalledWith(cotizacionPrueba.id, 'ACEPTADA');
+    });
+
+    // Y la pantalla lo refleja: estado nuevo y la acción ya no se ofrece.
+    await waitFor(() => {
+      expect(screen.getByText('ACEPTADA')).toBeDefined();
+    });
+    expect(screen.queryByTestId('btn-marcar-aceptada')).toBeNull();
+    expect(dialogo.isConnected).toBe(false);
+  });
+
+  it('T-563: la confirmación avisa de que se abre el archivo de viaje, en lenguaje de agencia', async () => {
+    prepararAceptacion({
+      cotizacion: cotizacionEnviada,
+      sesion: sesionQueEscribeCotizaciones,
+    });
+
+    render(<PaginaCotizacionGuardada />);
+    fireEvent.click(await screen.findByTestId('btn-marcar-aceptada'));
+
+    const dialogo = await screen.findByTestId('dialogo-aceptar-cotizacion');
+    const texto = dialogo.textContent ?? '';
+
+    // Lo que de verdad va a pasar, dicho antes de pulsar.
+    expect(texto).toMatch(/archivo de viaje/i);
+    // Y que la cotización queda cerrada: no admite más versiones ni otro estado.
+    expect(texto).toMatch(/no admite|queda cerrada|última palabra/i);
+    // En el idioma de la agencia: nada de la tubería de adentro.
+    expect(texto).not.toMatch(/outbox|evento de dominio|endpoint|payload|consumidor/i);
+  });
+
+  it('T-563: cancelar la confirmación no cambia el estado', async () => {
+    const cambiarEstado = prepararAceptacion({
+      cotizacion: cotizacionEnviada,
+      sesion: sesionQueEscribeCotizaciones,
+    });
+
+    render(<PaginaCotizacionGuardada />);
+    fireEvent.click(await screen.findByTestId('btn-marcar-aceptada'));
+    fireEvent.click(await screen.findByTestId('btn-cancelar-aceptada'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialogo-aceptar-cotizacion')).toBeNull();
+    });
+    expect(cambiarEstado).not.toHaveBeenCalled();
+    expect(screen.getByText('ENVIADA')).toBeDefined();
+  });
+
+  it('T-563: sin el permiso «cotizacion.escribir» el botón está deshabilitado y no llega al servidor', async () => {
+    const cambiarEstado = prepararAceptacion({
+      cotizacion: cotizacionEnviada,
+      sesion: sesionSinEscribirCotizaciones,
+    });
+
+    render(<PaginaCotizacionGuardada />);
+
+    const boton = await screen.findByTestId<HTMLButtonElement>('btn-marcar-aceptada');
+    expect(boton.disabled).toBe(true);
+    expect(boton.getAttribute('title') ?? '').toContain('cotizacion.escribir');
+
+    fireEvent.click(boton);
+
+    expect(screen.queryByTestId('dialogo-aceptar-cotizacion')).toBeNull();
+    expect(cambiarEstado).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Una prueba «no aparece el botón» pasa en verde contra una pantalla que no tiene el botón en
+   * ningún estado: contra el código de hoy, las cuatro pasaban sin demostrar nada. Por eso cada
+   * una lleva su **control positivo** delante: en la MISMA prueba se comprueba primero que sobre
+   * una ENVIADA el botón sí está. Si la acción desapareciera de la pantalla, o dejara de mirar el
+   * estado, estas pruebas se ponen rojas.
+   */
+  const soloSeOfreceSobreEnviada = async (estado: EstadoCotizacion) => {
+    prepararAceptacion({ cotizacion: cotizacionEnviada, sesion: sesionQueEscribeCotizaciones });
+    const control = render(<PaginaCotizacionGuardada />);
+    await screen.findByTestId('btn-marcar-aceptada');
+    control.unmount();
+
+    prepararAceptacion({
+      cotizacion: { ...cotizacionEnviada, estado },
+      sesion: sesionQueEscribeCotizaciones,
+    });
+    render(<PaginaCotizacionGuardada />);
+
+    await waitFor(() => {
+      expect(screen.getByText(estado)).toBeDefined();
+    });
+    expect(screen.queryByTestId('btn-marcar-aceptada')).toBeNull();
+  };
+
+  it('T-563: no se ofrece aceptar un BORRADOR: lo que no se envió, el viajero no pudo aceptarlo', async () => {
+    await soloSeOfreceSobreEnviada('BORRADOR');
+  });
+
+  it.each<EstadoCotizacion>(['ACEPTADA', 'RECHAZADA', 'VENCIDA'])(
+    'T-563: no se ofrece aceptar una cotización ya cerrada (%s)',
+    async (estado) => {
+      await soloSeOfreceSobreEnviada(estado);
+    },
+  );
+
+  it('T-563: tras aceptar, lleva al archivo de viaje que se acaba de abrir', async () => {
+    prepararAceptacion({
+      cotizacion: cotizacionEnviada,
+      sesion: sesionQueEscribeCotizaciones,
+      archivos: [archivoDeLaCotizacion],
+    });
+
+    render(<PaginaCotizacionGuardada />);
+    fireEvent.click(await screen.findByTestId('btn-marcar-aceptada'));
+    fireEvent.click(await screen.findByTestId('btn-confirmar-aceptada'));
+
+    const enlace = await screen.findByTestId('enlace-archivo-recien-abierto');
+    expect(enlace.getAttribute('href')).toBe(`/viajes?id=${archivoDeLaCotizacion.id}`);
+    expect(enlace.textContent).toContain('1043');
+  });
+
+  it('T-563: si el archivo de viaje todavía no existe, lo dice y NO pinta un enlace falso', async () => {
+    prepararAceptacion({
+      cotizacion: cotizacionEnviada,
+      sesion: sesionQueEscribeCotizaciones,
+      archivos: [],
+    });
+
+    render(<PaginaCotizacionGuardada />);
+    fireEvent.click(await screen.findByTestId('btn-marcar-aceptada'));
+    fireEvent.click(await screen.findByTestId('btn-confirmar-aceptada'));
+
+    const aviso = await screen.findByTestId('aviso-cotizacion-aceptada');
+    await waitFor(() => {
+      expect(aviso.textContent ?? '').toMatch(/abriendo|unos segundos|todav/i);
+    });
+    expect(screen.queryByTestId('enlace-archivo-recien-abierto')).toBeNull();
   });
 });

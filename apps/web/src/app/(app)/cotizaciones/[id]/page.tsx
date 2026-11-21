@@ -29,8 +29,14 @@ import {
   Printer,
   Shield,
   Scale,
+  CheckCircle2,
 } from 'lucide-react';
-import type { Acomodacion, CotizacionGuardada, ContactoDeLista } from '@viajapro/contracts';
+import type {
+  Acomodacion,
+  CotizacionGuardada,
+  ContactoDeLista,
+  ResumenDeArchivo,
+} from '@viajapro/contracts';
 import { MigasDePan } from '../../../../components/comun/migas-de-pan';
 import {
   formatearDinero,
@@ -42,6 +48,7 @@ import {
   obtenerCotizacionGuardadaApi,
   anadirVersionCotizacionApi,
   duplicarVersionCotizacionApi,
+  cambiarEstadoCotizacionApi,
 } from '../../../../lib/cotizaciones-api';
 import {
   armarCuerpoAnadirVersion,
@@ -56,9 +63,18 @@ import {
   enlaceDeArchivo,
   enlaceDeContacto,
   enlaceDeConversacion,
+  etiquetaDelArchivo,
+  hrefArchivo,
 } from '../../../../lib/enlaces-viaje-logica';
 import { useEnlacesDelViaje } from '../../../../lib/use-enlaces-del-viaje';
 import { usePermisos } from '../../../../lib/permisos';
+import {
+  accionAceptarCotizacion,
+  archivoTrasAceptar,
+  ESPERAS_DE_BUSQUEDA_DEL_ARCHIVO,
+  type BusquedaDelArchivo,
+} from '../../../../lib/aceptar-cotizacion-logica';
+import { listarArchivos } from '../../../../lib/archivos-api';
 import { CampoFecha } from '../../../../components/comun/campo-fecha';
 import { TablaDeLineas } from '../../../../components/cotizador/tabla-de-lineas';
 
@@ -67,6 +83,14 @@ const ModalEnviarWhatsAppCotizacion = dynamic(
   () =>
     import('../../../../components/cotizaciones/modal-enviar-whatsapp-cotizacion').then(
       (m) => m.ModalEnviarWhatsAppCotizacion,
+    ),
+  { ssr: false },
+);
+
+const ModalAceptarCotizacion = dynamic(
+  () =>
+    import('../../../../components/cotizaciones/modal-aceptar-cotizacion').then(
+      (m) => m.ModalAceptarCotizacion,
     ),
   { ssr: false },
 );
@@ -116,7 +140,7 @@ function ContenidoCotizacionGuardada({ params: paramsPromise }: PageProps) {
   }
 
   const id = idFromProps ?? idFromParams ?? '01932000-0000-7000-8000-000000000001';
-  const { puedeVerNetoYMargen } = usePermisos();
+  const { puedeVerNetoYMargen, puedeEscribirCotizacion } = usePermisos();
 
   const [cotizacion, setCotizacion] = useState<CotizacionGuardada | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -152,6 +176,15 @@ function ContenidoCotizacionGuardada({ params: paramsPromise }: PageProps) {
     enlaces.archivos.tipo === 'listo' && cotizacion
       ? archivoDeLaCotizacion(enlaces.archivos.valor, cotizacion.id)
       : null;
+
+  // Aceptación del viajero y el archivo de viaje que nace de ella (T-563)
+  const [modalAceptarAbierto, setModalAceptarAbierto] = useState(false);
+  const [aceptando, setAceptando] = useState(false);
+  const [errorAceptar, setErrorAceptar] = useState<string | null>(null);
+  /** El id de la cotización recién aceptada; dispara la búsqueda de su archivo de viaje. */
+  const [cotizacionRecienAceptada, setCotizacionRecienAceptada] = useState<string | null>(null);
+  const [reintentoDeBusqueda, setReintentoDeBusqueda] = useState(0);
+  const [busquedaArchivo, setBusquedaArchivo] = useState<BusquedaDelArchivo | null>(null);
 
   // Modal para crear nueva versión
   const [modalModificarAbierto, setModalModificarAbierto] = useState(false);
@@ -252,6 +285,82 @@ function ContenidoCotizacionGuardada({ params: paramsPromise }: PageProps) {
       setGuardandoVersion(false);
     }
   };
+
+  // ===========================================================================
+  // Aceptación del viajero (T-563)
+  // ===========================================================================
+
+  /** El archivo de viaje recién abierto, cuando la búsqueda ya lo encontró. */
+  const archivoRecienAbierto =
+    busquedaArchivo?.fase === 'encontrado'
+      ? { id: busquedaArchivo.archivoId, numero: busquedaArchivo.numero }
+      : null;
+
+  /** Si la pantalla ofrece marcar aceptada, y en qué forma. Decide `aceptar-cotizacion-logica`. */
+  const accionAceptar = accionAceptarCotizacion({
+    estado: cotizacion?.estado ?? 'BORRADOR',
+    puedeEscribirCotizacion,
+  });
+
+  const manejarAceptar = async () => {
+    if (!cotizacion || aceptando) return;
+    setAceptando(true);
+    setErrorAceptar(null);
+    try {
+      const actualizada = await cambiarEstadoCotizacionApi(cotizacion.id, 'ACEPTADA');
+      setCotizacion(actualizada);
+      setModalAceptarAbierto(false);
+      // El archivo de viaje todavía no existe: lo abre el servidor al procesar la aceptación.
+      setBusquedaArchivo({ fase: 'buscando' });
+      setReintentoDeBusqueda(0);
+      setCotizacionRecienAceptada(actualizada.id);
+    } catch (err: unknown) {
+      setErrorAceptar(interpretarErrorCotizaciones(err).mensaje);
+    } finally {
+      setAceptando(false);
+    }
+  };
+
+  /**
+   * Busca el archivo de viaje que nació de la aceptación, unas cuantas veces y con pausas: la
+   * respuesta de la API no lo trae porque lo abre el consumidor del evento (ADR-0024 §1). Lo que
+   * no aparece no se pinta: la pantalla dice que sigue buscando o que se demoró, nunca enlaza a un
+   * archivo que no vio.
+   */
+  useEffect(() => {
+    if (!cotizacionRecienAceptada) return;
+    let vigente = true;
+
+    const esperar = (ms: number) =>
+      new Promise<void>((resolver) => {
+        setTimeout(resolver, ms);
+      });
+
+    const buscar = async () => {
+      for (let intento = 0; intento <= ESPERAS_DE_BUSQUEDA_DEL_ARCHIVO.length; intento++) {
+        let lista: ResumenDeArchivo[] = [];
+        try {
+          lista = await listarArchivos('TODOS');
+        } catch (e: unknown) {
+          console.warn('[cotizacion] No se pudo consultar los archivos de viaje:', e);
+        }
+        if (!vigente) return;
+
+        const agotados = intento === ESPERAS_DE_BUSQUEDA_DEL_ARCHIVO.length;
+        const resultado = archivoTrasAceptar(lista, cotizacionRecienAceptada, { agotados });
+        setBusquedaArchivo(resultado);
+        if (resultado.fase !== 'buscando') return;
+
+        await esperar(ESPERAS_DE_BUSQUEDA_DEL_ARCHIVO[intento] ?? 3_000);
+        if (!vigente) return;
+      }
+    };
+
+    void buscar();
+    return () => {
+      vigente = false;
+    };
+  }, [cotizacionRecienAceptada, reintentoDeBusqueda]);
 
   // Duplicar versión actual como versión N+1 (T-107)
   const manejarDuplicarVersion = async () => {
@@ -413,6 +522,78 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
             </div>
           )}
 
+          {/* Aceptada: a dónde ir ahora (T-563). El archivo lo abre el servidor, así que se dice
+              lo que de verdad está pasando y no se enlaza a lo que todavía no existe. */}
+          {busquedaArchivo && (
+            <div
+              role="status"
+              data-testid="aviso-cotizacion-aceptada"
+              className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-xs dark:border-emerald-900/60 dark:bg-emerald-950/30"
+            >
+              <p className="flex items-center gap-2 text-sm font-black text-emerald-900 dark:text-emerald-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Cotización aceptada. Enhorabuena por la venta.</span>
+              </p>
+
+              {busquedaArchivo.fase === 'encontrado' && (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-emerald-900/85 dark:text-emerald-200/85">
+                    El archivo de viaje de este pasajero ya está abierto.
+                  </p>
+                  <Link
+                    href={hrefArchivo(busquedaArchivo.archivoId)}
+                    data-testid="enlace-archivo-recien-abierto"
+                    className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-emerald-700"
+                  >
+                    <FileText className="h-4 w-4" aria-hidden="true" />
+                    <span>
+                      Abrir{' '}
+                      {busquedaArchivo.numero === null
+                        ? 'el archivo de viaje'
+                        : etiquetaDelArchivo(busquedaArchivo.numero)}
+                    </span>
+                  </Link>
+                </div>
+              )}
+
+              {busquedaArchivo.fase === 'buscando' && (
+                <p className="mt-3 text-sm text-emerald-900/85 dark:text-emerald-200/85">
+                  Se está abriendo el archivo de viaje de este pasajero: tarda unos segundos. Aquí
+                  aparecerá el enlace en cuanto exista.
+                </p>
+              )}
+
+              {busquedaArchivo.fase === 'demorada' && (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-emerald-900/85 dark:text-emerald-200/85">
+                    El archivo de viaje todavía no aparece. La aceptación quedó registrada; el
+                    archivo se abre aparte y puede tardar un poco más.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      data-testid="btn-reintentar-busqueda-archivo"
+                      onClick={() => {
+                        setBusquedaArchivo({ fase: 'buscando' });
+                        setReintentoDeBusqueda((n) => n + 1);
+                      }}
+                      className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-50 dark:border-emerald-800 dark:bg-neutral-900 dark:text-emerald-200"
+                    >
+                      Buscarlo de nuevo
+                    </button>
+                    <Link
+                      href="/viajes"
+                      data-testid="enlace-todos-los-archivos"
+                      className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-emerald-700"
+                    >
+                      Ver archivos de viaje
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Contenido de la Cotización Guardada */}
           {!cargando && !errorCarga && cotizacion && versionActual && (
             <>
@@ -460,9 +641,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         ),
                         enlaceDeContacto(cotizacion.contactoId, contacto?.nombre),
                         enlaceDeArchivo(
-                          enlaces.archivos.tipo === 'cargando'
-                            ? enlaces.archivos
-                            : { tipo: 'listo', valor: archivoDeOrigen },
+                          archivoRecienAbierto
+                            ? { tipo: 'listo', valor: archivoRecienAbierto }
+                            : enlaces.archivos.tipo === 'cargando'
+                              ? enlaces.archivos
+                              : { tipo: 'listo', valor: archivoDeOrigen },
                         ),
                       ]}
                     />
@@ -554,6 +737,40 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                   </div>
                 </div>
               </div>
+
+              {/* Cierre de la venta: el viajero aceptó (T-563) */}
+              {accionAceptar.ofrecida && (
+                <div
+                  data-testid="franja-cierre-de-venta"
+                  className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/60 dark:bg-emerald-950/30"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-emerald-900 dark:text-emerald-200">
+                      La propuesta está en manos del viajero
+                    </p>
+                    <p className="mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">
+                      Cuando confirme, márcala aceptada: se abre el archivo de viaje con la versión{' '}
+                      {cotizacion.versionEnviada ?? versionActual.numero}, y la cotización queda
+                      cerrada.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="btn-marcar-aceptada"
+                    onClick={() => {
+                      setErrorAceptar(null);
+                      setModalAceptarAbierto(true);
+                    }}
+                    disabled={!accionAceptar.habilitada}
+                    title={accionAceptar.habilitada ? undefined : accionAceptar.explicacion}
+                    aria-disabled={accionAceptar.habilitada ? undefined : true}
+                    className="flex min-h-[48px] w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    <span>El viajero aceptó</span>
+                  </button>
+                </div>
+              )}
 
               {/* Selector de Versiones (Tabs/Pills) */}
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
@@ -1092,6 +1309,21 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                 </form>
               </div>
             </div>
+          )}
+          {/* Confirmación de la aceptación del viajero (T-563) */}
+          {modalAceptarAbierto && cotizacion && versionActual && (
+            <ModalAceptarCotizacion
+              abierto={modalAceptarAbierto}
+              nombreViajero={contacto?.nombre ?? null}
+              numeroDeVersion={cotizacion.versionEnviada ?? versionActual.numero}
+              totalDeLaVenta={versionActual.venta}
+              confirmando={aceptando}
+              error={errorAceptar}
+              onConfirmar={() => void manejarAceptar()}
+              onCerrar={() => {
+                if (!aceptando) setModalAceptarAbierto(false);
+              }}
+            />
           )}
           {/* Modal Comparar Versiones Lado a Lado (T-128) */}
           {modalCompararAbierto && cotizacion && cotizacion.versiones.length >= 2 && (
