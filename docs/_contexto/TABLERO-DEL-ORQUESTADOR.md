@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 13:00 UTC**, por la madre `session_01R81Xh5b7wpteu5YpcDpw5p` (relevo de las 12:25). `main` en **`aa38bdf9`**. **#427 y #428 integrados; cero PR abiertos.**
+Última actualización: **2026-11-21, 13:55 UTC**, por la madre `session_01R81Xh5b7wpteu5YpcDpw5p`. `main` en **`d755ea69`**. **Lote de mediodía CERRADO: siete PR integrados** (#427, #428, #430, #429, #433, #434, #432). **Cero sesiones hijas vivas** — la flota está parada: repartir es lo primero.
 
 
 ## 1. Quién es quién
@@ -19,11 +19,9 @@
 - **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
 - **El despertar de las 2 h ya apunta bien.** Tarea programada **`trig_01H8nNZUwV2DdTA2fnJzQkVh`** (`15 */2 * * *`), creada por la madre anterior el 2026-11-21 a las 09:53 UTC apuntando a la madre actual; la suya, `trig_016u2cLZTGLRrJvkZWgJpqpG`, quedó borrada. **Verificado con `list_triggers`**, no de palabra. Quedó así porque a la madre nueva el clasificador le deniega `create_trigger`: si vuelve a haber relevo, **la madre saliente crea la tarea de la entrante antes de retirarse**.
 - **Sesión madre ACTUAL: `session_01R81Xh5b7wpteu5YpcDpw5p`** (Opus, esfuerzo alto), desde las 12:25 UTC del 2026-11-21. La saliente, `session_01R81Xh3ygCnt8wYfALeA6yY`, llegó a 688 mil tokens y 122 USD.
-- **Sesiones vivas (3), estado a las 12:50 UTC:**
-  - `session_01R81Xh5CyC21JcvzAQYqDbP` — **T-528**, entregó **#428, ya integrado**. Auditoría independiente: **sin bloqueantes**. **Archivar.**
-  - `session_01R81Xh2wqYiANqJPC5JnvyK` — **T-510**, entregó **#427, ya integrado**. A 160 mil tokens: **archivar**, no darle trabajo nuevo.
-  - `session_01R81Xh3RyUF6PwDynrytmJM` — **T-520 y T-521** (Sonnet alto, carril `b`), repartida a las 12:25. Los decimales por moneda duplicados frente a `MONEDAS` y el monto tecleado a la americana que registra mil veces de más. Las dos son R8.
+- **Sesiones hijas vivas: NINGUNA** (13:55 UTC). Las cinco del lote entregaron y están archivadas. **Si lees esto y la flota sigue parada, repartir es lo primero**, antes que cualquier documentación.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
+  - **Coste de las cinco:** 164, 291, 161, 134 y **324 mil tokens** (esta última, **25,51 USD**). La más barata, **0,80 USD**, fue la de encargo más acotado: dos tareas del mismo fichero, con el defecto ya verificado y el criterio escrito. **Ninguna ve su propio consumo**: el tope de 150 mil lo mira la madre o no lo mira nadie.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
 ## 2. Reglas operativas que no se olvidan
@@ -62,7 +60,7 @@ Dos causas distintas: **18 tareas** con `type`/`effort` fuera del enum (mecánic
 validador exige una (no mecánico: hay que decidir una por una, y es del `dueno-de-producto`, no de la madre).
 **Mientras siga roto, cerrar una tarea es manual y `tasks.yaml` miente si alguien se olvida.**
 
-**Ids usados hoy por la madre:** T-537..T-541 (auditoría de #428), T-542 (compuerta rota), y T-543..T-547 (avisos de las sesiones de T-520/T-521 y T-528). **Siguiente libre: T-548.**
+**Ids usados hoy por la madre:** T-537..T-552. **Siguiente libre: T-553.**
 
 **De lo nuevo, lo que no puede esperar: T-543 (P1).** `formatearDeltaDinero` pinta **cien veces de más** en toda moneda con decimales, porque formatea unidades mínimas sin dividir. En COP acierta por casualidad. Lo avisó la sesión de T-520/T-521 y **lo verificó la madre leyendo el fuente**. Es el error de R8 que ya llegó a pantalla una vez.
 

@@ -12,6 +12,35 @@
 
 ---
 
+## 2026-11-21 (cierre del lote de mediodía) — Dinero mal pintado, una compuerta de permisos y una mutación que midió el aislamiento
+
+**Corrige y completa la entrada de abajo**, que se quedó corta: decía «integrados #427 y #428, abierto #430», y después entraron cuatro más.
+
+**Verificado** (con `gh`/`git`, mismo turno): `main` pasa de `a177ce83` a **`d755ea69`**. **Siete PR integrados**, todos en serie y con squash a mano: **#427** (T-510), **#428** (T-528), **#430** (rastro), **#429** (T-520, T-521), **#433** (T-543, T-544), **#434** (T-548 y cierres) y **#432** (T-537, T-529). **#431 cerrado por sustitución.**
+
+**Lo que más valió del lote no fue una funcionalidad: fue un defecto de R8 vivo.** `formatearDeltaDinero` formateaba unidades mínimas sin partirlas por los decimales, así que **toda moneda con decimales se pintaba cien veces de más**, con unos «,00» que le daban aire de exactitud. En COP acertaba por casualidad, porque allí la unidad mínima es el peso. Lo avisó de propina la sesión de T-520/T-521, lo verificó la madre leyendo el fuente, y lo arregló otra sesión con aritmética de `BigInt`. Es exactamente el error que `CLAUDE.md` dice que «ya llegó a la pantalla una vez» — seguía ahí.
+
+**El criterio que ordenó el lote: una prueba que nadie ha visto fallar no es evidencia.** Se aplicó tres veces y las tres dieron algo distinto:
+- **T-520**: con la tabla de monedas actual (0/2/2/2), un recorrido a secas **habría pasado en verde con el bug puesto**. La sesión añadió KWD durante la ejecución y vio la prueba ponerse roja. Evidencia.
+- **T-543**: la sesión trajo el fallo literal con el código viejo — `expected '+ $ 125.050,00 USD' to be '+ $ 1.250,50 USD'`. Evidencia.
+- **T-528**: ni su sesión ni la auditoría mutaron la e2e de aislamiento. **Hueco reconocido, no defecto**: es T-547.
+
+**La mutación de T-529 y por qué su resultado no es el que parece.** Tras la auditoría se pidió **una vuelta más, solo por aislamiento entre agencias** (§3.1: el único sitio donde no se recorta), porque el e2e del endpoint nuevo no cruzaba agencias. La sesión fue más allá y **midió**: quitó el filtro de `tenant_id` y lanzó el CI. **`test` salió VERDE.** La lectura fácil —«la prueba no discrimina»— es **falsa**: significa que **RLS sola sigue cubriendo esa ruta**. Se derriba una capa y la otra aguanta; es R2 funcionando, y ahora está medido en vez de leído. Lo que **no** demuestra, y la propia sesión se negó a venderlo así: que la aserción cace una fuga, porque no hubo fuga que cazar.
+
+**T-537, el hallazgo que casi bloquea #428, cerrado en el mismo día en que se abrió.** `porCobrar` se omite sin `cobro.ver`, y la omisión es real: el puerto **ni se invoca**, así que el dato nunca se lee de la base. Al auditarlo, lo que más se miró fue si el cambio de fixture aflojaba alguna prueba —habría sido lo peor que podía traer el PR—: no lo hace, y la discriminación **se añade**.
+
+**Dos compuertas rotas, descubiertas por mirar un rojo en vez de encogerse de hombros.** **T-542**: el job «Marcar la tarea como hecha» falla tras *cada* merge y no lo veía nadie, porque corre después del merge y no está entre los checks obligatorios. **T-548**: una e2e de ingreso falla **2 de cada 3 veces**; el locator resuelve 24 veces sobre el mismo valor viejo, lo que apunta a que la fila nunca se revalida — si es eso, el defecto está en la web y la prueba tiene razón en fallar. Subida a P1. Ninguna de las dos la habría encontrado nadie leyendo código.
+
+**Coste, que también es un resultado.** Cinco sesiones hijas: 164, 291, 161, 134 y **324 mil tokens** (esta última, **25,51 USD**). La más barata (0,80 USD) fue la de encargo más acotado: dos tareas del mismo fichero, con el defecto ya verificado y el criterio escrito. **Ninguna sesión ve su propio consumo**, así que el tope de 150 mil no es una norma que se cumpla sola: es trabajo de la madre en cada vuelta.
+
+**Supuesto** (no verificado): que las e2e en paralelo aguanten sin 40P01; es la apuesta de T-510 y lo dirá el CI.
+
+**Pendiente del propietario, nuevo:** queda publicada la rama `a/T-529-mutacion-aislamiento` **con el filtro de tenant retirado a propósito**. Sin PR y con `main` protegida no puede entrar sola, pero el repositorio es público. **El proxy deniega los borrados (403)** a las sesiones; está en la bandeja como punto 9.
+
+**Cola que deja el lote:** T-537 a T-552 (dieciséis), de las que siguen abiertas T-538 a T-542, T-544 a T-552. **Siguiente id libre: T-553.**
+
+---
+
 ## 2026-11-21 (cuarto lote) — Una apuesta medida en las pruebas, el alcance entre asesores y una compuerta que llevaba rota
 
 **Verificado** (con `gh`/`git`, mismo turno): `main` pasa de `a177ce83` a **`aa38bdf9`**. Integrados en serie y a mano con squash: **#427** (**T-510 `done`**) y **#428** (**T-528 `done`**). Abierto queda **#430**, el rastro documental de este lote.
