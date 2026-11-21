@@ -21,12 +21,23 @@
 - **El traspaso traía un id de tarea programada que NO existe** (`trig_01W27QjMm5BD8aFm1EJ6wa17`): la madre entrante iba a borrarlo. Es la **tercera vez** que el traspaso entre madres trae un id inventado. **No se borra ni se cita un id sin verlo antes en `list_triggers`.**
 - **Sobre el medidor de consumo propio.** La madre saliente avisó de que un `0` al arrancar significa «todavía no hay dato», no «el instrumento está roto». **Confirmado aquí, y matizado:** `external_metadata.context_usage.used_tokens` marcó **`0` en dos lecturas separadas** (15:08 y 15:12 UTC), con trabajo real en medio. Así que **tampoco es solo retraso de un instante**. Se anota como **«sin dato todavía»** y se sigue midiendo en cada vuelta; no se construye ninguna teoría sobre esa lectura ni se usa para decidir que queda margen. `rate_limit_info` sí traía dato (`seven_day`, `allowed_warning`): es otra cosa, no el consumo de contexto.
 - **Sesiones hijas (2):**
-  - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`, **T-555** (la mitad web de T-531/T-532). **Entregó: PR #446**, 8 archivos, todo en `apps/web`.
+  - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **#446 (T-555), ya integrado**. A las 15:25 se le reparte **T-556**.
   - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`, **T-549**, repartida a las 15:10 UTC. Encargo acotado: el filtro de «sin responsable» **antes** del tope de filas, **por puerto y sin JOIN entre contextos (R4)**, con orden explícita de **parar y avisar** si exigiera ADR o migración.
   - `session_01R81Xh2DhFQmHXUmF7Mqedn` — carril `a`, ociosa desde que entregó #441. **No se reutilizó**: una sesión nueva con `source_url` sale más barata que una con el contexto viejo encima.
   - `session_01R81Xh6LKjb37fMwSBRg2YL` — **ARCHIVADA a las 15:19 UTC**. El traspaso la daba por «MUERTA»: **era falso y costó una hora de sesión**. Estaba **bloqueada en un permiso**, se desbloqueó sola, implementó T-531/T-532 y abrió **#447** para descubrir que #441 ya lo había entregado (cerrado sin integrar, `main` intacto). Se archiva para que no pueda revivir otra vez. Gastó **226.328 tokens y 1,22 USD** en duplicar trabajo ya hecho.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
+
+## 1.1 Decisión de producto del turno (2026-11-21, 15:25 UTC)
+
+**T-556 sube de P3 a P2 y se reparte por delante de T-550**, con la autorización de producto del propietario.
+El motivo, para que no haya que reconstruirlo: en modo demo la pantalla «Hoy» **enseña un error** donde debería
+haber un dato de muestra, y la demo es **lo único que mira quien evalúa el producto**. T-550 (la fracción de
+`parsearMontoAUnidades` con monedas de tres decimales) es un «el día que…» de manual: ninguna moneda habilitada
+tiene tres decimales. Se ordena según §3.1: **lo que hoy está roto va antes que lo que podría romperse**.
+
+Detrás sigue el hecho que no cambia por mucho código que se integre: **ninguna agencia ha visto nada todavía**,
+y lo que lo desbloquea no está en este repositorio, sino en la lista de chats a excluir de JD Tours (T-533).
 
 ## 2. Reglas operativas que no se olvidan
 

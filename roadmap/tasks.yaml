@@ -11522,13 +11522,14 @@ tasks:
     title: "Web: el modo demo no trae cotizaciones abiertas ni saldo por cobrar, y Hoy ensena un error"
     type: bug
     phase: 1
-    priority: P3
+    priority: P2
     effort: S
     status: backlog
     acceptance:
       - "mock-reportes-resumen.ts no incluye cotizacionesAbiertas ni porCobrar, asi que en demo Hoy pinta 'No pudimos leer las cotizaciones abiertas' y no hay tarjeta de cobro"
       - "En demo deberia verse un dato de muestra coherente, no un error: la demo es lo que ve quien evalua el producto"
       - "Sembrar las dos claves en el mock, con varias monedas y un caso de truncado: true para que la demo ensene tambien ese estado"
+      - "SUBIDA DE P3 A P2 el 2026-11-21 por la madre orquestadora, con la autorizacion de producto del propietario, y repartida por delante de T-550: esta es la unica pantalla que mira quien evalua el producto, y hoy ensena un error. T-550 es un 'el dia que alguien habilite una moneda de tres decimales'; esto se ve hoy. Nada de lo construido lo ha visto todavia una agencia real: ese es el riesgo mas caro del proyecto"
     source: "aviso de la sesion de T-546/T-538 al entregar #440, 2026-11-21"
     created_at: 2026-11-21T14:50:00.000Z
     owner: frontend
