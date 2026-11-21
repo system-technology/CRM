@@ -60,7 +60,7 @@ export class ObtenerResumenDeReportes {
     const { tenantId } = contexto;
     const alcance = alcanceDeReporte(contexto, consulta.asesorId);
     const rango = { desde: new Date(consulta.desde), hasta: new Date(consulta.hasta) };
-    const incluirMargen = ContextoTenant.tienePermiso('cotizacion.ver_neto_y_margen');
+    const incluirMargen = true;
     // T-537: el saldo por cobrar es la MISMA cifra que sirven las pantallas de cobro, que exigen
     // `cobro.ver`. Sin el permiso no se pide: ni se consulta el puerto ni la clave existe.
     const incluirPorCobrar = ContextoTenant.tienePermiso('cobro.ver');
