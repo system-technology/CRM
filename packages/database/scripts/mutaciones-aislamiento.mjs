@@ -378,6 +378,21 @@ const MUTACIONES = [
     // plataforma y `viajapro_app` podría fijar verificado_en.
     nombre:
       'M22 — viajapro_app es miembro del dueño de perfiles_de_agencia (pasaría por «la plataforma»)',
+    // NO APLICABLE si el dueño ya es miembro de `viajapro_app`: en el CI el dueño es `viajapro`
+    // (POSTGRES_USER del servicio), que PostgreSQL hace miembro de los roles que crea, y entonces
+    // `GRANT viajapro TO viajapro_app` cierra un ciclo y se rechaza (0LP01). Un rol intermedio no
+    // lo evita (app -> X -> dueño -> app sigue siendo un ciclo). Se declara no aplicable, a la
+    // vista en el informe, en vez de fingir que se mutó; en una base con otra topología sí corre.
+    noAplicable: async (cliente) => {
+      const dueno = await duenoDePerfiles(cliente);
+      const { rows } = await cliente.query(
+        "SELECT pg_has_role($1, 'viajapro_app', 'MEMBER') AS ciclo",
+        [dueno],
+      );
+      return rows[0].ciclo
+        ? `el dueño «${dueno}» ya es miembro de viajapro_app: el GRANT cerraría un ciclo de roles`
+        : null;
+    },
     sql: async (cliente) => {
       const dueno = await duenoDePerfiles(cliente);
       await cliente.query(`GRANT ${cliente.escapeIdentifier(dueno)} TO viajapro_app`);
@@ -432,17 +447,37 @@ await admin.connect();
 console.log('\n--- MUTACIONES ---');
 const resultados = [];
 for (const m of MUTACIONES) {
-  // Sin valor inicial: si `correr` lanzara, la mutacion quedaria contada como VERDE, que es
-  // justo el falso positivo que este arnes existe para no tener. Que reviente es preferible.
+  // Tres desenlaces, ninguno silencioso: ROJO (la aserción detectó la rotura), VERDE (no la
+  // detectó: hallazgo) y ERROR (la mutación o su restauración reventó: no dice nada de la
+  // aserción). Un ERROR no tumba el proceso, para no ocultar a las mutaciones siguientes, pero
+  // el proceso sale distinto de cero al final. NUNCA se cuenta como VERDE ni como ROJO.
+  const motivoNoAplicable = m.noAplicable ? await m.noAplicable(admin) : null;
+  if (motivoNoAplicable) {
+    resultados.push({ nombre: m.nombre, estado: 'NO_APLICABLE', salida: motivoNoAplicable });
+    console.log(`N/A    ${m.nombre}\n        ->  ${motivoNoAplicable}`);
+    continue;
+  }
   let r;
+  let error;
   try {
     await ejecutar(admin, m.sql);
     r = correr(m.prueba);
+  } catch (e) {
+    error = e;
   } finally {
-    if (m.restaurar) await ejecutar(admin, m.restaurar);
-    for (const t of TABLAS) await admin.query('SELECT aplicar_aislamiento_tenant($1)', [t]);
+    try {
+      if (m.restaurar) await ejecutar(admin, m.restaurar);
+      for (const t of TABLAS) await admin.query('SELECT aplicar_aislamiento_tenant($1)', [t]);
+    } catch (e) {
+      error ??= new Error(`la restauración falló: ${e.message}`);
+    }
   }
-  resultados.push({ nombre: m.nombre, rojo: !r.verde, salida: r.salida });
+  if (error) {
+    resultados.push({ nombre: m.nombre, estado: 'ERROR', salida: String(error.message) });
+    console.log(`ERROR  ${m.nombre}\n        ->  ${error.message}`);
+    continue;
+  }
+  resultados.push({ nombre: m.nombre, estado: r.verde ? 'VERDE' : 'ROJO', salida: r.salida });
   console.log(`${r.verde ? 'VERDE' : 'ROJO '}  ${m.nombre}\n        ->  ${r.salida}`);
 }
 
@@ -452,15 +487,24 @@ const { rows } = await admin.query(
 await admin.end();
 
 console.log('\n================ RESUMEN ================');
-for (const r of resultados) {
-  console.log(`${r.rojo ? '[OK]    se puso ROJA  ' : '[FALLO] paso VERDE    '} ${r.nombre}`);
-}
+const ETIQUETA = {
+  ROJO: '[OK]    se puso ROJA  ',
+  VERDE: '[FALLO] paso VERDE    ',
+  ERROR: '[ERROR] no se pudo ejecutar',
+  NO_APLICABLE: '[N/A]   no aplicable  ',
+};
+for (const r of resultados) console.log(`${ETIQUETA[r.estado]} ${r.nombre}`);
 console.log(
   `\nEstado final de tablas_sin_aislamiento: ${rows.length === 0 ? 'vacia (sana)' : JSON.stringify(rows)}`,
 );
 
-if (resultados.some((r) => !r.rojo) || rows.length > 0) {
-  console.error('\nHALLAZGO BLOQUEANTE: hay aserciones que no detectan su propia rotura.');
+const cuenta = (e) => resultados.filter((r) => r.estado === e).length;
+if (cuenta('VERDE') > 0 || cuenta('ERROR') > 0 || rows.length > 0) {
+  console.error(
+    `\nHALLAZGO BLOQUEANTE: ${cuenta('VERDE')} aserciones no detectan su rotura, ${cuenta('ERROR')} mutaciones con ERROR.`,
+  );
   process.exit(1);
 }
-console.log(`\nLas ${resultados.length} mutaciones se detectaron. Ninguna asercion es decorativa.`);
+console.log(
+  `\n${cuenta('ROJO')} mutaciones detectadas, ${cuenta('NO_APLICABLE')} no aplicables en esta topologia de roles. Ninguna asercion es decorativa.`,
+);
