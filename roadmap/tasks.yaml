@@ -11561,3 +11561,18 @@ tasks:
     source: "pregunta que dejo abierta la sesion de T-546/T-538 al entregar #440, 2026-11-21"
     created_at: 2026-11-21T14:50:00.000Z
     owner: dueno-de-producto
+  - id: T-559
+    title: "Web: ninguna prueba vigila que el margen por destino solo se pinte cuando el servidor manda la clave"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-555]
+    acceptance:
+      - "VentasPorDestino pinta el margen con `m.margen ? ... : ''`: la web NO decide permisos, solo pinta lo que viene, y eso es correcto"
+      - "La compuerta real esta en el servidor y SI esta probada (obtener-resumen.use-case.spec.ts: sin cotizacion.ver_neto_y_margen el incluirMargen es false en porAsesor y en destinos, true con el permiso)"
+      - "Falta la mutacion del lado web: pintar el margen siempre, o derivarlo, y ver en ROJO una prueba sin la clave. Es defensa en profundidad, no una fuga de hoy: por eso es cola y no bloquea"
+    source: "lo declaro la propia sesion de T-555 como limite de su evidencia al entregar #446, 2026-11-21"
+    created_at: 2026-11-21T15:20:00.000Z
+    owner: frontend

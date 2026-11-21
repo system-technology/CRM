@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 15:15 UTC**, por la madre `session_01R81Xh5a2iFmSzSLVN6VcXy`. `main` en **`ef44c75e`**. Relevo recibido a las 15:05 UTC de `session_01R81Xh5b7wpteu5YpcDpw5p` (**275.757 tokens y 18,11 USD**, el doble del tope). **Un PR abierto: #446** (T-555, carril `b`).
+Última actualización: **2026-11-21, 15:15 UTC**, por la madre `session_01R81Xh5a2iFmSzSLVN6VcXy`. `main` en **`ef44c75e`**. Relevo recibido a las 15:05 UTC de `session_01R81Xh5b7wpteu5YpcDpw5p` (**275.757 tokens y 18,11 USD**, el doble del tope). **#446 integrado** (T-555); `main` en **`1e947f4b`**. Abierto: **#448** (este relevo).
 
 
 ## 1. Quién es quién
@@ -24,7 +24,7 @@
   - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`, **T-555** (la mitad web de T-531/T-532). **Entregó: PR #446**, 8 archivos, todo en `apps/web`.
   - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`, **T-549**, repartida a las 15:10 UTC. Encargo acotado: el filtro de «sin responsable» **antes** del tope de filas, **por puerto y sin JOIN entre contextos (R4)**, con orden explícita de **parar y avisar** si exigiera ADR o migración.
   - `session_01R81Xh2DhFQmHXUmF7Mqedn` — carril `a`, ociosa desde que entregó #441. **No se reutilizó**: una sesión nueva con `source_url` sale más barata que una con el contexto viejo encima.
-  - `session_01R81Xh6LKjb37fMwSBRg2YL` — **MUERTA**, no se rescata. Su trabajo se rehízo.
+  - `session_01R81Xh6LKjb37fMwSBRg2YL` — **ARCHIVADA a las 15:19 UTC**. El traspaso la daba por «MUERTA»: **era falso y costó una hora de sesión**. Estaba **bloqueada en un permiso**, se desbloqueó sola, implementó T-531/T-532 y abrió **#447** para descubrir que #441 ya lo había entregado (cerrado sin integrar, `main` intacto). Se archiva para que no pueda revivir otra vez. Gastó **226.328 tokens y 1,22 USD** en duplicar trabajo ya hecho.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
@@ -57,7 +57,16 @@ Arranca con `main` en **`ef44c75e`** y **un PR abierto, #446**.
     exactamente **T-557** (ya en la cola como P3). Y la clave de agrupación es `f.destino` **sin `trim()` ni
     normalizar**, aunque el nombre que se pinta sí va con `trim()`: dos filas con el mismo nombre visible si
     el servidor manda `"Cartagena"` y `"Cartagena "`. Es cosmético y cae dentro de T-557. **Cola, no bloquea** (§3.1).
-  - **Sin bloqueantes.** Rama puesta al día a las 15:14 UTC con `update-branch`.
+  - **Sin bloqueantes. INTEGRADO a las 15:22 UTC** con squash: `main` **`ef44c75e` → `1e947f4b`**. Verificación
+    a mano antes del merge, no del vigía: los **14 checks existen, los 14 `completed` + `success`**, ninguno nulo,
+    `mergeable_state=clean` y la base igual al `main` del momento. `navegador` entró en verde (la fragilidad de
+    T-548 no apareció).
+  - **El «alguien actualizó mi rama» que avisó la hija era yo.** El `update-branch` de las 15:11 sale a nombre de la
+    cuenta y se ve como `web-flow`/Alfavear. Los `cancelled` de `8cc3527` quedan clasificados: **concurrencia**, no
+    rojo ni fragilidad, reemplazados por el run de `b65e521`. Queda dicho para que nadie lo investigue otra vez.
+  - Queda en cola **T-559**: en la web no hay mutación que vigile que el margen por destino solo se pinte cuando el
+    servidor manda la clave. **No bloquea**: la compuerta real está en el servidor y **sí está probada**
+    (`obtener-resumen.use-case.spec.ts`, el `incluirMargen` sale del permiso). Es defensa en profundidad (§3.1).
 
 ### Lote de mediodía (2026-11-21, madre `…DpwSp`) — CERRADO
 
@@ -230,6 +239,9 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
   into …`, y `commitlint.config.cjs` **no desactiva `defaultIgnores`**, que ignora los mensajes que empiezan por
   `Merge `. Verificado el 2026-11-21 antes de usarlo. Lo que sí lo tumba es un merge escrito a mano con `merge:`
   como tipo (en minúscula no entra en `defaultIgnores`): ahí va `chore:`.
+
+- **Una sesión bloqueada en un permiso NO está muerta: está esperando, y su carril sigue ocupado.** `connection_status: disconnected` y `status_bucket: BLOCKED` dicen **dónde está**, no si va a seguir. Comprobar que no ha publicado nada **tampoco basta**. Antes de repartir su tarea a otra: **archivarla** (así no revive) **o esperarla**. Verificado el 2026-11-21 por el camino caro: se reasignó T-531/T-532 dándola por muerta, la sesión revivió, la implementó entera y abrió un PR duplicado.
+- **El medidor de consumo sí funciona MIRANDO A LAS HIJAS, aunque la madre no vea el suyo en caliente.** `get_session` de una hija trae `context_usage.used_tokens` y `usage.cost_usd` reales (verificado: 226.328 tokens y 1,22 USD en una Sonnet). Así que el consumo de la flota **se puede vigilar**; lo que no se ve en el momento es el propio. No confundir las dos cosas, y no dejar de mirar el propio por eso.
 
 ## 8. Sin verificar (heredado)
 
