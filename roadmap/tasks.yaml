@@ -7365,7 +7365,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: review
     depends_on: [T-341]
     acceptance:
       - "Para quien solo tiene alcance propio, el servidor fuerza el asesor de la sesión; el parámetro del cliente no lo amplía"
@@ -7374,6 +7374,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: backend
+    notes: "Implementada en la rama a/T-342-alcance-de-reporte: alcanceDeReporte en shared/autorizacion, los tres puertos de reportes reciben AlcanceDeReporte, contrato ResumenDeReportesPorAlcance (unión discriminada, ramas estrictas) validado en el servidor, 403 en reportes y en seguimientos con asesorId ajeno (retira el silencio de #395), retirada del gate de conversaciones.ver_todas del resumen, atribución de M9 por mensajes.autor_id y escritura de cotizaciones.creado_por (la columna existía y nadie la escribía: sin eso el resumen propio salía en cero). e2e con dos asesores y dos agencias, SIN verificar en local (no hay Postgres en la sesión): pendiente del CI. Cola que deja: T-513 y T-514."
   - id: T-343
     title: "F4: dashboard del asesor, móvil primero"
     type: feature
@@ -9594,4 +9595,31 @@ tasks:
       - "NO verificado: el apodo sigue siendo global en esta fase, contenido por guardia-de-apodos.ts y por el aborto al arrancar, hasta que T-361 mueva el indice a (tenant_acceso_id, apodo)"
     source: "registro tardio (R14): las ramas y PR del apodo usaron «T-362», que es otra tarea (subdominio por agencia) y sigue abierta; la rama original era a/T-000-apodo-ingreso-web"
     created_at: 2026-11-21T20:30:00.000Z
+    owner: backend
+  - id: T-513
+    title: "Retirar el alias transitorio ResumenDeReportes y dejar solo la unión discriminada"
+    type: chore
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-342, T-343]
+    acceptance:
+      - "La web lee `alcance` y `asesorId` de la respuesta; deja de construir resúmenes sin alcance"
+      - "En packages/contracts, `ResumenDeReportes` vuelve a ser el nombre de la unión discriminada y desaparece el objeto permisivo con las dos claves opcionales"
+    source: "T-342: el carril de API no toca apps/web, así que las dos claves nuevas entraron opcionales de forma transitoria para no romper la compilación de la web"
+    created_at: 2026-11-21T22:00:00.000Z
+    owner: frontend
+  - id: T-514
+    title: "cotizaciones.actualizado_por no se escribe nunca"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Al añadir versión o cambiar estado, `cotizaciones.actualizado_por` guarda el usuario de la sesión, como ya hace `crm`"
+      - "Si se decide que la columna no hace falta, se retira con migración nueva en vez de quedar muerta"
+    source: "T-342: al escribir `creado_por` para la atribución de reportes se vio que la columna hermana sigue sin escribirse. No bloquea: ningún reporte la usa"
+    created_at: 2026-11-21T22:00:00.000Z
     owner: backend

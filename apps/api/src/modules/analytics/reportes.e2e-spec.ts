@@ -1,26 +1,31 @@
 /**
  * `GET /api/v1/reportes/resumen`, de punta a punta: aplicación ensamblada, HTTP real y PostgreSQL
- * con RLS. Dos agencias, y tres personas con sesión real:
+ * con RLS. **Dos agencias y dos asesores en la misma agencia** (T-342, ADR-0035 §9):
  *
- *   · `duenoA`  — rol con `conversaciones.ver_todas` y `cotizacion.ver_neto_y_margen` (agencia A).
- *   · `operacionesA` — con `ver_todas` pero SIN el margen, en la misma agencia A.
- *   · `asesorA` — sin `ver_todas`: el resumen es de toda la agencia y le da 403 (D3, H1).
- *   · `duenoB`  — rol con los permisos, en la agencia B.
+ *   · `duenoA`       — `reportes.ver_agencia` + `cotizacion.ver_neto_y_margen` (agencia A).
+ *   · `operacionesA` — `reportes.ver_agencia` SIN el margen, en la misma agencia A.
+ *   · `valentinaA`   — asesora: ni `reportes.ver_agencia` ni margen.
+ *   · `betoA`        — asesor CON el permiso de margen pero SIN `reportes.ver_agencia`: los dos
+ *     ejes son independientes (§6), el margen que ve es el de sus propias cotizaciones.
+ *   · `duenoB`       — los mismos permisos, en la agencia B.
  *
  * Lo que afirma:
+ *   · un asesor ve LO SUYO y nada del compañero: ni sus ventas, ni su embudo, ni sus tiempos, ni
+ *     el total de la agencia (del que se deduciría lo ajeno);
+ *   · el servidor IMPONE el asesor de la sesión: `?asesorId=` propio o `yo` no cambia nada, y el
+ *     de otro responde 403 —idéntico con un id inexistente o de otra agencia, no es un oráculo—;
+ *   · quien tiene `reportes.ver_agencia` ve la suma de los dos y puede filtrar por asesor;
+ *   · el margen sigue protegido por SU permiso en los dos alcances, y sin él las claves no
+ *     existen (se busca en el texto crudo, no en claves conocidas);
  *   · las cifras de A salen de los datos de A y nada más: las de B (más caras, para que se note)
- *     no se cuelan, y a la inversa;
- *   · las ventas van por moneda, en enteros, y las cotizaciones aceptadas cuentan la versión
- *     enviada;
- *   · quien tiene el permiso recibe neto, margen y porcentaje; quien no lo tiene recibe una
- *     respuesta donde esas claves NO existen (se busca en el texto, no en claves conocidas);
- *   · un periodo sin datos devuelve ceros y razones `null`, no inventadas;
- *   · el rango se valida en el borde y sin sesión no hay respuesta.
+ *     no se cuelan, y un `asesorId` de la otra agencia no trae nada;
+ *   · un periodo sin datos devuelve ceros y razones `null`, y el rango se valida en el borde.
  *
  * **Fixtures propios.** Las versiones son inmutables y solo la purga las borra, así que esta
  * prueba crea dos agencias `fixture-aislamiento-` y las borra al terminar. Las cotizaciones se
- * crean con el atajo de desarrollo (todos los permisos); las LECTURAS del reporte van con cookie
- * de sesión, que es la que lleva los permisos del rol.
+ * crean con el atajo de desarrollo, con la cabecera `x-dev-usuario-id` del asesor que cotiza
+ * (de ahí sale `cotizaciones.creado_por`, la atribución de §2); las LECTURAS del reporte van con
+ * cookie de sesión, que es la que lleva los permisos del rol.
  */
 import 'reflect-metadata';
 
@@ -29,7 +34,7 @@ import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaClient } from '@prisma/client';
-import { CotizacionGuardada, ResumenDeReportes } from '@viajapro/contracts';
+import { CotizacionGuardada, ResumenDeReportesPorAlcance } from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -44,20 +49,21 @@ const DOMINIO = '@fixture-identidad.test';
 const CLAVE = 'una-clave-larga-de-prueba-1';
 const ORIGEN_WEB = 'http://localhost:3000';
 const FECHA = '2027-03-15';
+/** Un id con forma válida que no es de nadie: el 403 debe ser el mismo que con uno real. */
+const INEXISTENTE = '01932000-0000-7000-8000-0000000fffff';
 
 const correo = {
   duenoA: `fixture-aislamiento-rep-dueno-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
-  asesorA: `fixture-aislamiento-rep-asesor-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
+  valentinaA: `fixture-aislamiento-rep-vale-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
+  betoA: `fixture-aislamiento-rep-beto-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   operacionesA: `fixture-aislamiento-rep-oper-a-${randomBytes(3).toString('hex')}${DOMINIO}`,
   duenoB: `fixture-aislamiento-rep-dueno-b-${randomBytes(3).toString('hex')}${DOMINIO}`,
 };
 type Quien = keyof typeof correo;
-const identidadId: Record<Quien, string> = {
-  duenoA: '',
-  asesorA: '',
-  operacionesA: '',
-  duenoB: '',
-};
+const QUIENES = Object.keys(correo) as Quien[];
+const identidadId = {} as Record<Quien, string>;
+/** El id del USUARIO en su agencia: el que atribuye cotizaciones, oportunidades y mensajes. */
+const usuarioId = {} as Record<Quien, string>;
 
 let app: INestApplication;
 let base: string;
@@ -78,10 +84,15 @@ async function conDevHeader(
   ruta: string,
   tenant: string,
   cuerpo?: unknown,
+  comoUsuario?: string,
 ): Promise<{ estado: number; json: unknown }> {
   const r = await fetch(new URL(ruta, base), {
     method: metodo,
-    headers: { 'content-type': 'application/json', 'x-dev-tenant-id': tenant },
+    headers: {
+      'content-type': 'application/json',
+      'x-dev-tenant-id': tenant,
+      ...(comoUsuario === undefined ? {} : { 'x-dev-usuario-id': comoUsuario }),
+    },
     ...(cuerpo === undefined ? {} : { body: JSON.stringify(cuerpo) }),
   });
   return { estado: r.status, json: await r.json() };
@@ -107,20 +118,20 @@ async function iniciarSesion(quien: Quien): Promise<string> {
 async function reporte(
   quien: Quien | null,
   query: Record<string, string> = RANGO,
-): Promise<{ estado: number; texto: string; json: ResumenDeReportes }> {
+): Promise<{ estado: number; texto: string; json: ResumenDeReportesPorAlcance }> {
   const r = await fetch(
     new URL(`/api/v1/reportes/resumen?${new URLSearchParams(query).toString()}`, base),
-    {
-      headers: quien ? { cookie: cookies[quien] } : {},
-    },
+    { headers: quien ? { cookie: cookies[quien] } : {} },
   );
   const texto = await r.text();
   const json: unknown = JSON.parse(texto);
   // T-195: todo 200 cumple el contrato que consume la web. Se valida y se devuelve el cuerpo
   // CRUDO: `parse` descarta claves desconocidas, y las pruebas de fuga necesitan verlas.
-  if (r.status === 200) ResumenDeReportes.parse(json);
-  return { estado: r.status, texto, json: json as ResumenDeReportes };
+  if (r.status === 200) ResumenDeReportesPorAlcance.parse(json);
+  return { estado: r.status, texto, json: json as ResumenDeReportesPorAlcance };
 }
+
+const codigo = (json: unknown): string => (json as { error: { code: string } }).error.code;
 
 async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigint) {
   await admin.tenant.create({
@@ -130,34 +141,35 @@ async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigin
       nombre: `Agencia ${sufijo}`,
     },
   });
-  const conPermiso = await admin.rol.create({
-    data: {
-      tenantId: tenant,
-      nombre: 'Dueño',
-      clave: 'DUENO',
-      permisos: [
-        'conversaciones.ver_todas',
-        'cotizacion.ver_neto_y_margen',
-        'cotizacion.escribir',
-        'crm.escribir',
-      ],
-    },
-  });
-  const sinMargen = await admin.rol.create({
-    data: {
-      tenantId: tenant,
-      nombre: 'Operaciones',
-      permisos: ['conversaciones.ver_todas', 'cotizacion.escribir', 'crm.escribir'],
-    },
-  });
-  const sinPermiso = await admin.rol.create({
-    data: {
-      tenantId: tenant,
-      nombre: 'Asesor',
-      clave: 'ASESOR',
-      permisos: ['cotizacion.escribir', 'crm.escribir'],
-    },
-  });
+  const rol = (nombre: string, permisos: string[], clave?: string) =>
+    admin.rol.create({
+      data: { tenantId: tenant, nombre, permisos, ...(clave ? { clave } : {}) },
+    });
+  // Dueña: ve la agencia y el dinero. Operaciones: ve la agencia, no el dinero. Asesor: ni lo uno
+  // ni lo otro. Asesor con margen: el dinero de LO SUYO, que es el caso de §6 del ADR.
+  const deAgenciaConMargen = await rol(
+    'Dueño',
+    [
+      'conversaciones.ver_todas',
+      'cotizacion.ver_neto_y_margen',
+      'cotizacion.escribir',
+      'crm.escribir',
+      'reportes.ver_agencia',
+    ],
+    'DUENO',
+  );
+  const deAgenciaSinMargen = await rol('Operaciones', [
+    'conversaciones.ver_todas',
+    'cotizacion.escribir',
+    'crm.escribir',
+    'reportes.ver_agencia',
+  ]);
+  const asesor = await rol('Asesor', ['cotizacion.escribir', 'crm.escribir'], 'ASESOR');
+  const asesorConMargen = await rol('Asesor con margen', [
+    'cotizacion.escribir',
+    'crm.escribir',
+    'cotizacion.ver_neto_y_margen',
+  ]);
   const contacto = await admin.contacto.create({
     data: {
       tenantId: tenant,
@@ -194,9 +206,10 @@ async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigin
     },
   });
   return {
-    conPermiso: conPermiso.id,
-    sinPermiso: sinPermiso.id,
-    sinMargen: sinMargen.id,
+    deAgenciaConMargen: deAgenciaConMargen.id,
+    deAgenciaSinMargen: deAgenciaSinMargen.id,
+    asesor: asesor.id,
+    asesorConMargen: asesorConMargen.id,
     contacto: contacto.id,
     paquete: paquete.id,
   };
@@ -214,23 +227,32 @@ async function persona(quien: Quien, tenantId: string, rolId: string): Promise<v
     },
   });
   identidadId[quien] = i.id;
-  await admin.usuario.create({
+  const u = await admin.usuario.create({
     data: { tenantId, identidadId: i.id, rolId, correo: correo[quien], nombre: quien },
   });
+  usuarioId[quien] = u.id;
 }
 
-/** Cotiza `adultos`, la guarda, y la lleva hasta `hasta` por las transiciones válidas. */
+/** Cotiza `adultos` COMO `quien`, y la lleva hasta `hasta` por las transiciones válidas. */
 async function cotizar(
   tenant: string,
   datos: { contacto: string; paquete: string },
+  quien: Quien,
   adultos: number,
   hasta: 'BORRADOR' | 'ENVIADA' | 'ACEPTADA',
 ): Promise<CotizacionGuardada> {
-  const g = await conDevHeader('POST', '/api/v1/cotizaciones', tenant, {
-    contactoId: datos.contacto,
-    titulo: `Cotización fixture ${adultos}`,
-    version: { paqueteId: datos.paquete, fecha: FECHA, adultos },
-  });
+  const autor = usuarioId[quien];
+  const g = await conDevHeader(
+    'POST',
+    '/api/v1/cotizaciones',
+    tenant,
+    {
+      contactoId: datos.contacto,
+      titulo: `Cotización fixture ${quien} ${adultos}`,
+      version: { paqueteId: datos.paquete, fecha: FECHA, adultos },
+    },
+    autor,
+  );
   expect(g.estado).toBe(201);
   let cot = CotizacionGuardada.parse(g.json);
   for (const estado of hasta === 'ACEPTADA'
@@ -238,16 +260,21 @@ async function cotizar(
     : hasta === 'ENVIADA'
       ? ['ENVIADA']
       : []) {
-    const t = await conDevHeader('POST', `/api/v1/cotizaciones/${cot.id}/estado`, tenant, {
-      estado,
-    });
+    const t = await conDevHeader(
+      'POST',
+      `/api/v1/cotizaciones/${cot.id}/estado`,
+      tenant,
+      { estado },
+      autor,
+    );
     expect(t.estado).toBe(201);
     cot = CotizacionGuardada.parse(t.json);
   }
   return cot;
 }
 
-let aceptadaA: CotizacionGuardada;
+let aceptadaDeValentina: CotizacionGuardada;
+let aceptadaDeBeto: CotizacionGuardada;
 
 beforeAll(async () => {
   admin = new PrismaClient({ datasources: { db: { url: process.env['DATABASE_URL'] ?? '' } } });
@@ -259,12 +286,13 @@ beforeAll(async () => {
   // B vende más caro por adulto: si sus cifras se colaran en A, los totales no cuadrarían.
   const a = await crearAgencia(TENANT_A, 'A', 1_200_000n);
   const b = await crearAgencia(TENANT_B, 'B', 2_100_000n);
-  await persona('duenoA', TENANT_A, a.conPermiso);
-  await persona('asesorA', TENANT_A, a.sinPermiso);
-  await persona('operacionesA', TENANT_A, a.sinMargen);
-  await persona('duenoB', TENANT_B, b.conPermiso);
+  await persona('duenoA', TENANT_A, a.deAgenciaConMargen);
+  await persona('operacionesA', TENANT_A, a.deAgenciaSinMargen);
+  await persona('valentinaA', TENANT_A, a.asesor);
+  await persona('betoA', TENANT_A, a.asesorConMargen);
+  await persona('duenoB', TENANT_B, b.deAgenciaConMargen);
 
-  // Oportunidades: A tiene 2 abiertas, 1 ganada y 1 perdida; B una abierta.
+  // Oportunidades, con asesor: Valentina 2 abiertas y 1 ganada; Beto 1 perdida; B una abierta.
   const etapasA = {
     nueva: await admin.etapaPipeline.create({
       data: { tenantId: TENANT_A, nombre: 'Nueva A', orden: 1, probabilidad: 10 },
@@ -279,17 +307,23 @@ beforeAll(async () => {
   const etapaB = await admin.etapaPipeline.create({
     data: { tenantId: TENANT_B, nombre: 'Nueva B', orden: 1, probabilidad: 10 },
   });
-  const oportunidad = (tenantId: string, contactoId: string, etapaId: string) =>
+  const oportunidad = (
+    tenantId: string,
+    contactoId: string,
+    etapaId: string,
+    asesorId: string | null,
+  ) =>
     admin.oportunidad.create({
-      data: { tenantId, contactoId, etapaId, titulo: 'Oportunidad fixture' },
+      data: { tenantId, contactoId, etapaId, titulo: 'Oportunidad fixture', asesorId },
     });
-  await oportunidad(TENANT_A, a.contacto, etapasA.nueva.id);
-  await oportunidad(TENANT_A, a.contacto, etapasA.nueva.id);
-  await oportunidad(TENANT_A, a.contacto, etapasA.ganada.id);
-  await oportunidad(TENANT_A, a.contacto, etapasA.perdida.id);
-  await oportunidad(TENANT_B, b.contacto, etapaB.id);
+  await oportunidad(TENANT_A, a.contacto, etapasA.nueva.id, usuarioId.valentinaA);
+  await oportunidad(TENANT_A, a.contacto, etapasA.nueva.id, usuarioId.valentinaA);
+  await oportunidad(TENANT_A, a.contacto, etapasA.ganada.id, usuarioId.valentinaA);
+  await oportunidad(TENANT_A, a.contacto, etapasA.perdida.id, usuarioId.betoA);
+  await oportunidad(TENANT_B, b.contacto, etapaB.id, usuarioId.duenoB);
 
-  // Una conversación de A: el viajero escribió hace una hora y se le respondió 10 minutos después.
+  // Tres conversaciones en A. El viajero escribió hace una hora; Valentina respondió a los 10
+  // minutos, Beto a los 20, y una queda sin responder asignada a Valentina.
   const hace1h = new Date(Date.now() - 3600_000);
   const cuenta = await admin.cuentaWhatsapp.create({
     data: {
@@ -306,27 +340,52 @@ beforeAll(async () => {
       numeroE164: `+57301${Math.floor(Math.random() * 9e6 + 1e6)}`,
     },
   });
-  const conversacion = await admin.conversacion.create({
-    data: {
-      tenantId: TENANT_A,
-      canalId: canal.id,
-      contactoId: a.contacto,
-      ultimoMensajeClienteEn: hace1h,
-      primeraRespuestaEn: new Date(hace1h.getTime() + 10 * 60_000),
-    },
-  });
-  await admin.mensaje.create({
-    data: {
-      tenantId: TENANT_A,
-      conversacionId: conversacion.id,
-      direccion: 'ENTRANTE',
-      tipo: 'TEXTO',
-      estado: 'ENTREGADO',
-      ...mensajeConTexto(TENANT_A, 'Hola, quiero cotizar'),
-      wamid: `wamid.rep.${randomBytes(6).toString('hex')}`,
-      ocurridoEn: hace1h,
-    },
-  });
+  const conversacionDe = async (asignadoAId: string, minutos: number | null) => {
+    const conv = await admin.conversacion.create({
+      data: {
+        tenantId: TENANT_A,
+        canalId: canal.id,
+        contactoId: a.contacto,
+        asignadoAId,
+        ultimoMensajeClienteEn: hace1h,
+        ...(minutos === null
+          ? {}
+          : { primeraRespuestaEn: new Date(hace1h.getTime() + minutos * 60_000) }),
+      },
+    });
+    await admin.mensaje.create({
+      data: {
+        tenantId: TENANT_A,
+        conversacionId: conv.id,
+        direccion: 'ENTRANTE',
+        tipo: 'TEXTO',
+        estado: 'ENTREGADO',
+        ...mensajeConTexto(TENANT_A, 'Hola, quiero cotizar'),
+        wamid: `wamid.rep.${randomBytes(6).toString('hex')}`,
+        ocurridoEn: hace1h,
+      },
+    });
+    if (minutos !== null) {
+      // El saliente HUMANO con autor: es la atribución de M9 (ADR-0035 §2).
+      await admin.mensaje.create({
+        data: {
+          tenantId: TENANT_A,
+          conversacionId: conv.id,
+          direccion: 'SALIENTE',
+          tipo: 'TEXTO',
+          estado: 'ENTREGADO',
+          autorId: asignadoAId,
+          ...mensajeConTexto(TENANT_A, 'Con gusto, te cuento'),
+          wamid: `wamid.rep.${randomBytes(6).toString('hex')}`,
+          ocurridoEn: new Date(hace1h.getTime() + minutos * 60_000),
+        },
+      });
+    }
+    return conv;
+  };
+  await conversacionDe(usuarioId.valentinaA, 10);
+  await conversacionDe(usuarioId.betoA, 20);
+  await conversacionDe(usuarioId.valentinaA, null);
 
   Logger.overrideLogger(false);
   app = await NestFactory.create(AppModule, { logger: false });
@@ -335,13 +394,15 @@ beforeAll(async () => {
   await app.listen(0);
   base = await app.getUrl();
 
-  // Cotizaciones: A tiene 1 aceptada (2 adultos), 1 enviada y 1 borrador; B tiene 1 aceptada.
-  aceptadaA = await cotizar(TENANT_A, a, 2, 'ACEPTADA');
-  await cotizar(TENANT_A, a, 1, 'ENVIADA');
-  await cotizar(TENANT_A, a, 1, 'BORRADOR');
-  await cotizar(TENANT_B, b, 1, 'ACEPTADA');
+  // Cotizaciones: Valentina 1 aceptada (2 adultos), 1 enviada y 1 borrador; Beto 1 aceptada
+  // (1 adulto); B 1 aceptada.
+  aceptadaDeValentina = await cotizar(TENANT_A, a, 'valentinaA', 2, 'ACEPTADA');
+  await cotizar(TENANT_A, a, 'valentinaA', 1, 'ENVIADA');
+  await cotizar(TENANT_A, a, 'valentinaA', 1, 'BORRADOR');
+  aceptadaDeBeto = await cotizar(TENANT_A, a, 'betoA', 1, 'ACEPTADA');
+  await cotizar(TENANT_B, b, 'duenoB', 1, 'ACEPTADA');
 
-  for (const quien of Object.keys(correo) as Quien[]) cookies[quien] = await iniciarSesion(quien);
+  for (const quien of QUIENES) cookies[quien] = await iniciarSesion(quien);
 });
 
 afterAll(async () => {
@@ -366,35 +427,28 @@ afterAll(async () => {
   await admin?.$disconnect();
 });
 
-describe('GET /api/v1/reportes/resumen', () => {
-  it('quien tiene el permiso recibe las cifras de SU agencia, con neto y margen', async () => {
+describe('alcance de agencia', () => {
+  it('con reportes.ver_agencia: la suma de los dos asesores, con neto y margen', async () => {
     const r = await reporte('duenoA');
     expect(r.estado).toBe(200);
+    expect(r.json.alcance).toBe('AGENCIA');
+    expect(r.json.asesorId).toBeNull();
 
     expect(r.json.cotizaciones).toEqual({
-      creadas: 3,
-      enviadas: 2,
-      aceptadas: 1,
-      tasaAceptacion: 50,
+      creadas: 4,
+      enviadas: 3,
+      aceptadas: 2,
+      tasaAceptacion: 66.7,
     });
 
-    // Lo esperado del neto y el margen sale de la propia cotización, leída con el permiso.
-    const leida = await conDevHeader(
-      'GET',
-      `/api/v1/cotizaciones/${aceptadaA.id}?incluirMargen=true`,
-      TENANT_A,
-    );
-    const v1 = CotizacionGuardada.parse(leida.json).versiones[0]!;
-    expect(v1.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
-
+    // Lo esperado del neto y el margen sale de las propias cotizaciones, leídas con el permiso.
+    const sumaEsperada = 2_400_000n + 1_200_000n;
     expect(r.json.ventasPorMoneda).toHaveLength(1);
     const cop = r.json.ventasPorMoneda[0]!;
     expect(cop).toMatchObject({
       moneda: 'COP',
-      cotizacionesAceptadas: 1,
-      ventas: { unidades: '2400000', moneda: 'COP' },
-      neto: v1.neto,
-      margen: v1.margen,
+      cotizacionesAceptadas: 2,
+      ventas: { unidades: sumaEsperada.toString(), moneda: 'COP' },
       cotizacionesSinNeto: 0,
     });
     expect(cop.margenPorcentaje).toBeGreaterThan(0);
@@ -413,57 +467,159 @@ describe('GET /api/v1/reportes/resumen', () => {
     ]);
 
     expect(r.json.respuesta).toEqual({
-      conversacionesNuevas: 1,
-      conversacionesRespondidas: 1,
-      promedioMinutos: 10,
-      medianaMinutos: 10,
-      p90Minutos: 10,
-      sinResponder: 0,
-      tasaRespuesta: 100,
+      conversacionesNuevas: 3,
+      conversacionesRespondidas: 2,
+      promedioMinutos: 15,
+      medianaMinutos: 15,
+      p90Minutos: 19,
+      sinResponder: 1,
+      tasaRespuesta: 66.7,
     });
   });
 
-  it('H1: un asesor (sin ver_todas) recibe 403 PERMISO_DENEGADO y ninguna cifra de la agencia', async () => {
-    const r = await reporte('asesorA');
-    expect(r.estado).toBe(403);
-    expect((r.json as unknown as { error: { code: string } }).error.code).toBe('PERMISO_DENEGADO');
-    expect(r.texto).not.toMatch(/ventasPorMoneda|cotizaciones|oportunidades/);
+  it('puede filtrar por un asesor sin dejar de ser alcance de agencia', async () => {
+    const r = await reporte('duenoA', { ...RANGO, asesorId: usuarioId.betoA });
+    expect(r.estado).toBe(200);
+    expect(r.json.alcance).toBe('AGENCIA');
+    expect(r.json.asesorId).toBe(usuarioId.betoA);
+    expect(r.json.cotizaciones).toEqual({
+      creadas: 1,
+      enviadas: 1,
+      aceptadas: 1,
+      tasaAceptacion: 100,
+    });
+    expect(r.json.ventasPorMoneda[0]?.ventas).toEqual({ unidades: '1200000', moneda: 'COP' });
+    expect(r.json.oportunidades).toMatchObject({ creadas: 1, ganadas: 0, perdidas: 1 });
+    expect(r.json.respuesta.conversacionesNuevas).toBe(1);
+    expect(r.json.respuesta.promedioMinutos).toBe(20);
+    // Nada de Valentina: ni su venta ni sus dos oportunidades abiertas.
+    expect(r.texto).not.toContain('2400000');
+    expect(r.texto).not.toContain('3600000');
   });
 
-  it('quien NO tiene el permiso de margen recibe lo mismo, sin neto ni margen: las claves no existen', async () => {
+  it('quien NO tiene el permiso de margen ve las mismas filas sin neto ni margen', async () => {
     const con = await reporte('duenoA');
     const sin = await reporte('operacionesA');
     expect(sin.estado).toBe(200);
+    expect(sin.json.alcance).toBe('AGENCIA');
 
     expect(sin.texto).not.toMatch(/neto|margen/i);
     expect(sin.json.ventasPorMoneda).toEqual([
-      { moneda: 'COP', cotizacionesAceptadas: 1, ventas: { unidades: '2400000', moneda: 'COP' } },
+      { moneda: 'COP', cotizacionesAceptadas: 2, ventas: { unidades: '3600000', moneda: 'COP' } },
     ]);
-    // Todo lo demás coincide con lo que ve el dueño.
     expect(sin.json.cotizaciones).toEqual(con.json.cotizaciones);
     expect(sin.json.oportunidades).toEqual(con.json.oportunidades);
     expect(sin.json.respuesta).toEqual(con.json.respuesta);
   });
+});
 
-  it('las ventas se agrupan por el instante de la ACEPTACION, no por el envio (T-183)', async () => {
-    // Un rango que termina ANTES de que existiera la aceptacion no trae ventas, aunque ya haya
-    // cotizaciones aceptadas: el envio y la aceptacion de este fixture son de hoy.
-    const antes = await reporte('duenoA', {
-      desde: new Date(Date.now() - 300 * 24 * 3600_000).toISOString(),
-      hasta: new Date(Date.now() - 24 * 3600_000).toISOString(),
+describe('alcance propio: un asesor no ve lo del otro (T-342)', () => {
+  it('sin reportes.ver_agencia la respuesta es PROPIA y trae solo sus cifras', async () => {
+    const r = await reporte('valentinaA');
+    expect(r.estado).toBe(200);
+    expect(r.json.alcance).toBe('PROPIO');
+    expect(r.json.asesorId).toBe(usuarioId.valentinaA);
+
+    expect(r.json.cotizaciones).toEqual({
+      creadas: 3,
+      enviadas: 2,
+      aceptadas: 1,
+      tasaAceptacion: 50,
     });
-    expect(antes.estado).toBe(200);
-    expect(antes.json.ventasPorMoneda).toEqual([]);
-    // Y con el rango de hoy, la venta esta (la aceptada de A tiene su fila de cambio).
-    const hoy = await reporte('duenoA');
-    expect(hoy.json.ventasPorMoneda[0]?.cotizacionesAceptadas).toBe(1);
-    expect(hoy.json.cotizaciones.aceptadasSinFecha).toBeUndefined();
+    expect(r.json.ventasPorMoneda).toEqual([
+      { moneda: 'COP', cotizacionesAceptadas: 1, ventas: { unidades: '2400000', moneda: 'COP' } },
+    ]);
+    expect(r.json.oportunidades).toMatchObject({
+      creadas: 3,
+      ganadas: 1,
+      perdidas: 0,
+      abiertas: 2,
+      tasaConversion: 100,
+    });
+    expect(r.json.respuesta).toEqual({
+      conversacionesNuevas: 2,
+      conversacionesRespondidas: 1,
+      promedioMinutos: 10,
+      medianaMinutos: 10,
+      p90Minutos: 10,
+      sinResponder: 1,
+      tasaRespuesta: 50,
+    });
   });
 
+  it('no se cuela lo de Beto ni el total de la agencia, del que se deduciría', async () => {
+    const r = await reporte('valentinaA');
+    // La venta de Beto, el total de la agencia y su margen no aparecen en ninguna forma.
+    expect(r.texto).not.toContain('1200000');
+    expect(r.texto).not.toContain('3600000');
+    expect(r.texto).not.toMatch(/neto|margen/i);
+    // Su embudo no incluye la etapa perdida de Beto.
+    const perdida = r.json.oportunidades.porEtapa.find((e) => e.nombre === 'Perdida A');
+    expect(perdida?.cantidad).toBe(0);
+  });
+
+  it('el servidor impone el asesor de la sesión: «yo» y el propio id dan lo mismo', async () => {
+    const sin = await reporte('valentinaA');
+    const yo = await reporte('valentinaA', { ...RANGO, asesorId: 'yo' });
+    const propio = await reporte('valentinaA', { ...RANGO, asesorId: usuarioId.valentinaA });
+    expect(yo.json).toEqual(sin.json);
+    expect(propio.json).toEqual(sin.json);
+  });
+
+  it('pedir el asesorId de otro es 403 y no devuelve ninguna cifra', async () => {
+    const r = await reporte('valentinaA', { ...RANGO, asesorId: usuarioId.betoA });
+    expect(r.estado).toBe(403);
+    expect(codigo(r.json)).toBe('PERMISO_DENEGADO');
+    expect(r.texto).not.toMatch(/ventasPorMoneda|oportunidades|respuesta/);
+  });
+
+  it('el 403 no revela si el asesor existe: el mismo con uno inexistente o de otra agencia', async () => {
+    const compa = await reporte('valentinaA', { ...RANGO, asesorId: usuarioId.betoA });
+    const inexistente = await reporte('valentinaA', { ...RANGO, asesorId: INEXISTENTE });
+    const deOtraAgencia = await reporte('valentinaA', { ...RANGO, asesorId: usuarioId.duenoB });
+    expect(inexistente.estado).toBe(403);
+    expect(deOtraAgencia.estado).toBe(403);
+    expect(inexistente.texto).toEqual(compa.texto);
+    expect(deOtraAgencia.texto).toEqual(compa.texto);
+  });
+
+  it('el margen va por SU permiso, no por el alcance: Beto ve el de sus cotizaciones', async () => {
+    const r = await reporte('betoA');
+    expect(r.estado).toBe(200);
+    expect(r.json.alcance).toBe('PROPIO');
+
+    const leida = await conDevHeader(
+      'GET',
+      `/api/v1/cotizaciones/${aceptadaDeBeto.id}?incluirMargen=true`,
+      TENANT_A,
+    );
+    const suya = CotizacionGuardada.parse(leida.json).versiones[0]!;
+    expect(r.json.ventasPorMoneda).toHaveLength(1);
+    expect(r.json.ventasPorMoneda[0]).toMatchObject({
+      moneda: 'COP',
+      cotizacionesAceptadas: 1,
+      ventas: { unidades: '1200000', moneda: 'COP' },
+      neto: suya.neto,
+      margen: suya.margen,
+      cotizacionesSinNeto: 0,
+    });
+    // El margen que ve es el SUYO: ni el de Valentina ni el de la agencia.
+    const deValentina = await conDevHeader(
+      'GET',
+      `/api/v1/cotizaciones/${aceptadaDeValentina.id}?incluirMargen=true`,
+      TENANT_A,
+    );
+    const ajena = CotizacionGuardada.parse(deValentina.json).versiones[0]!;
+    expect(r.texto).not.toContain(ajena.margen!.unidades);
+    expect(r.texto).not.toContain('2400000');
+  });
+});
+
+describe('entre agencias y bordes', () => {
   it('otra agencia ve solo lo suyo: no mezcla cifras ni etapas de A', async () => {
-    // B no ve nada de A: sus propias cifras, con su propia venta por adulto.
     const r = await reporte('duenoB');
     expect(r.estado).toBe(200);
+    expect(r.json.alcance).toBe('AGENCIA');
     expect(r.json.cotizaciones).toEqual({
       creadas: 1,
       enviadas: 1,
@@ -472,47 +628,55 @@ describe('GET /api/v1/reportes/resumen', () => {
     });
     expect(r.json.ventasPorMoneda).toHaveLength(1);
     expect(r.json.ventasPorMoneda[0]?.ventas).toEqual({ unidades: '2100000', moneda: 'COP' });
-    expect(r.json.oportunidades).toMatchObject({
-      creadas: 1,
-      ganadas: 0,
-      perdidas: 0,
-      abiertas: 1,
-    });
     expect(r.json.oportunidades.porEtapa.map((e) => e.nombre)).toEqual(['Nueva B']);
-    expect(r.json.oportunidades.tasaConversion).toBeNull();
-    expect(r.json.respuesta).toEqual({
-      conversacionesNuevas: 0,
-      conversacionesRespondidas: 0,
-      promedioMinutos: null,
-      medianaMinutos: null,
-      p90Minutos: null,
-      sinResponder: 0,
-      tasaRespuesta: null,
-    });
-    // Nada de A en el texto: ni su etapa ni su venta.
+    expect(r.json.respuesta.conversacionesNuevas).toBe(0);
+    // Nada de A en el texto: ni su etapa ni sus ventas.
     expect(r.texto).not.toContain('2400000');
     expect(r.texto).not.toContain('Nueva A');
   });
 
-  it('un periodo sin datos devuelve ceros y razones null, no cifras inventadas', async () => {
-    const r = await reporte('duenoA', {
-      desde: new Date(Date.now() - 300 * 24 * 3600_000).toISOString(),
-      hasta: new Date(Date.now() - 200 * 24 * 3600_000).toISOString(),
-    });
+  it('un asesorId de la otra agencia no trae nada, ni con reportes.ver_agencia', async () => {
+    const r = await reporte('duenoA', { ...RANGO, asesorId: usuarioId.duenoB });
     expect(r.estado).toBe(200);
-    expect(r.json.cotizaciones).toEqual({
-      creadas: 0,
-      enviadas: 0,
-      aceptadas: 0,
-      tasaAceptacion: null,
-    });
+    expect(r.json.asesorId).toBe(usuarioId.duenoB);
     expect(r.json.ventasPorMoneda).toEqual([]);
-    expect(r.json.oportunidades.creadas).toBe(0);
-    expect(r.json.oportunidades.tasaConversion).toBeNull();
-    expect(r.json.respuesta.promedioMinutos).toBeNull();
+    expect(r.json.cotizaciones.creadas).toBe(0);
+    expect(r.texto).not.toContain('2100000');
   });
 
-  it('valida el rango en el borde (400) y exige sesión (401)', async () => {
+  it('las ventas se agrupan por el instante de la ACEPTACION, no por el envio (T-183)', async () => {
+    const antes = await reporte('duenoA', {
+      desde: new Date(Date.now() - 300 * 24 * 3600_000).toISOString(),
+      hasta: new Date(Date.now() - 24 * 3600_000).toISOString(),
+    });
+    expect(antes.estado).toBe(200);
+    expect(antes.json.ventasPorMoneda).toEqual([]);
+    const hoy = await reporte('duenoA');
+    expect(hoy.json.ventasPorMoneda[0]?.cotizacionesAceptadas).toBe(2);
+    expect(hoy.json.cotizaciones.aceptadasSinFecha).toBeUndefined();
+  });
+
+  it('un periodo sin datos devuelve ceros y razones null, no cifras inventadas', async () => {
+    for (const quien of ['duenoA', 'valentinaA'] as Quien[]) {
+      const r = await reporte(quien, {
+        desde: new Date(Date.now() - 300 * 24 * 3600_000).toISOString(),
+        hasta: new Date(Date.now() - 200 * 24 * 3600_000).toISOString(),
+      });
+      expect(r.estado).toBe(200);
+      expect(r.json.cotizaciones).toEqual({
+        creadas: 0,
+        enviadas: 0,
+        aceptadas: 0,
+        tasaAceptacion: null,
+      });
+      expect(r.json.ventasPorMoneda).toEqual([]);
+      expect(r.json.oportunidades.creadas).toBe(0);
+      expect(r.json.oportunidades.tasaConversion).toBeNull();
+      expect(r.json.respuesta.promedioMinutos).toBeNull();
+    }
+  });
+
+  it('valida el rango y el asesorId en el borde (400) y exige sesión (401)', async () => {
     const invertido = await reporte('duenoA', { desde: RANGO.hasta, hasta: RANGO.desde });
     expect(invertido.estado).toBe(400);
     const sinHora = await reporte('duenoA', { desde: '2026-10-01', hasta: '2026-11-01' });
@@ -522,6 +686,11 @@ describe('GET /api/v1/reportes/resumen', () => {
       hasta: '2026-01-01T00:00:00.000Z',
     });
     expect(demasiado.estado).toBe(400);
+    // Un asesorId mal formado es 400 para todos, antes de mirar permisos.
+    for (const quien of ['duenoA', 'valentinaA'] as Quien[]) {
+      const malFormado = await reporte(quien, { ...RANGO, asesorId: 'zzz' });
+      expect(malFormado.estado).toBe(400);
+    }
 
     const anonimo = await reporte(null);
     expect(anonimo.estado).toBe(401);

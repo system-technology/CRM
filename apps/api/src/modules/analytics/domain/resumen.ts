@@ -5,7 +5,8 @@
  * Todo lo que es una razón devuelve `null` cuando no hay base (denominador 0): «0 %» afirmaría
  * que se midió y salió cero.
  */
-import type { ResumenDeReportes, VentasDeUnaMoneda } from '@viajapro/contracts';
+import type { ResumenDeReportesPorAlcance, VentasDeUnaMoneda } from '@viajapro/contracts';
+import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import type {
   CotizacionesAgregadas,
   EtapaConOportunidades,
@@ -62,12 +63,13 @@ export function ventasDeUnaMoneda(v: VentaAgregada): VentasDeUnaMoneda {
 }
 
 export function armarResumen(entrada: {
+  alcance: AlcanceDeReporte;
   rango: RangoDeReporte;
   cotizaciones: CotizacionesAgregadas;
   etapas: EtapaConOportunidades[];
   respuesta: RespuestaAgregada;
-}): ResumenDeReportes {
-  const { rango, cotizaciones: c, etapas, respuesta } = entrada;
+}): ResumenDeReportesPorAlcance {
+  const { alcance, rango, cotizaciones: c, etapas, respuesta } = entrada;
 
   const porEtapa = etapas.slice().sort((a, b) => a.orden - b.orden);
   const suma = (f: (e: EtapaConOportunidades) => boolean): number =>
@@ -76,7 +78,10 @@ export function armarResumen(entrada: {
   const perdidas = suma((e) => e.esPerdida);
   const creadas = suma(() => true);
 
-  return {
+  // El alcance y el asesor efectivos van en la respuesta para que la web titule con la verdad y
+  // no los deduzca de los permisos (ADR-0035 §4). Las dos ramas se construyen por separado: la
+  // unión discriminada del contrato es lo que impide que una clave de agencia caiga en la propia.
+  const cifras = {
     periodo: { desde: rango.desde.toISOString(), hasta: rango.hasta.toISOString() },
     cotizaciones: {
       creadas: c.creadas,
@@ -114,4 +119,8 @@ export function armarResumen(entrada: {
       ),
     },
   };
+
+  return alcance.nivel === 'PROPIO'
+    ? { alcance: 'PROPIO', asesorId: alcance.asesorId, ...cifras }
+    : { alcance: 'AGENCIA', asesorId: alcance.asesorId, ...cifras };
 }
