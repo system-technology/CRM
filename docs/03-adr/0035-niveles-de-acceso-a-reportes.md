@@ -1,12 +1,12 @@
 # ADR-0035 — Niveles de acceso a reportes: propio y agencia, impuestos por el servidor
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-21; ver «Aceptación y auditoría» al final de §9)
 - **Fecha:** 2026-11-21
 - **Decide:** propietario, a propuesta de `arquitecto`
 - **Consultados:** el catálogo de `analista-datos`
   (`11-reportes-por-nivel-catalogo.md` de `docs/08-roadmap/`, T-339, PR #392,
-  sin integrar al escribir esto). Pendientes: `auditor-seguridad` (lista de §9) y `experto-turismo`
-  (atribución cuando una persona cotiza y otra cierra, T-493)
+  sin integrar al escribir esto). `auditor-seguridad` (lista de §9): hecho el 2026-11-21, ver «Aceptación y auditoría».
+  Pendiente, y **no bloquea**: `experto-turismo` (atribución cuando una persona cotiza y otra cierra, T-493)
 - **Tarea:** T-340 (Eje F del [roadmap JD Tours](../08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md)).
   Absorbe T-141. Habilita T-341 (permiso), T-342 (alcance en el servidor), T-343 a T-346
 - **Amplía:** [ADR-0011](0011-autenticacion-y-tenant-de-sesion.md) (permisos por rol en la sesión) y
@@ -282,6 +282,47 @@ hay columnas ni tablas nuevas.
 8. CSV: escapado de fórmulas, sin PII de viajeros ni teléfonos, solo con `reportes.ver_agencia`, y
    generado en el servidor.
 9. Que la web no sea la única barrera en ningún caso: probar cada caso contra la API, no la pantalla.
+
+### Aceptación y auditoría (T-340, 2026-11-21)
+
+**Por qué este apartado.** Este ADR entró en `main` como «Propuesto» y T-341, T-342 y T-343 se
+construyeron encima antes de que nadie revisara la lista de §9. Eso contradice R7 (la decisión se
+escribe y se revisa **antes** de implementarse). No se deshace; se regulariza aquí, y la cola de §7 pide
+que la próxima decisión estructural no se implemente hasta estar aceptada.
+
+**Quién.** La sesión de arquitectura y auditoría de seguridad, **orquestada por la sesión madre bajo la
+autorización expresa del propietario** («tú tienes autorización mía para aprobar y destrabar los temas
+pendientes como si fuera yo»). Es una sesión de Claude que lee el código, **no** una pasada del agente
+`auditor-seguridad` ni una revisión humana: queda dicho para que nadie la cuente por más de lo que es.
+El propietario puede reabrir el estado a «Propuesto» si quiere una segunda lectura.
+
+**Qué se revisó.** El código de `main`, no el texto de este ADR: `shared/autorizacion/alcance-de-reporte.ts`,
+`shared/autorizacion/asesor-de-consulta.ts`, `shared/puertos/puertos-de-reportes.ts`,
+`modules/analytics/{interface,application}`, los cuatro adaptadores de reportes (quoting, crm, inbox,
+payments), `packages/contracts/src/reportes.ts`, la migración `20261121160000_permiso_reportes_ver_agencia`,
+la siembra de roles y los e2e `reportes.e2e-spec.ts` y `seguimientos-por-asesor.e2e-spec.ts`. No se
+ejecutaron las pruebas en esta sesión (no hay base disponible): se apoya en el CI de `main`, donde `test`
+y `aislamiento-tenants` están en verde.
+
+**Veredicto de seguridad:** ningún hallazgo **bloqueante** (§3.1: nada que hoy esté roto o sea falso).
+Resultado por punto de §9:
+
+| § 9 | Resultado |
+|---|---|
+| 1. El alcance sale de la sesión | Cumple. Un solo punto de decisión (`alcanceDeReporte`, llamado solo desde `obtener-resumen.use-case.ts`), y los puertos reciben `AlcanceDeReporte`, no un id suelto |
+| 2. 403 sin permiso, sin oráculo | Cumple en reportes y en seguimientos: el 403 se decide sin mirar la base y es idéntico con un id ajeno, inexistente o de otra agencia (probado) |
+| 3. La rama `PROPIO` no trae claves de agencia | Cumple. Esquema `strict()` y `ResumenDeReportesPorAlcance.parse` sobre la salida |
+| 4. Margen solo con `cotizacion.ver_neto_y_margen` | Cumple en JSON: sin el permiso las sumas no forman parte de la consulta SQL. **CSV: no aplica aún**, no existe exportación en el servidor (T-345, T-483) |
+| 5. Migración de T-341 | Cumple: `CHECK` ampliado y validado, relleno solo del rol `DUENO` por `tenant_id`, con aserciones |
+| 6. `$queryRaw` con `tenant_id` y e2e de dos agencias | Cumple: `tenant_id` en cada `FROM` y `JOIN`, y un e2e de dos agencias por puerto |
+| 7. Filas de detalle y `visibilidadDe` | No aplica hoy: el resumen devuelve solo agregados. Queda como condición de cualquier endpoint futuro con filas |
+| 8. CSV | No aplica hoy (no existe). Condición de T-345 / T-483 |
+| 9. La web no es la única barrera | Cumple: el servidor impone el alcance sin mirar la web, y los e2e llaman a la API, no a la pantalla |
+
+**Cola derivada (no bloquea):** la guarda de «solo agencia entera» de `porAsesor` y `ventasPorDestino` es
+solo de tipos, sin comprobación en ejecución (T-fuga-defensa); el e2e de dos asesores no cubre un rol con
+`reportes.ver_agencia` sin `conversaciones.ver_todas` (T-rol-mixto); y T-345 / T-483 deben cumplir 4, 7 y 8
+al construirse. Las tareas concretas las registra la sesión madre en `roadmap/tasks.yaml`.
 
 ## Cuándo revisar esta decisión
 
