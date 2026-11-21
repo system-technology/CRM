@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 15:15 UTC**, por la madre `session_01R81Xh5a2iFmSzSLVN6VcXy`. `main` en **`ef44c75e`**. Relevo recibido a las 15:05 UTC de `session_01R81Xh5b7wpteu5YpcDpw5p` (**275.757 tokens y 18,11 USD**, el doble del tope). **#446 integrado** (T-555); `main` en **`1e947f4b`**. Abierto: **#448** (este relevo).
+Última actualización: **2026-11-21, 16:45 UTC**, por la madre `session_01R81Xh5a2iFmSzSLVN6VcXy`, **que se releva aquí**. `main` en **`7a0ac374`**. **NUEVE PR integrados** en el turno (#446, #448, #450, #451, #453, #454, #455, #457 y los cierres automáticos). **Cero PR abiertos.** En `done` y verificadas una a una: **T-555, T-556, T-549, T-561, T-560** y **T-562** (su cierre, en vuelo).
 
 
 ## 1. Quién es quién
@@ -19,15 +19,26 @@
 - **Sesión madre ACTUAL: `session_01R81Xh5a2iFmSzSLVN6VcXy`** (Opus, esfuerzo alto), desde las **15:08 UTC** del 2026-11-21. Es la **cuarta** madre del día. Las tres anteriores se pasaron del tope de 150 mil: `…3ygCnt8wYfALeA6yY` con 688 mil y 122 USD, `…45hbFQHivoDJ8cbJQ` con 400 mil, y `…5b7wpteu5YpcDpw5p` con **275.757 tokens y 18,11 USD**.
 - **El despertar apunta bien y es ÚNICO: `trig_01RSjZimU6jHEhMXXe6kApQu`** (`47 */2 * * *`), creado por la madre saliente apuntando **directo** a la entrante. **Verificado con `list_triggers` a las 15:09 UTC:** una sola tarea programada, y su `persistent_session_id` es el de la madre actual. Sin relevo en dos saltos.
 - **El traspaso traía un id de tarea programada que NO existe** (`trig_01W27QjMm5BD8aFm1EJ6wa17`): la madre entrante iba a borrarlo. Es la **tercera vez** que el traspaso entre madres trae un id inventado. **No se borra ni se cita un id sin verlo antes en `list_triggers`.**
-- **Sobre el medidor de consumo propio.** La madre saliente avisó de que un `0` al arrancar significa «todavía no hay dato», no «el instrumento está roto». **Confirmado aquí, y matizado:** `external_metadata.context_usage.used_tokens` marcó **`0` en dos lecturas separadas** (15:08 y 15:12 UTC), con trabajo real en medio. Así que **tampoco es solo retraso de un instante**. Se anota como **«sin dato todavía»** y se sigue midiendo en cada vuelta; no se construye ninguna teoría sobre esa lectura ni se usa para decidir que queda margen. `rate_limit_info` sí traía dato (`seven_day`, `allowed_warning`): es otra cosa, no el consumo de contexto.
-- **Sesiones hijas (2):**
-  - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **#446 (T-555), ya integrado**. A las 15:25 se le reparte **T-556**.
-  - `session_01R81Xh6E99n8PmJd5Pso4ZS` — carril `i`, **T-562** (manual de usuario con capturas), repartida a las 15:46 UTC. **En Sonnet, no en Opus**: es redacción y capturas, no toca dinero ni aislamiento. Su **paso 0** es demostrar que puede arrancar la web en modo demo y capturar; si no puede, para y avisa **antes** de escribir el manual entero.
-  - `session_01R81Xh2nwGXCyRsqwWGZ8sf` — carril `b`, **T-561** (contrastes medidos), repartida a las 15:44 UTC. **Segunda sesión viva en el carril `b`**: se le dijo expresamente que no toque `mock-reportes-resumen.ts`, que es de T-556. Tocan archivos distintos; el riesgo es que un PR quede `behind`, no un conflicto.
-  - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`, **T-549**, repartida a las 15:10 UTC. Encargo acotado: el filtro de «sin responsable» **antes** del tope de filas, **por puerto y sin JOIN entre contextos (R4)**, con orden explícita de **parar y avisar** si exigiera ADR o migración.
-  - `session_01R81Xh2DhFQmHXUmF7Mqedn` — carril `a`, ociosa desde que entregó #441. **No se reutilizó**: una sesión nueva con `source_url` sale más barata que una con el contexto viejo encima.
-  - `session_01R81Xh6LKjb37fMwSBRg2YL` — **ARCHIVADA a las 15:19 UTC**. El traspaso la daba por «MUERTA»: **era falso y costó una hora de sesión**. Estaba **bloqueada en un permiso**, se desbloqueó sola, implementó T-531/T-532 y abrió **#447** para descubrir que #441 ya lo había entregado (cerrado sin integrar, `main` intacto). Se archiva para que no pueda revivir otra vez. Gastó **226.328 tokens y 1,22 USD** en duplicar trabajo ya hecho.
-  - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
+- **EL MEDIDOR DE CONSUMO PROPIO NO ESTÁ ROTO: VA CON RETRASO. Demostrado el 2026-11-21 por el camino caro.**
+  `external_metadata.context_usage.used_tokens` marcó **`0` durante CASI TODO el turno** —tres lecturas
+  separadas, con `updated_at` avanzando y trabajo real en medio— y la madre concluyó que «sirve para vigilar a
+  las hijas pero no se autorreporta para la propia sesión». **Esa conclusión era FALSA.** A las 16:48 el mismo
+  campo marcó **457.098 tokens y 52,26 USD**: el triple del tope de 150 mil.
+  - **Es la misma trampa que ya avisó la madre anterior y que esta volvió a pisar**, solo que con una teoría más
+    elaborada: tres lecturas en cero no prueban nada, porque el retraso dura más que tres lecturas.
+  - **La regla, sin matices: un `0` significa «todavía no hay dato». Nunca significa «tengo margen».** Mientras
+    no haya cifra, se gobierna por calendario: **relevo al cerrar el lote**, pase lo que pase.
+  - Y lo que hace daño de verdad: esa conclusión falsa **se escribió en el tablero y en el prompt del despertar**,
+    es decir, se propagó a la siguiente madre. Al corregir algo así, **corregir también donde se propagó**.
+- **Sesiones hijas vivas (4), TODAS ociosas y esperando encargo.** Entregaron bien y declararon sus límites;
+  merece la pena reutilizarlas o archivarlas, no dejarlas colgando:
+  - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **T-556** y **T-560**. Declaró sola un error suyo
+    (un `next start` viejo en otro puerto le hizo medir un build anterior) y lo repitió entero.
+  - `session_01R81Xh2nwGXCyRsqwWGZ8sf` — carril `b`. Entregó **T-561**. **Desmintió la premisa de su tarea** y
+    declaró **tres** pruebas suyas que habrían entregado algo falso. La mejor evidencia del turno.
+  - `session_01R81Xh6E99n8PmJd5Pso4ZS` — carril `i`, **en Sonnet**. Entregó **T-562**, el manual. Destapó
+    T-563..T-568 documentando. Tiene el script de capturas: **si cambia la interfaz, es la que regenera**.
+  - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`. Entregó **T-549** por puertos, sin romper R4.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
 ## 1.1 Decisión de producto del turno (2026-11-21, 15:25 UTC)

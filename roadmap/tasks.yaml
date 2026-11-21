@@ -11710,7 +11710,7 @@ tasks:
     phase: 1
     priority: P2
     effort: L
-    status: in_progress
+    status: done
     acceptance:
       - "Dos recorridos completos: el del asesor (entrar, atender la conversacion, cotizar, enviar, aceptar,
         abrir el archivo de viaje, registrar un pago, ver sus numeros) y el del dueno (lo anterior mas
@@ -11731,6 +11731,11 @@ tasks:
       fotos»"
     created_at: 2026-11-21T15:46:00.000Z
     owner: documentador
+    started_at: 2026-11-21T16:33:04.665Z
+    done_at: 2026-11-21T16:33:04.665Z
+    evidence: "Mergeado en main por el PR #453 (rama i/T-562-manual-de-usuario) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 04826344be6b34e3f4c2a71f9d8567ca8ce8e052
   - id: T-563
     title: "Web: no se puede aceptar una cotizacion desde la pantalla, y sin eso no se abre el archivo de viaje"
     type: bug
@@ -11739,20 +11744,20 @@ tasks:
     effort: M
     status: backlog
     acceptance:
-      - "Hoy, aceptar una cotizacion solo se puede por API: cambiarEstadoCotizacionApi se invoca unicamente con
-        'ENVIADA' desde modal-enviar-cotizacion.tsx; en cotizaciones/page.tsx ACEPTADA solo aparece como filtro y
-        como estado pintado, nunca como accion. Las e2e (07-cobros) aceptan con page.request.post. Hallado al
-        documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre"
-      - "Por que es P1 y no «el dia que...»: aceptar y abrir el archivo de viaje es el corazon del producto. Si el
-        propietario ensena esto a una agencia, no puede cerrar una venta en pantalla. Bloquea la demo aunque no
-        bloquee main"
-      - "El detalle de una cotizacion ENVIADA ofrece una accion para marcarla aceptada (y rechazada), con el permiso
-        que corresponda a POST /api/v1/cotizaciones/:id/estado; al aceptar, la pantalla lleva al archivo de viaje que
-        abrio el evento CotizacionAceptada, o dice que se esta abriendo"
-      - "Una prueba de navegador recorre el paso con un clic en vez de page.request.post"
-      - "Al cerrarla, corregir el paso 7 de docs/01-producto/04-flujos-criticos.md y el paso 7 del manual
-        (docs/06-manual/01-recorrido-del-asesor.md)"
-    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+      - "Hoy, aceptar una cotizacion solo se puede por API: cambiarEstadoCotizacionApi se invoca unicamente
+        con 'ENVIADA' desde modal-enviar-cotizacion.tsx; en cotizaciones/page.tsx ACEPTADA solo aparece como
+        filtro y como estado pintado, nunca como accion. Las e2e (07-cobros) aceptan con page.request.post.
+        Hallado al documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre"
+      - "Por que es P1 y no «el dia que...»: aceptar y abrir el archivo de viaje es el corazon del producto.
+        Si el propietario ensena esto a una agencia, no puede cerrar una venta en pantalla. Bloquea la demo
+        aunque no bloquee main"
+      - El detalle de una cotizacion ENVIADA ofrece una accion para marcarla aceptada (y rechazada), con el
+        permiso que corresponda a POST /api/v1/cotizaciones/:id/estado; al aceptar, la pantalla lleva al
+        archivo de viaje que abrio el evento CotizacionAceptada, o dice que se esta abriendo
+      - Una prueba de navegador recorre el paso con un clic en vez de page.request.post
+      - Al cerrarla, corregir el paso 7 de docs/01-producto/04-flujos-criticos.md y el paso 7 del manual
+        (docs/06-manual/01-recorrido-del-asesor.md)
+    source: hallazgo de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T15:50:00.000Z
     owner: frontend
   - id: T-564
@@ -11763,16 +11768,16 @@ tasks:
     effort: M
     status: backlog
     acceptance:
-      - "ADR-0034 reserva cobro.corregir al dueno. panel-de-cobro.tsx solo muestra un aviso a quien no lo tiene
-        (cobro-sin-permiso-corregir) y a quien lo tiene no le ofrece nada: el permiso existe y la pantalla no. Hallado
-        al documentar el recorrido del dueno (T-562)"
-      - "El dueno puede devolver, ajustar o reversar un pago desde el historial del archivo de viaje; la correccion
-        se agrega al libro (un pago nunca se borra) y queda a nombre de quien la hizo"
-      - "Antes de construir la pantalla, confirmar con la API de cobros (T-330) que ofrece la operacion de
-        correccion; si no la ofrece, se abre tarea de backend primero"
-      - "Al cerrarla, quitar la advertencia de docs/06-manual/02-recorrido-del-dueno.md (paso 7) y la fila de
-        docs/06-manual/03-lo-que-no-cubre.md"
-    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+      - "ADR-0034 reserva cobro.corregir al dueno. panel-de-cobro.tsx solo muestra un aviso a quien no lo
+        tiene (cobro-sin-permiso-corregir) y a quien lo tiene no le ofrece nada: el permiso existe y la
+        pantalla no. Hallado al documentar el recorrido del dueno (T-562)"
+      - El dueno puede devolver, ajustar o reversar un pago desde el historial del archivo de viaje; la
+        correccion se agrega al libro (un pago nunca se borra) y queda a nombre de quien la hizo
+      - Antes de construir la pantalla, confirmar con la API de cobros (T-330) que ofrece la operacion de
+        correccion; si no la ofrece, se abre tarea de backend primero
+      - Al cerrarla, quitar la advertencia de docs/06-manual/02-recorrido-del-dueno.md (paso 7) y la fila de
+        docs/06-manual/03-lo-que-no-cubre.md
+    source: hallazgo de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T15:50:00.000Z
     owner: frontend
   - id: T-565
@@ -11783,16 +11788,19 @@ tasks:
     effort: S
     status: backlog
     acceptance:
-      - "formulario-ingreso.tsx muestra «Modo de Produccion (API Real) — Conectado a la API y PostgreSQL en vivo»
-        cuando esReal es verdadero, y esReal = authApi.usaAuthReal() es una bandera de configuracion, no una
-        comprobacion de conectividad. En una captura tomada sin ninguna API la pantalla decia «conectado». Hallado
-        al documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre"
-      - "Dos caras, y la tarea recoge las dos: o se comprueba de verdad la conexion, o el texto deja de afirmarla"
-      - "En cualquier caso, el texto se reescribe en lenguaje de agencia, sin nombrar PostgreSQL ni «API»: es la
-        primera pantalla que ve el dueno de una agencia de viajes y un resto de desarrollo le resta confianza"
-      - "Al cerrarla, quitar la nota sobre el recuadro verde del paso 1 de docs/06-manual/01-recorrido-del-asesor.md y
-        volver a tomar asesor-01-ingreso con docs/06-manual/capturas.mjs --ingreso"
-    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+      - formulario-ingreso.tsx muestra «Modo de Produccion (API Real) — Conectado a la API y PostgreSQL en
+        vivo» cuando esReal es verdadero, y esReal = authApi.usaAuthReal() es una bandera de configuracion, no
+        una comprobacion de conectividad. En una captura tomada sin ninguna API la pantalla decia «conectado».
+        Hallado al documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre
+      - "Dos caras, y la tarea recoge las dos: o se comprueba de verdad la conexion, o el texto deja de
+        afirmarla"
+      - "En cualquier caso, el texto se reescribe en lenguaje de agencia, sin nombrar PostgreSQL ni «API»: es
+        la primera pantalla que ve el dueno de una agencia de viajes y un resto de desarrollo le resta
+        confianza"
+      - Al cerrarla, quitar la nota sobre el recuadro verde del paso 1 de
+        docs/06-manual/01-recorrido-del-asesor.md y volver a tomar asesor-01-ingreso con
+        docs/06-manual/capturas.mjs --ingreso
+    source: hallazgo de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T15:55:00.000Z
     owner: frontend
   - id: T-566
@@ -11803,16 +11811,18 @@ tasks:
     effort: M
     status: backlog
     acceptance:
-      - "El usuario de muestra del modo demostracion tiene permisos de dueno: «Reportes de la agencia» sale con la
-        comparacion entre asesores y no existe la vista «Mis numeros» de un asesor puro. Hallado al capturar el manual
-        (T-562): asesor-11-mis-numeros hubo que tomarla con el filtro «Míos» de la vista del dueno"
-      - "Por que importa mas que una limitacion de capturas: en una agencia real los asesores son la mayoria de los
-        usuarios, y quien evalua el producto no puede ver lo que vera su equipo"
-      - "Hace falta un segundo usuario de muestra con rol de asesor, o una forma de alternar el rol en la demostracion;
-        la que se elija debe ser visible (la insignia de demostracion lo dice) y no tocar la autenticacion real"
-      - "Al cerrarla, volver a tomar asesor-11-mis-numeros con docs/06-manual/capturas.mjs y quitar la advertencia del
-        paso 11 de docs/06-manual/01-recorrido-del-asesor.md"
-    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+      - "El usuario de muestra del modo demostracion tiene permisos de dueno: «Reportes de la agencia» sale
+        con la comparacion entre asesores y no existe la vista «Mis numeros» de un asesor puro. Hallado al
+        capturar el manual (T-562): asesor-11-mis-numeros hubo que tomarla con el filtro «Míos» de la vista
+        del dueno"
+      - "Por que importa mas que una limitacion de capturas: en una agencia real los asesores son la mayoria
+        de los usuarios, y quien evalua el producto no puede ver lo que vera su equipo"
+      - Hace falta un segundo usuario de muestra con rol de asesor, o una forma de alternar el rol en la
+        demostracion; la que se elija debe ser visible (la insignia de demostracion lo dice) y no tocar la
+        autenticacion real
+      - Al cerrarla, volver a tomar asesor-11-mis-numeros con docs/06-manual/capturas.mjs y quitar la
+        advertencia del paso 11 de docs/06-manual/01-recorrido-del-asesor.md
+    source: hallazgo de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T16:00:00.000Z
     owner: frontend
   - id: T-567
@@ -11823,34 +11833,35 @@ tasks:
     effort: M
     status: backlog
     acceptance:
-      - "Criterio de aceptacion tomado de un caso real: en «Reportes» con el filtro «Mios» las ventas del periodo
-        (31.450.000 COP) son las mismas que con «Toda la agencia» aunque las cotizaciones aceptadas pasan de 5 a 2
-        (visto en asesor-11-mis-numeros, T-562)"
-      - "Los nombres y montos tampoco coinciden de una pantalla a otra (Hoy, Seguimientos, Oportunidades, Cotizaciones,
-        Archivos de viaje usan datos de muestra independientes)"
-      - "En una demostracion que las cifras no casen se nota y resta confianza: los datos de muestra salen de una sola
-        fuente coherente, y una prueba compara las cifras que se repiten entre pantallas"
-      - "Al cerrarla, quitar de docs/06-manual/README.md la advertencia de que los datos no coinciden"
-    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+      - "Criterio de aceptacion tomado de un caso real: en «Reportes» con el filtro «Mios» las ventas del
+        periodo (31.450.000 COP) son las mismas que con «Toda la agencia» aunque las cotizaciones aceptadas
+        pasan de 5 a 2 (visto en asesor-11-mis-numeros, T-562)"
+      - Los nombres y montos tampoco coinciden de una pantalla a otra (Hoy, Seguimientos, Oportunidades,
+        Cotizaciones, Archivos de viaje usan datos de muestra independientes)
+      - "En una demostracion que las cifras no casen se nota y resta confianza: los datos de muestra salen de
+        una sola fuente coherente, y una prueba compara las cifras que se repiten entre pantallas"
+      - Al cerrarla, quitar de docs/06-manual/README.md la advertencia de que los datos no coinciden
+    source: hallazgo de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T16:00:00.000Z
     owner: frontend
   - id: T-568
-    title: "Campos personalizados del contacto admiten datos sensibles sin cifrado ni auditoria"
+    title: Campos personalizados del contacto admiten datos sensibles sin cifrado ni auditoria
     type: security
     phase: 1
     priority: P3
     effort: M
     status: backlog
     acceptance:
-      - "Hoy el riesgo es bajo: la pantalla es maqueta y solo guarda en el navegador. Pero ofrece «Numero de pasaporte»
-        y «Fecha de vencimiento de pasaporte», y el manual (docs/06-manual/03-lo-que-no-cubre.md) ya advierte que no se
-        escriba ahi un pasaporte real porque el cifrado de datos sensibles de viajeros aun no cubre estos campos"
-      - "Cuando los campos personalizados se implementen de verdad en servidor, tienen que nacer cifrados y con acceso
-        auditado (R10, ley 1581 de 2012, ADR-0015). Decision de arquitectura antes de escribir codigo: ADR o ampliacion
-        del 0015"
+      - "Hoy el riesgo es bajo: la pantalla es maqueta y solo guarda en el navegador. Pero ofrece «Numero de
+        pasaporte» y «Fecha de vencimiento de pasaporte», y el manual (docs/06-manual/03-lo-que-no-cubre.md)
+        ya advierte que no se escriba ahi un pasaporte real porque el cifrado de datos sensibles de viajeros
+        aun no cubre estos campos"
+      - "Cuando los campos personalizados se implementen de verdad en servidor, tienen que nacer cifrados y
+        con acceso auditado (R10, ley 1581 de 2012, ADR-0015). Decision de arquitectura antes de escribir
+        codigo: ADR o ampliacion del 0015"
       - "Enlazar con T-309, que decide el cifrado del NIT: es el mismo criterio de que PII va cifrada"
-      - "Al cerrarla, quitar la advertencia del manual"
-    source: "advertencia de T-562 (manual de usuario), 2026-11-21"
+      - Al cerrarla, quitar la advertencia del manual
+    source: advertencia de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T16:00:00.000Z
     owner: arquitecto
   - id: T-569
