@@ -7921,7 +7921,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
     depends_on:
       - T-331
     acceptance:
@@ -7932,7 +7932,7 @@ tasks:
         ABIERTO/CANCELADO)"
       - "e2e: registrar un pago cambia el saldo y el filtro"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
-    notes: "Reconciliación 2026-11-21: T-331 está hecha; pasa a ready."
+    notes: "Reconciliación 2026-11-21: T-331 está hecha; pasa a ready. || CERRADA 2026-11-21: PR #476 integrado en main. La pantalla (app)/cobros con los cuatro filtros de estado de cobro, entrada en el menu, e2e y capturas a 390 y 1440. SALVEDAD DECLARADA: no muestra pasajeros porque FilaDeCobro no los trae; eso es T-582 y no esta en el criterio de salida del piloto. El cierre automatico NO la cerro: seguia en ready en main despues de integrar."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-333
@@ -7976,7 +7976,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     depends_on:
       - T-332
     acceptance:
@@ -7984,7 +7984,7 @@ tasks:
       - Escapado de celdas contra inyección de fórmulas
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     notes: "Confirmada P1: no hay exportación CSV de archivos de viaje (apps/web/src/lib/exportar-csv.ts existe
-      pero no lo usa /viajes); es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: su dependencia pasa de T-334 a T-332. Lo que hay que exportar es la tabla con total, pagado y saldo del criterio de salida (§3 punto 4), que la entrega T-332; NO hacen falta las columnas de la hoja del propietario, que son lo que bloquea a T-334. Se entrega junto a T-332 en el mismo PR."
+      pero no lo usa /viajes); es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: su dependencia pasa de T-334 a T-332. Lo que hay que exportar es la tabla con total, pagado y saldo del criterio de salida (§3 punto 4), que la entrega T-332; NO hacen falta las columnas de la hoja del propietario, que son lo que bloquea a T-334. Se entrega junto a T-332 en el mismo PR. || CERRADA 2026-11-21: PR #476 integrado en main, junto a T-332. exportarCobrosCSV en apps/web/src/lib/exportar-csv.ts. Auditado por la madre: los importes salen de Money.desdeUnidades().aDecimal(), sin dividir a mano por 100 (R8: en COP la unidad minima es el peso); el escapado contra inyeccion de formulas solo exime numeros negativos puros con expresion anclada, y el entrecomillado RFC 4180 sigue corriendo despues; y no hay neto ni margen que ocultar porque el contrato no los trae. El cierre automatico NO la cerro: seguia en backlog en main."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-336

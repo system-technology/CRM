@@ -35,7 +35,7 @@ describe('HojaMas (T-320)', () => {
     expect(screen.queryByTestId('telon-hoja-mas')).toBeNull();
   });
 
-  it('abierta es un diálogo modal con los 7 módulos restantes, en el orden de la tabla', () => {
+  it('abierta es un diálogo modal con los 8 módulos restantes, en el orden de la tabla', () => {
     const { hoja } = pintar();
     expect(hoja?.getAttribute('aria-modal')).toBe('true');
     const modulos = within(screen.getByRole('navigation', { name: 'Módulos' })).getAllByRole(
@@ -44,6 +44,7 @@ describe('HojaMas (T-320)', () => {
     expect(modulos.map((e) => e.textContent)).toEqual([
       'Oportunidades',
       'Cotizaciones',
+      'Cobros',
       'Seguimientos',
       'Contactos',
       'Catálogo',
@@ -53,6 +54,7 @@ describe('HojaMas (T-320)', () => {
     expect(modulos.map((e) => e.getAttribute('href'))).toEqual([
       '/pipeline',
       '/cotizaciones',
+      '/cobros',
       '/seguimientos',
       '/contactos',
       '/catalogo',
@@ -71,8 +73,8 @@ describe('HojaMas (T-320)', () => {
     pintar();
     const hoja = screen.getByTestId('hoja-mas');
     const objetivos = [...hoja.querySelectorAll('a'), ...hoja.querySelectorAll('button')];
-    // 7 módulos + campana + perfil + 3 enlaces legales + la X de cerrar
-    expect(objetivos.length).toBe(7 + 2 + 3 + 1);
+    // 8 módulos + campana + perfil + 3 enlaces legales + la X de cerrar
+    expect(objetivos.length).toBe(8 + 2 + 3 + 1);
     for (const el of objetivos) {
       expect(el.className).toMatch(/min-h-\[(44|48)px\]/);
     }

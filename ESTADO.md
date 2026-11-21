@@ -41,6 +41,7 @@ que el propietario pide es algo que una agencia pueda ver.
 - **#476** (T-332 y T-335) — **la pantalla «quién pagó y quién debe»** con filtros por estado de
   cobro y **exportación a CSV**. Es el punto 4 del criterio de salida. Sin neto ni margen **por
   construcción**: `FilaDeCobro` no los trae. No muestra pasajeros, declarado y encolado (T-582).
+  Detalle: [bitácora](docs/_bitacora/2026-11-21-cobros-pantalla-y-csv.md).
 - **#477** (T-346) — **la prueba en un navegador** de que un asesor no ve las cifras de otro ni las
   de la agencia, y de que pedir el `asesorId` ajeno responde 403. Midió además el contraste de los
   dos dashboards y encontró textos por debajo de WCAG AA (T-583).
