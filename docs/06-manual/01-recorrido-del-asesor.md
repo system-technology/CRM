@@ -240,7 +240,7 @@ por cobrar de tus archivos.
 - ⚠ **La captura de arriba no es la vista de un asesor puro.** El usuario de la demostración tiene
   permisos de dueño, así que la pantalla se titula «Reportes de la agencia»; para acercarse a lo que ve
   un asesor se eligió el filtro **«Míos»**. Con un asesor real, el título y el menú dicen «Mis números» y
-  desaparece la comparación entre asesores.
+  desaparece la comparación entre asesores (T-566).
 - Cuando hay pocos datos (por ejemplo, menos de 20 cotizaciones enviadas), el sistema **no muestra
   porcentaje** en vez de mostrar uno engañoso.
 - Algunas cifras propias, como tus cotizaciones abiertas y tus cobros por cobrar, **aún no se calculan

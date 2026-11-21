@@ -9,7 +9,7 @@ quedó fuera y por qué. La fuente es la sección «Es real» y «Es maqueta» d
 |---|---|
 | **SLA y tiempos** (Configuración) | Solo se guarda en el navegador de quien lo cambia; no hay servidor detrás |
 | **Plantillas oficiales de WhatsApp** | No hay endpoint de plantillas; la pantalla es una maqueta |
-| **Campos personalizados** (por ejemplo, pasaporte del viajero) | Solo se guardan en el navegador. **Por eso mismo no se debe escribir ahí un pasaporte real**: el cifrado de datos sensibles de viajeros aún no cubre estos campos |
+| **Campos personalizados** (por ejemplo, pasaporte del viajero) | Solo se guardan en el navegador. **Por eso mismo no se debe escribir ahí un pasaporte real**: el cifrado de datos sensibles de viajeros aún no cubre estos campos (T-568) |
 | **Respuestas rápidas**, **filtros guardados**, **preferencias de notificación**, **Asistente de inicio** | Solo en el navegador |
 
 ## Falta el botón

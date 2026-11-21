@@ -18,7 +18,7 @@ agencia de viajes. No describe lo que está diseñado o por construir: eso vive 
 1. **Las capturas son de la demostración, no de una agencia real.** Se tomaron con la insignia
    «datos de demostración» activa, que muestra una agencia inventada («Viajes El Sol») con
    contactos y cifras de muestra. **Ninguna captura sale de la API real**, y los nombres y montos
-   no coinciden del todo de una pantalla a otra porque son datos de muestra independientes.
+   no coinciden del todo de una pantalla a otra porque son datos de muestra independientes (T-567).
 2. **Nada de esto está desplegado todavía** y ninguna agencia lo usa. El manual describe cómo se
    comporta el sistema en desarrollo.
 3. **El canal de WhatsApp se probó con el número de prueba de Meta y con una API simulada**, nunca

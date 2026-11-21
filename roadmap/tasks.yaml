@@ -11738,3 +11738,61 @@ tasks:
     source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
     created_at: 2026-11-21T15:55:00.000Z
     owner: frontend
+  - id: T-566
+    title: "Web: la demostracion solo ensena la vista del dueno; no hay forma de verla con los ojos de un asesor"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "El usuario de muestra del modo demostracion tiene permisos de dueno: «Reportes de la agencia» sale con la
+        comparacion entre asesores y no existe la vista «Mis numeros» de un asesor puro. Hallado al capturar el manual
+        (T-562): asesor-11-mis-numeros hubo que tomarla con el filtro «Míos» de la vista del dueno"
+      - "Por que importa mas que una limitacion de capturas: en una agencia real los asesores son la mayoria de los
+        usuarios, y quien evalua el producto no puede ver lo que vera su equipo"
+      - "Hace falta un segundo usuario de muestra con rol de asesor, o una forma de alternar el rol en la demostracion;
+        la que se elija debe ser visible (la insignia de demostracion lo dice) y no tocar la autenticacion real"
+      - "Al cerrarla, volver a tomar asesor-11-mis-numeros con docs/06-manual/capturas.mjs y quitar la advertencia del
+        paso 11 de docs/06-manual/01-recorrido-del-asesor.md"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T16:00:00.000Z
+    owner: frontend
+  - id: T-567
+    title: "Web: los datos de muestra de la demostracion no cuadran entre pantallas"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "Criterio de aceptacion tomado de un caso real: en «Reportes» con el filtro «Mios» las ventas del periodo
+        (31.450.000 COP) son las mismas que con «Toda la agencia» aunque las cotizaciones aceptadas pasan de 5 a 2
+        (visto en asesor-11-mis-numeros, T-562)"
+      - "Los nombres y montos tampoco coinciden de una pantalla a otra (Hoy, Seguimientos, Oportunidades, Cotizaciones,
+        Archivos de viaje usan datos de muestra independientes)"
+      - "En una demostracion que las cifras no casen se nota y resta confianza: los datos de muestra salen de una sola
+        fuente coherente, y una prueba compara las cifras que se repiten entre pantallas"
+      - "Al cerrarla, quitar de docs/06-manual/README.md la advertencia de que los datos no coinciden"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T16:00:00.000Z
+    owner: frontend
+  - id: T-568
+    title: "Campos personalizados del contacto admiten datos sensibles sin cifrado ni auditoria"
+    type: security
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "Hoy el riesgo es bajo: la pantalla es maqueta y solo guarda en el navegador. Pero ofrece «Numero de pasaporte»
+        y «Fecha de vencimiento de pasaporte», y el manual (docs/06-manual/03-lo-que-no-cubre.md) ya advierte que no se
+        escriba ahi un pasaporte real porque el cifrado de datos sensibles de viajeros aun no cubre estos campos"
+      - "Cuando los campos personalizados se implementen de verdad en servidor, tienen que nacer cifrados y con acceso
+        auditado (R10, ley 1581 de 2012, ADR-0015). Decision de arquitectura antes de escribir codigo: ADR o ampliacion
+        del 0015"
+      - "Enlazar con T-309, que decide el cifrado del NIT: es el mismo criterio de que PII va cifrada"
+      - "Al cerrarla, quitar la advertencia del manual"
+    source: "advertencia de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T16:00:00.000Z
+    owner: arquitecto
