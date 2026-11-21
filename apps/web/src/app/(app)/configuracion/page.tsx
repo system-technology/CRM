@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Calculator,
@@ -104,6 +105,8 @@ const BloqueRnt = dynamic(
   { ssr: false },
 );
 
+import { hrefDePestana, leerPestanaDeUrl } from '../../../lib/parametros-url';
+
 type TabConfig =
   | 'equipo'
   | 'whatsapp'
@@ -115,9 +118,34 @@ type TabConfig =
   | 'campos'
   | 'respuestas';
 
-export default function ConfiguracionPage() {
+/** Lista cerrada de `?pestana=`; la primera es la de por defecto (T-318). */
+const PESTANAS_CONFIG = [
+  'equipo',
+  'whatsapp',
+  'sla',
+  'pipeline',
+  'agencia',
+  'precios',
+  'catalogo',
+  'campos',
+  'respuestas',
+] as const satisfies readonly [TabConfig, ...TabConfig[]];
+
+function ConfiguracionContenido() {
   const { puedeVerNetoYMargen, sesion } = usePermisos();
-  const [tabActiva, setTabActiva] = useState<TabConfig>('equipo');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const parametros = searchParams ?? new URLSearchParams();
+  const pestanaUrl = leerPestanaDeUrl<TabConfig>(parametros, PESTANAS_CONFIG);
+  // «Formación del precio» exige permiso: sin él, un enlace a esa pestaña cae a la primera.
+  const tabActiva: TabConfig =
+    pestanaUrl === 'precios' && !puedeVerNetoYMargen ? 'equipo' : pestanaUrl;
+  // `replace`: las pestañas son vistas de una misma pantalla; Atrás sale de Configuración, no
+  // recorre las pestañas que se visitaron.
+  const setTabActiva = (tab: TabConfig) =>
+    router.replace(hrefDePestana('/configuracion', tab, PESTANAS_CONFIG, parametros), {
+      scroll: false,
+    });
   const [sla, setSla] = useState<ConfiguracionSla>(MOCK_CONFIGURACION_SLA);
   const [agencia, setAgencia] = useState<ConfiguracionAgencia>(MOCK_CONFIGURACION_AGENCIA);
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
@@ -621,5 +649,13 @@ export default function ConfiguracionPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function ConfiguracionPage() {
+  return (
+    <Suspense fallback={<div aria-busy="true" className="min-h-64 flex-1" />}>
+      <ConfiguracionContenido />
+    </Suspense>
   );
 }
