@@ -12,6 +12,24 @@
 
 ---
 
+## 2026-11-21 (tercer lote) — Cobros en pantalla, catálogo de permisos y el coste de las pruebas en serie
+
+**Verificado** (con `gh`/`git`, mismo turno): `main` en **`e16f5499`**, cero PR abiertos. Integrados en serie y a mano con squash: **#414** (relevo de la orquestadora y aviso al despertar en el tablero), **#416** (**T-505 `done`**: una prueba compara el `CHECK` `roles_permisos_del_catalogo` con `PERMISOS` en los dos sentidos; comprobado en el log del CI que corre contra Postgres real y que no es vacua), **#415** (T-510) y **#410** (**T-331 `done`**: registrar un pago y ver el saldo en el archivo de viaje).
+
+**Lo que de verdad importó:** #410 llegó con los 14 checks en verde y **no era integrable**. La auditoría independiente —obligatoria por ser dinero en pantalla (R13)— encontró tres bloqueantes reales: el saldo a favor se pintaba **en negativo** bajo la etiqueta «Saldo a favor» y la confirmación decía **siempre** «Falta por cobrar»; la clave de idempotencia vivía en el diálogo, así que cerrarlo y reabrirlo tras un fallo de red **cobraba dos veces** al viajero; y un aviso afirmaba que la nota no se guarda cuando se guarda en claro en el historial inmutable. **Ningún check los habría visto**, porque la e2e evita el camino de sobrepago a propósito. Corregidos los tres con prueba de regresión. Cola abierta: **T-513..T-519**; el siguiente id libre es **T-520**.
+
+**Hallazgo del día:** el `navegador` rojo de #410 **no era un bug**. La semilla vale $ 550.000 y la prueba pagaba $ 1.500.000 fijos; el servidor lo rechazó por sobrepago y el diálogo se quedó abierto *como debía*. Dos lecciones que valen más que el arreglo: una prueba de dinero no lleva cifras fijas, y un fallo de e2e debe leer el mensaje de la pantalla en vez de decir solo «seguía abierto». De paso quedó verificado el camino de sobrepago entero contra la API real.
+
+**Supuesto / sin verificar:** **T-510 sigue `in_progress`** — exige cinco corridas de CI seguidas sin rojo y van **cero**, y los deadlocks 40P01 no se reprodujeron ni se cerraron. **Ninguna sesión puede levantar Postgres en local**: todo lo de «API real» lo validó el CI y lo visual salió de modo demostración. Nada desplegado.
+
+**Medido, que nadie lo había medido:** la ejecución en serie de las e2e de `apps/api` sube el job `test` de **3m11s a 4m26s**, un 40% más en cada PR.
+
+**Compuerta que no estaba apretada:** el tope de 150 mil tokens por sesión **no se cumple solo** — ninguna sesión recibe aviso de su consumo. La hija de T-331 acabó en **354 mil tokens y 31 USD**, y lo hizo notar ella misma. La madre tiene que consultar `get_session` → `context_usage` en cada vuelta del ciclo. Dato de coste comparado, del mismo turno: las dos sesiones Sonnet entregaron trabajo bueno por **0,74 y 0,67 USD**.
+
+**Bloqueo del propietario (punto 8f):** tras el relevo, el despertar de 2 h sigue apuntando a la madre anterior. `create_trigger`, `update_trigger` y `send_message` a la madre anterior fueron denegados y **ninguno se rodeó**. Mitigación: aviso al despertar en la cabecera del tablero, en `main` y en la rama `claude/repository-status-d4ug6p`. Detalle: [bitácora](../_bitacora/2026-11-21-tercer-lote-cobros-permisos-y-pruebas.md).
+
+**Trampa nueva:** el `scope` de commitlint es lista cerrada y **los nombres de los agentes no están en ella** (`datos`→`db`, `qa`→`test`, `backend`→`api`). Mató #411, #412 y un primer intento del tablero. Como `--force-with-lease` está denegado, obliga a recrear la rama. En [el tablero, §7](TABLERO-DEL-ORQUESTADOR.md).
+
 ## 2026-11-21 (segundo lote) — Alcance de vistas, permiso de reportes y pruebas sin carrera
 
 Integrados #404 y #405 (ingreso con correo o usuario; sustituyen a #402 y #362), #406 (T-485), #407 (T-341, permiso `reportes.ver_agencia`, catálogo de 14 a 15) y #408 (T-503, las pruebas de la api esperan a las de la base). `main` en `44d8673`, cero PR abiertos. La llave del alcance de las vistas está aislada en `apps/web/src/lib/alcance-de-vista.ts`: T-342 solo cambia esa función. Cola nueva T-505 a T-511; resto de T-503 en T-510. Limitación que pesa: las sesiones no levantan Postgres en local, así que lo «probado en navegador» es contra API simulada. Detalle: [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md).
