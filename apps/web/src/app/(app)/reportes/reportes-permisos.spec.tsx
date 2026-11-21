@@ -19,6 +19,19 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(busqueda),
 }));
 
+// El dashboard de administración (T-344) tiene sus propias pruebas; aquí solo se comprueba CUÁNDO
+// y CON QUÉ se monta, sin que salga a la red.
+vi.mock('../../../components/dashboard-admin/dashboard-admin', () => ({
+  DashboardAdmin: (p: { periodo?: string; zona?: string; bloques?: readonly string[] }) => (
+    <div
+      data-testid="dashboard-admin-montado"
+      data-periodo={p.periodo}
+      data-zona={p.zona}
+      data-bloques={p.bloques?.join(',')}
+    />
+  ),
+}));
+
 const SESION_ASESOR: SesionActual = {
   identidad: {
     id: '01932000-0000-7000-8000-000000000001',
@@ -300,5 +313,68 @@ describe('ReportesPage: la vista la decide la respuesta (T-343, ADR-0035 §5)', 
     render(<ReportesPage />);
     expect(await screen.findByTestId('reportes-error')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeDefined();
+  });
+});
+
+describe('ReportesPage: el dashboard de administración se monta por la respuesta (T-344)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    busqueda = '';
+    replace.mockClear();
+    vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+      vencidos: [],
+      deHoy: [],
+    } as never);
+  });
+
+  it('con alcance AGENCIA se monta con el periodo y la zona de la pantalla, solo con los bloques que ReportesListo no trae', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
+      fixtureDosMonedas(false),
+    );
+    render(<ReportesPage />);
+    const montado = await screen.findByTestId('dashboard-admin-montado');
+    expect(montado.getAttribute('data-periodo')).toBe('este_mes');
+    expect(montado.getAttribute('data-zona')).toBeTruthy();
+    expect(montado.getAttribute('data-bloques')).toBe('asesores,cobros,salidas,destinos');
+    // Y lo de T-343 sigue donde estaba.
+    expect(screen.getByTestId('kpi-ventas')).toBeDefined();
+    expect(screen.getByTestId('reportes-ambito')).toBeDefined();
+  });
+
+  it('con alcance PROPIO no se monta, aunque la sesión tenga permisos de sobra', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
+      fixtureDosMonedas(false, 'PROPIO'),
+    );
+    render(<ReportesPage />);
+    await screen.findByRole('heading', { level: 1, name: 'Mis números' });
+    expect(screen.queryByTestId('dashboard-admin-montado')).toBeNull();
+  });
+
+  it('con «Míos» se desmonta: esas cifras son de toda la agencia', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
+      fixtureDosMonedas(false),
+    );
+    render(<ReportesPage />);
+    await screen.findByTestId('dashboard-admin-montado');
+    fireEvent.change(screen.getByTestId('reportes-ambito'), { target: { value: 'yo' } });
+    await waitFor(() => expect(screen.queryByTestId('dashboard-admin-montado')).toBeNull());
+  });
+
+  it('si cambia el periodo, el dashboard recibe el nuevo', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
+      fixtureDosMonedas(false),
+    );
+    render(<ReportesPage />);
+    await screen.findByTestId('dashboard-admin-montado');
+    fireEvent.change(screen.getByLabelText('Periodo'), { target: { value: 'trimestre' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('dashboard-admin-montado').getAttribute('data-periodo')).toBe(
+        'trimestre',
+      ),
+    );
   });
 });

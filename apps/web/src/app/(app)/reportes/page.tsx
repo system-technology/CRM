@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AvisoReportesDeAdministracion } from '../../../components/comun/aviso-de-alcance';
 import { EsqueletoReportes } from '../../../components/comun/esqueletos';
+import { DashboardAdmin } from '../../../components/dashboard-admin/dashboard-admin';
 import { formatearDinero, ZONA_HORARIA_COLOMBIA, formatearFecha } from '../../../lib/formato';
 import { usePermisos } from '../../../lib/permisos';
 import { estaUsandoApiReal, obtenerPendientesDelDiaApi } from '../../../lib/crm-api';
@@ -275,7 +276,20 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
               seguimientos={estado.seguimientos}
             />
           ) : (
-            <ReportesListo vista={estado.vista} diasAnteriores={estado.diasAnteriores} />
+            <>
+              <ReportesListo vista={estado.vista} diasAnteriores={estado.diasAnteriores} />
+              {/* Comparación entre asesores, cobros y salidas (T-344). Solo con la respuesta de
+                  agencia (la decide el servidor) y sin el filtro «Míos»: son cifras de toda la
+                  agencia. Ventas, embudo y respuesta ya los pinta `ReportesListo`. */}
+              {!soloMios && (
+                <DashboardAdmin
+                  periodo={periodo}
+                  zona={zona}
+                  bloques={['asesores', 'cobros', 'salidas', 'destinos']}
+                  {...(ahora ? { ahora: ahora() } : {})}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
