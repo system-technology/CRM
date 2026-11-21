@@ -796,6 +796,45 @@ describe('archivos sin responsable (T-529)', () => {
     }
   });
 
+  /**
+   * Aislamiento entre agencias en la ruta NUEVA (R1). No basta con que la consulta lleve
+   * `tenant_id` y RLS: eso lo sabe quien lee el código, y una garantía que solo vive en una
+   * lectura no es evidencia.
+   *
+   * **Va por el atajo de desarrollo y no por `comoMiembro`** porque los cuatro miembros con
+   * sesión son de A (`crearMiembro(m, TENANT_A)`) y aquí hace falta pedir COMO B. Además ese
+   * atajo concede TODOS los permisos, así que un 403 no puede hacer pasar por aislamiento lo que
+   * sería solo falta de permiso: si hubiera fuga, esta petición la vería.
+   *
+   * **La prueba no puede pasar en vacío**: cada agencia afirma que SÍ ve su propio archivo
+   * huérfano antes de afirmar que no ve el ajeno. Una respuesta vacía, un 403 tragado o una lista
+   * recortada rompen la primera mitad.
+   */
+  it('la agencia B no ve el archivo huérfano de A, ni A el de B (R1)', async () => {
+    const huerfanoDeB = await archivoNuevo(agencias.B);
+
+    const vistaDeB = await http(agencias.B, 'GET', RUTA);
+    expect(vistaDeB.estado).toBe(200);
+    const idsDeB = ListaDeArchivosSinResponsable.parse(vistaDeB.json).datos.map(
+      (d) => d.archivo.id,
+    );
+    expect(idsDeB).toContain(huerfanoDeB.id);
+    expect(idsDeB).not.toContain(archivo.id);
+    // En el texto crudo tampoco: ni el id por otro rincón, ni el nombre del paquete de A.
+    expect(JSON.stringify(vistaDeB.json)).not.toContain(archivo.id);
+    expect(JSON.stringify(vistaDeB.json)).not.toContain(archivo.paqueteNombre);
+
+    const vistaDeA = await http(agencias.A, 'GET', RUTA);
+    expect(vistaDeA.estado).toBe(200);
+    const idsDeA = ListaDeArchivosSinResponsable.parse(vistaDeA.json).datos.map(
+      (d) => d.archivo.id,
+    );
+    expect(idsDeA).toContain(archivo.id);
+    expect(idsDeA).not.toContain(huerfanoDeB.id);
+    expect(JSON.stringify(vistaDeA.json)).not.toContain(huerfanoDeB.id);
+    expect(JSON.stringify(vistaDeA.json)).not.toContain(huerfanoDeB.paqueteNombre);
+  }, 60_000);
+
   it('el límite acota la ventana y lo dice: `truncado` no se inventa', async () => {
     const uno = await comoMiembro('operaciones', 'GET', `${RUTA}?limite=1`);
     expect(uno.estado).toBe(200);
