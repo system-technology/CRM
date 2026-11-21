@@ -325,6 +325,12 @@ export function puedeAdministrarEtiquetas(sesion: SesionActual | null | undefine
   return tienePermiso(sesion, PERMISO_ETIQUETAS_ADMINISTRAR);
 }
 
+/**
+ * A propósito **fuera** de `ResultadoPermisos` y del hook: un campo obligatorio más en esa interfaz
+ * rompe la compilación de todo mock que la construya entera (pasó con `bienvenida.spec.tsx`), y
+ * hoy nadie lo consume. Quien lo necesite lo añade al hook en su carril (T-343, T-344); mientras
+ * tanto, el hook ya expone `tienePermiso`.
+ */
 export function puedeVerReportesDeLaAgencia(sesion: SesionActual | null | undefined): boolean {
   return tienePermiso(sesion, PERMISO_REPORTES_VER_AGENCIA);
 }
@@ -352,7 +358,6 @@ export interface ResultadoPermisos {
   puedeEscribirCotizacion: boolean;
   puedeAdministrarCatalogo: boolean;
   puedeAdministrarEtiquetas: boolean;
-  puedeVerReportesDeLaAgencia: boolean;
   puedeAdministrarUsuarios: boolean;
   puedeAdministrarRoles: boolean;
   evaluarAccion: (permiso: Permiso) => EstadoAccionMutacion;
@@ -410,7 +415,6 @@ export function usePermisos(sesionInicial?: SesionActual | null): ResultadoPermi
     puedeEscribirCotizacion: puedeEscribirCotizacion(sesion),
     puedeAdministrarCatalogo: puedeAdministrarCatalogo(sesion),
     puedeAdministrarEtiquetas: puedeAdministrarEtiquetas(sesion),
-    puedeVerReportesDeLaAgencia: puedeVerReportesDeLaAgencia(sesion),
     puedeAdministrarUsuarios: puedeAdministrarUsuarios(sesion),
     puedeAdministrarRoles: puedeAdministrarRoles(sesion),
     evaluarAccion: evaluar,

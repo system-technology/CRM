@@ -65,6 +65,34 @@ inverso —el alcance antes que el permiso— sí habría dejado un hueco.
 toca; los otros siete son de T-342, T-345 y T-483 y siguen abiertos. La auditoría de seguridad
 previa a integrar no recorta vueltas (R13): esto es catálogo de autorización.
 
+## Lo que rompió al traer `main` (y por qué el arreglo fue en este carril)
+
+Con #406 (T-485) integrado, `pnpm typecheck` falló en `apps/web`:
+
+```
+bienvenida.spec.tsx(43,58): error TS2345
+Property 'puedeVerReportesDeLaAgencia' is missing in type '{ … }' but required in 'ResultadoPermisos'.
+```
+
+**No lo causó ampliar el catálogo de permisos.** `SesionActual['acceso']['permisos']` es `Permiso[]`,
+así que añadir un valor al `enum` no rompe a ningún consumidor. Lo causó un campo que esta rama
+añadió de más: `puedeVerReportesDeLaAgencia` **dentro de `ResultadoPermisos`**, la interfaz que
+devuelve el hook `usePermisos`. Toda prueba que haga `mockReturnValue` con el objeto entero deja de
+compilar en cuanto esa interfaz gana un campo obligatorio.
+
+**Arreglo:** se retira del hook y de la interfaz; la **función suelta** `puedeVerReportesDeLaAgencia`
+se queda (exportar una función no rompe a nadie). Quien la necesite la añadirá al hook en su carril
+(T-343, T-344); mientras tanto el hook ya expone `tienePermiso`. Es además lo que pide ADR-0035 §3,
+que solo exige «la etiqueta legible de la web»: el campo del hook era alcance de más.
+
+`bienvenida.spec.tsx` **no se tocó**: el único archivo de `apps/web` que esta rama modifica sigue
+siendo `src/lib/permisos.ts` (y su spec), que es lo que el ADR pide.
+
+**Lección para la cola:** `ResultadoPermisos` es un contrato de facto entre el hook y cada prueba que
+lo simula. Ampliarlo es un cambio de ruptura silencioso y no debería recaer en quien añade un
+permiso. Queda anotado en T-490 como candidato: que el hook devuelva `tienePermiso` y se retiren las
+comodidades booleanas una a una, o que las pruebas simulen con un ayudante parcial.
+
 ## Riesgos y lo que queda
 
 - **Lo que un dueño ve no cambia hoy**, y por eso el permiso no abre nada entre T-341 y T-342. Lo
