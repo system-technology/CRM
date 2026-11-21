@@ -71,6 +71,16 @@ export const PERMISOS = [
    * SOLO a `DUENO` (separación de funciones: quien registra no compensa). ADR-0034 §6.
    */
   'cobro.corregir',
+  /**
+   * Ver los reportes de TODA la agencia (cifras de cualquier asesor, filtro por asesor y exportar).
+   * Su **ausencia** es el nivel «propio»: quien no lo tiene ve solo lo suyo, que es el mínimo de
+   * cualquier miembro y por eso no tiene permiso propio. El nivel lo impone el servidor desde la
+   * sesión, nunca un parámetro del cliente (T-342). No abre el neto ni el margen: eso sigue siendo
+   * `cotizacion.ver_neto_y_margen`, y son dos ejes que no se mezclan (qué filas / qué columnas de
+   * dinero). Sembrado SOLO a `DUENO`; ni `ASESOR` ni `OPERACIONES`. ADR-0035 §3, T-341,
+   * migración `20261121160000`.
+   */
+  'reportes.ver_agencia',
 ] as const;
 
 export const Permiso = z.enum(PERMISOS);

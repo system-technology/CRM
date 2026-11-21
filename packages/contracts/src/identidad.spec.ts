@@ -8,7 +8,7 @@ describe('catálogo de permisos', () => {
     );
   });
 
-  it('es el reflejo exacto del CHECK de la migración 20261121140000 (catorce, sin repetidos)', () => {
+  it('es el reflejo exacto del CHECK de la migración 20261121160000 (quince, sin repetidos)', () => {
     expect([...PERMISOS].sort()).toEqual(
       [
         'archivo.operar',
@@ -23,6 +23,7 @@ describe('catálogo de permisos', () => {
         'cotizacion.ver_neto_y_margen',
         'crm.escribir',
         'etiquetas.administrar',
+        'reportes.ver_agencia',
         'roles.administrar',
         'usuarios.administrar',
       ].sort(),

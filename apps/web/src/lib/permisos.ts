@@ -22,6 +22,13 @@ export const PERMISO_CRM_ESCRIBIR: Permiso = 'crm.escribir';
 export const PERMISO_ETIQUETAS_ADMINISTRAR: Permiso = 'etiquetas.administrar';
 export const PERMISO_COTIZACION_ESCRIBIR: Permiso = 'cotizacion.escribir';
 
+/**
+ * Reportes de toda la agencia (ADR-0035 §3, T-341). Su AUSENCIA es el nivel «propio»: no hay
+ * permiso para ver lo de uno. La web lo lee solo para titular («Mis números» frente a «Reportes de
+ * la agencia») y para no ofrecer un enlace que dará 403; el alcance lo impone el servidor (T-342).
+ */
+export const PERMISO_REPORTES_VER_AGENCIA: Permiso = 'reportes.ver_agencia';
+
 /** Permisos del archivo de viaje (ADR-0024 §3.7, T-249) */
 export const PERMISO_ARCHIVO_VER: Permiso = 'archivo.ver';
 export const PERMISO_ARCHIVO_OPERAR: Permiso = 'archivo.operar';
@@ -42,7 +49,8 @@ export interface EtiquetaPermiso {
   clave: Permiso;
   nombre: string;
   descripcion: string;
-  categoria: 'bandeja' | 'crm' | 'cotizacion' | 'catalogo' | 'archivo' | 'administracion';
+  categoria:
+    'bandeja' | 'crm' | 'cotizacion' | 'catalogo' | 'archivo' | 'reportes' | 'administracion';
 }
 
 export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
@@ -130,6 +138,15 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
       'Permite registrar devoluciones, ajustes del total, penalidades y reversos, y cambiar la fecha límite de cobro.',
     categoria: 'archivo',
   },
+  // Reportes por nivel (ADR-0035, T-341): solo el texto. El alcance en los endpoints es T-342 y
+  // las pantallas, T-343 y T-344.
+  'reportes.ver_agencia': {
+    clave: 'reportes.ver_agencia',
+    nombre: 'Ver reportes de la agencia',
+    descripcion:
+      'Permite ver las cifras de toda la agencia y de cualquier asesor, no solo las propias. Sin este permiso se ven únicamente los números propios. No incluye el neto ni el margen.',
+    categoria: 'reportes',
+  },
   'usuarios.administrar': {
     clave: 'usuarios.administrar',
     nombre: 'Administrar equipo',
@@ -178,6 +195,8 @@ export function explicacionFaltaPermiso(permiso: Permiso): string {
       return 'Acceso restringido: se requiere el permiso «Administrar roles» (roles.administrar).';
     case 'conversaciones.ver_todas':
       return 'Acceso restringido: se requiere el permiso «Ver todas las conversaciones» (conversaciones.ver_todas).';
+    case 'reportes.ver_agencia':
+      return 'Acceso restringido: se requiere el permiso «Ver reportes de la agencia» (reportes.ver_agencia). Sin él solo se ven los números propios.';
     default:
       return 'Acción deshabilitada por falta de permisos en tu rol actual.';
   }
@@ -306,6 +325,10 @@ export function puedeAdministrarEtiquetas(sesion: SesionActual | null | undefine
   return tienePermiso(sesion, PERMISO_ETIQUETAS_ADMINISTRAR);
 }
 
+export function puedeVerReportesDeLaAgencia(sesion: SesionActual | null | undefined): boolean {
+  return tienePermiso(sesion, PERMISO_REPORTES_VER_AGENCIA);
+}
+
 export function puedeAdministrarUsuarios(sesion: SesionActual | null | undefined): boolean {
   return tienePermiso(sesion, PERMISO_USUARIOS_ADMINISTRAR);
 }
@@ -329,6 +352,7 @@ export interface ResultadoPermisos {
   puedeEscribirCotizacion: boolean;
   puedeAdministrarCatalogo: boolean;
   puedeAdministrarEtiquetas: boolean;
+  puedeVerReportesDeLaAgencia: boolean;
   puedeAdministrarUsuarios: boolean;
   puedeAdministrarRoles: boolean;
   evaluarAccion: (permiso: Permiso) => EstadoAccionMutacion;
@@ -386,6 +410,7 @@ export function usePermisos(sesionInicial?: SesionActual | null): ResultadoPermi
     puedeEscribirCotizacion: puedeEscribirCotizacion(sesion),
     puedeAdministrarCatalogo: puedeAdministrarCatalogo(sesion),
     puedeAdministrarEtiquetas: puedeAdministrarEtiquetas(sesion),
+    puedeVerReportesDeLaAgencia: puedeVerReportesDeLaAgencia(sesion),
     puedeAdministrarUsuarios: puedeAdministrarUsuarios(sesion),
     puedeAdministrarRoles: puedeAdministrarRoles(sesion),
     evaluarAccion: evaluar,
