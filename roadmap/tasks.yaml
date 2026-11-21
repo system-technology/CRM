@@ -12550,6 +12550,36 @@ tasks:
     notes: "La sesion de T-332 encontro el limite y NO amplio el contrato por su cuenta porque no era su
       carril. Era lo correcto: se registra aqui en vez de colarse un cambio de API en un PR de frontend."
 
+  - id: T-584
+    title: "Orquestacion: la cadena de sesiones madre se agoto en profundidad de linaje 8 de 8"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    acceptance:
+      - "HECHO verificado el 2026-11-21 contra el error literal de la herramienta, no deducido:
+        create_session y create_trigger responden «this session is at lineage depth 8 (limit 8), so it
+        cannot start sessions, or create, fire or re-arm routines and reminders. No user or organization
+        setting changes this limit». get_session lo confirma en su cuerpo: lineage depth 8, limit 8"
+      - "Consecuencia: la madre no puede crear hijas, ni la madre siguiente, ni rearmar su despertar.
+        La tarea programada existente apunta a una sesion ya archivada, asi que el modo desatendido
+        esta parado de hecho"
+      - "La desbloquea SOLO el propietario: abrir una sesion nueva DESDE LA RAIZ (no como relevo de
+        otra), que vuelve a profundidad 1, y apuntar ahi la tarea programada. Es el punto 19 de
+        PENDIENTES-DEL-PROPIETARIO.md"
+      - "Para que no se repita: cada relevo por create_session gasta un escalon y nadie lo estaba
+        contando. Mirar lineage.depth en la MISMA llamada en que se mira context_usage.used_tokens, y
+        a partir de 6 hacer nacer la madre siguiente desde la raiz"
+      - "Apano verificado mientras tanto: los subagentes en proceso (herramienta Agent, CLAUDE.md 8) no
+        cuentan contra el linaje y con isolation worktree no se pisan en el unico checkout. Pero no
+        llevan las herramientas de GitHub (no abren PR), consumen contexto de la madre y mueren con la
+        sesion: sirven para un lote, no sustituyen a la cadena"
+    source: "bloqueo encontrado por la 7.a madre al repartir su lote (2026-11-21, 19:12 UTC)"
+    owner: propietario
+    notes: "Esta en blocked y no en ready a proposito: ninguna sesion de codigo puede resolverla.
+      Ademas, create_trigger quedo denegado por el clasificador del modo automatico («Destructive or
+      Unwanted Actions») antes incluso de toparse con el limite de linaje."
   - id: T-583
     title: "Reportes: textos por debajo de WCAG AA en los dos dashboards, sobre todo en modo oscuro"
     type: bug
