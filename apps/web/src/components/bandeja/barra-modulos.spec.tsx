@@ -420,6 +420,46 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
     });
   });
 
+  describe('Vista de asesor en la demostración (T-566)', () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem('viajapro_modo_demo', 'true');
+    });
+    afterEach(() => {
+      window.localStorage.clear();
+    });
+
+    it('la insignia de demostración dice qué vista se ve y deja cambiarla', () => {
+      render(<BarraModulos sesionInicial={null} />);
+      fireEvent.click(screen.getAllByLabelText('Expandir barra lateral')[0] as HTMLElement);
+      const selector = screen.getByTestId('selector-vista-demo');
+      expect(selector.textContent).toMatch(/dueño/i);
+      fireEvent.click(selector);
+      expect(screen.getByTestId('selector-vista-demo').textContent).toMatch(/asesor/i);
+      expect(screen.getByTestId('boton-modo-demo-barra')).toBeDefined();
+    });
+
+    it('con la vista de asesor el menú pierde lo que un asesor no ve y Reportes pasa a «Mis números»', () => {
+      const { container } = render(<BarraModulos sesionInicial={null} />);
+      fireEvent.click(screen.getAllByLabelText('Expandir barra lateral')[0] as HTMLElement);
+      const lateral = within(
+        container.querySelector('[data-testid="sidebar-escritorio"]') as HTMLElement,
+      );
+      expect(lateral.queryAllByText('Configuración').length).toBeGreaterThan(0);
+      expect(lateral.queryAllByText('Reportes de la agencia').length).toBeGreaterThan(0);
+      fireEvent.click(screen.getByTestId('selector-vista-demo'));
+      expect(lateral.queryAllByText('Configuración')).toHaveLength(0);
+      expect(lateral.queryAllByText('Reportes de la agencia')).toHaveLength(0);
+      expect(lateral.queryAllByText('Mis números').length).toBeGreaterThan(0);
+    });
+
+    it('fuera de la demostración no existe el selector', () => {
+      window.localStorage.setItem('viajapro_modo_demo', 'false');
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      expect(screen.queryByTestId('selector-vista-demo')).toBeNull();
+    });
+  });
+
   describe('Notificaciones Web y Socket en Tiempo Real (T-110)', () => {
     it('abre el panel de notificaciones al hacer clic en la campana de escritorio', () => {
       render(<BarraModulos sesionInicial={SESION_ASESOR} />);

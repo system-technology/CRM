@@ -57,6 +57,8 @@ Detalle: [bitácora](docs/_bitacora/2026-11-21-tercer-lote-cobros-permisos-y-pru
   `asesorId` del cliente pasa siempre por `alcanceDeReporte()` y sin permiso es **403**, no un recorte
   silencioso; la firma del puerto no tiene valor por defecto, así que olvidar el filtro no compila.
 
+**Reconciliación de las P1 (2026-11-21):** de 74 P1 abiertas quedan **17**; 8 estaban hechas, 21 a medias (reescritas) y 36 intactas se bajaron a P2. Detalle en la [bitácora](docs/_bitacora/2026-11-21-reconciliacion-de-las-p1.md).
+
 **Cola que deja el lote:** T-537 (P1: el saldo por cobrar se sirve sin exigir `cobro.ver`; no bloquea
 **hoy** porque no existe endpoint para componer roles a medida, y así está verificado), T-538 a T-541.
 

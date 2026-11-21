@@ -263,32 +263,25 @@ export function FormularioIngreso() {
               </div>
             )}
 
-            {/* Indicador de modo API Real / Simulado */}
-            <div
-              className={`mb-5 flex items-start gap-2.5 rounded-xl border p-3 text-xs leading-relaxed ${
-                esReal
-                  ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200'
-                  : 'border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'
-              }`}
-            >
-              <div className="mt-0.5 shrink-0">
-                {esReal ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                ) : (
+            {/* Cartel de demostración (T-565). Solo se muestra lo que sí sabemos: que esta web se
+                compiló en modo demostración. Con el ingreso real no se afirma nada: la bandera
+                es de configuración y no comprueba que haya servicio detrás. */}
+            {!esReal && (
+              <div
+                data-testid="cartel-de-modo"
+                className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+              >
+                <div className="mt-0.5 shrink-0">
                   <Building2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                )}
+                </div>
+                <div>
+                  <p className="font-bold">Modo demostración</p>
+                  <p className="mt-0.5 text-[11px] opacity-90">
+                    Estás viendo datos de ejemplo, no los de una agencia real.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-bold">
-                  {esReal ? 'Modo de Producción (API Real)' : 'Modo Demostración'}
-                </p>
-                <p className="mt-0.5 text-[11px] opacity-90">
-                  {esReal
-                    ? 'Conectado a la API y PostgreSQL en vivo.'
-                    : 'Usa credenciales de prueba para explorar la plataforma.'}
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* Alerta de Error Accesible */}
             {error && (
