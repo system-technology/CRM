@@ -12521,6 +12521,40 @@ tasks:
     source: "sintoma del cliente del piloto y lectura del codigo (2026-11-21)"
     owner: backend
 
+  - id: T-598
+    title: "Seguridad: los secretos del Environment de Render los genero una sesion de IA con plantillas; tratarlos como comprometidos y rotarlos"
+    type: security
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: rotar secretos exige los paneles de Render y Neon y generar valores que NO deben pasar por una sesion. Es justo lo que fallo la primera vez."
+    acceptance:
+      - "DICHO POR EL PROPIETARIO el 2026-11-21 estando en el panel: «todos los secretos del
+        environment los creaste tu con unas plantillas». Los creo una sesion de IA anterior"
+      - "El punto 1 de PENDIENTES-DEL-PROPIETARIO ya decia «Son claves; nunca pasan por una sesion».
+        La politica existia y se incumplio. Esta tarea es esa politica aplicada hacia atras"
+      - "Dos motivos para tratarlos como comprometidos, y basta cualquiera: pasaron por el contexto de
+        una conversacion, que queda en transcripciones fuera de nuestro control; y si salieron de
+        plantillas pueden ser valores de ejemplo, predecibles o repetidos"
+      - "ORDEN SUGERIDO. Primero los que dan acceso: las contrasenas de los cuatro roles en Neon
+        (DATABASE_APP_URL, DATABASE_ALTAS_URL, DATABASE_IDENTIDAD_URL, DATABASE_WEBHOOK_URL) y
+        BETTER_AUTH_SECRET, que firma las sesiones. Rotarlo cierra las sesiones abiertas, hoy casi
+        gratis porque no hay usuarios reales"
+      - "Despues los de carga util, que ya soportan rotacion por su _VERSION: WEBHOOK_PAYLOAD_KEY,
+        CORREO_PAYLOAD_KEY, WHATSAPP_DIRECTORY_PEPPER"
+      - "CAMPOS_SENSIBLES_KEY aparte y con cuidado: cifra PII en reposo (ADR-0015) y rotarla mal deja
+        ilegible lo cifrado. Existe CAMPOS_SENSIBLES_KEY_PREVIOUS y el runbook
+        docs/06-operacion/rotacion-de-claves.md. Hacerlo ANTES de que entre PII real, que es cuando
+        todavia no cuesta nada"
+      - "META_APP_SECRET y POSTMARK_SERVER_TOKEN NO son nuestros: los emite Meta y Postmark. Una
+        sesion no pudo inventarlos, asi que o son placeholders (y WhatsApp y el correo no funcionan)
+        o se pegaron de algun sitio. Comprobar cual de las dos cosas es"
+      - "Dejar anotado en el runbook que los valores se generan fuera de una sesion y no se pegan en
+        una conversacion"
+    source: "el propietario lo recordo al abrir el panel de Render (2026-11-21)"
+    owner: propietario
+
   - id: T-594
     title: "Staging: el cliente entra a la web pero el ingreso lo rechaza; WEB_PUBLIC_URL no incluye el dominio de Vercel"
     type: bug
