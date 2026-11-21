@@ -12456,6 +12456,21 @@ tasks:
     source: "hallazgo de la reconciliacion de las P1 (PR #463), 2026-11-21"
     created_at: 2026-11-21T17:10:00.000Z
     owner: arquitecto
+  - id: T-593
+    title: "Hilo: consolidar el lote de contraste, cobros y manual en el diario y el tablero"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "Entrada en DIARIO.md separando lo verificado de lo supuesto, como pide su cabecera"
+      - "Tablero del orquestador con el mecanismo completo del cierre de tareas (dos pasos), las
+        trampas nuevas de commitlint y de los arboles de trabajo de subagentes, y la cola sugerida"
+      - "R14: un lote sin su rastro en el diario no esta terminado"
+    source: "cierre del lote de la madre septima (2026-11-21)"
+    owner: documentador
+
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs

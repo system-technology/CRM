@@ -12,6 +12,96 @@
 
 ---
 
+## 2026-11-21 (lote de contraste y cobros) — Un síntoma contado cinco veces no es un diagnóstico, y la cadena de madres se agotó
+
+**Verificado.** `main` arranca en `e5b670e0` y cierra en `91f3cc19` (más #484). Seis PR integrados:
+**#479** (T-584), **#480** (T-582), **#481** (T-583), **#482** (T-585), **#483** (cierre automático de
+T-585) y **#484** (T-576). Los seis con los 15 checks en verde, `mutaciones-aislamiento` incluido, y
+auditoría del código —no del informe— donde tocaba PII, dinero o aislamiento (R13).
+
+### Lo que más vale de este lote no es lo entregado, es lo diagnosticado
+
+**El cierre automático de tareas no estaba roto: lo habíamos envenenado nosotras.** El traspaso
+anterior decía en mayúsculas «el cierre automático NO cierra nada, lo comprobé CINCO veces». La
+observación era cierta y el diagnóstico falso, **y nadie abrió el log del job**. Al abrirlo:
+
+```
+T-584: blocked sin blocked_reason
+##[error]Process completed with exit code 1.
+```
+
+`scripts/cerrar-tarea.mjs` **valida la cola entera antes de tocar nada**, así que **una sola** tarea
+`blocked` sin `blocked_reason` lo aborta y **ningún** PR cierra su tarea. Estaban así T-334 y T-336,
+que el lote anterior pasó a `blocked` con buen criterio pero sin motivo, y T-584, **que creé yo en
+este lote repitiendo el error**.
+
+Y el mecanismo tiene un segundo paso que tampoco hacía nadie: el job **no escribe en `main`** —no
+puede, está protegido—, sino que **empuja una rama `i/cerrar-T-XXX-prNNN` cuyo PR hay que integrar**.
+Arreglado lo primero, el CI abrió él mismo el PR #483, se integró, y **T-585 llegó a `done` en `main`
+por el camino automático, sin tocarla a mano**: confirmación de punta a punta.
+
+*Contar las veces que algo falla no es diagnosticarlo. Cinco observaciones idénticas sin abrir un log
+no valen lo que una lectura del log.*
+
+### La cadena de sesiones orquestadoras se agotó (T-584, y la desbloquea solo el propietario)
+
+Esta sesión está en **profundidad de linaje 8 de 8**: no puede crear hijas, ni la madre siguiente, ni
+rearmar su despertar, y *ninguna configuración del usuario o de la organización cambia ese límite*. La
+tarea programada apunta a una sesión ya archivada, así que **el modo desatendido está parado de
+hecho**. Cada relevo por `create_session` gastaba un escalón **y nadie lo estaba contando**, aunque
+`get_session` devuelve `lineage.depth` en la misma llamada que el `context_usage` que sí se mira en
+cada vuelta.
+
+El lote se sacó adelante con **subagentes en proceso** (herramienta `Agent`, `CLAUDE.md` §8), que no
+cuentan contra el linaje, cada uno con `isolation: worktree`. No abren PR —no llevan las herramientas
+de GitHub—, consumen contexto de la madre y mueren con la sesión: **sirven para un lote, no sustituyen
+a la cadena**.
+
+### Lo entregado, sin inflarlo
+
+- **#481 (T-583)** — los dos dashboards y la línea legal pasan de **2,29–3,96:1 a mínimo 5,02** en
+  claro y **6,48/6,7** en oscuro. Lo importante del método: **el medidor se vio funcionar antes de
+  creerle** (141 textos leídos en administración, 81 en asesor, 0 colores no entendidos), porque en
+  T-346 ese mismo medidor dio «0 hallazgos» por no entender `oklch()`. Aparecieron tres cosas que la
+  medición anterior no decía, entre ellas que **el dashboard de administración está duplicado**.
+- **#480 (T-582)** — `FilaDeCobro` trae el recuento de pasajeros. **Cifras, no nombres**, y la razón
+  queda escrita en el contrato: la vista la lee quien tenga `cobro.ver` y **se exporta a un CSV que
+  sale de la agencia**, mientras los nombres exigen `archivo.ver` (R10). Sin migración.
+- **#484 (T-576)** — el manual deja de describir pantallas que ya no existen. **Desmintió mi
+  hipótesis**: cambian 15 de 16 capturas y la causa dominante no era el contraste, sino la barra
+  lateral (insignia «Vista» de T-566, entrada «Cobros» de T-332).
+
+**Para una agencia, esto es media pieza nueva** (pasajeros en cobros, aún sin columna en pantalla) y
+dos que hacen presentable lo que ya existía. **Ninguna agencia ha visto todavía nada.**
+
+### Otras dos cosas medidas, no supuestas
+
+- **`navegador` se cayó a la vez en dos PR sin nada en común.** Relanzado **sin cambiar una línea**,
+  pasó en los dos. Inestabilidad demostrada por experimento: `09-reportes-por-alcance.e2e-spec.ts`,
+  introducida el mismo día. Encolada **T-592 en P1**, porque no rompe una funcionalidad: **rompe la
+  compuerta**. Lo que no se hace es desactivarla para ver verde.
+- **El check «Carril y tarea» sí rechaza la bitácora en un PR de código.** La nota que decía lo
+  contrario citaba tres PR verdes, y los tres hechos eran ciertos y la conclusión falsa: aquellas
+  ramas no llevaban prefijo de carril, y el check deduce el carril del prefijo. Costó dos rondas de CI.
+
+### Supuesto, no verificado
+
+- Que el fallo de la clase `dark` en `<html>` sea solo del servidor de desarrollo. **Si no lo es, el
+  modo oscuro no funciona en ninguna pantalla** y el trabajo en oscuro de T-583 es invisible. Por eso
+  **T-586 va en P1 y pide responder esa pregunta antes de arreglar nada**.
+- Que las diferencias pequeñas de seis capturas se deban solo a T-569 y T-583; no se revisaron región
+  por región.
+
+### Cola al cerrar
+
+**565 tareas, 254 `done`** (contando T-576 y T-593, que cierra el CI al integrar este PR), **308
+abiertas, 4 P0 y 15 P1.** Cifras **recalculadas sobre el fichero dos veces**: las escribí primero de
+memoria y estaban mal, y volvieron a quedarse cortas al integrarse T-576. Validaciones en verde: 0 ids duplicados, 0 `ready` con
+dependencia sin terminar, **0 `blocked` sin motivo** (comprobación nueva, nacida de este lote).
+Encoladas T-585 a T-592. **Siguiente id libre: T-594.**
+
+---
+
 ## 2026-11-21 (lote nocturno) — La cola daba por lista una tarea que solo desbloquea el propietario
 
 **Verificado** con `gh` y `git` en el mismo turno; cada PR con sus **15 checks** comprobados a mano

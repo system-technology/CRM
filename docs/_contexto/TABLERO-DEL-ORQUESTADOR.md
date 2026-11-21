@@ -375,6 +375,62 @@ que algo falla no es diagnosticarlo.* Cinco observaciones idénticas sin abrir u
 una lectura del log. Un síntoma repetido **invita** a tratarlo como constante del entorno, y es justo
 cuando conviene desconfiar.
 
+## 1.16 El cierre de tareas tiene DOS pasos, y el segundo no lo hacía nadie (2026-11-21, 21:25 UTC)
+
+Completa §1.15, que explicaba por qué el job **abortaba** pero no por qué, aun funcionando, la tarea
+no llegaba a `done`. El log del primer job que pasó lo dice entero:
+
+```
+T-585 marcada como hecha (PR #482).
+Switched to a new branch 'i/cerrar-T-585-pr482'
+ * [new branch]      i/cerrar-T-585-pr482 -> i/cerrar-T-585-pr482
+```
+
+1. El job marca la tarea y **empuja una rama `i/cerrar-T-XXX-prNNN`**. No escribe en `main`: no puede,
+   está protegido.
+2. **Alguien tiene que integrar el PR de esa rama.** El CI lo abre solo; **integrarlo es tuyo.**
+
+**Verificado de punta a punta:** arreglados los `blocked_reason`, el job pasó, el CI abrió el **#483**,
+se integró y **T-585 quedó `done` en `main` sin tocarla a mano**. Primera vez en varios lotes.
+
+**Al integrar una rama de cierre, míralo con un diff semántico, no de texto:** el script reformatea el
+YAML entero. Cargar los dos ficheros y comparar tarea a tarea toma treinta segundos y evita colar un
+cambio silencioso. En #483: 564 tareas antes y después, T-585 con su evidencia, y en otras diez solo
+el **tipo** de un campo de fecha (el script quita las comillas y YAML la reinterpreta), mismo instante.
+
+## 1.17 Trampas nuevas de este lote, pagadas en vueltas de CI
+
+- **commitlint rechaza un asunto que empieza por un nombre de archivo en mayúsculas.**
+  `docs(hilo): ESTADO.md al dia…` → `subject must not be sentence-case, start-case, pascal-case,
+  upper-case`. **Empieza por verbo:** `docs(hilo): pone el hilo al dia…`.
+- **Con subagentes en `worktree`, `git add -A` NO es seguro**: se traga `.claude/worktrees/agent-*`
+  como repositorios embebidos, y `.claude/**` es `humanRequired`. **Añade por ruta.** Está encolado
+  como T-591 el arreglo duradero en el `.gitignore` versionado; mientras tanto, `.git/info/exclude`.
+- **Las ramas de los subagentes están ocupadas por su worktree**: no puedes hacerles `checkout` desde
+  el árbol principal. Opera con `git -C <ruta-del-worktree>`.
+- **Si pusiste al día un PR con `update-branch`, el worktree del agente queda detrás de su propio
+  remoto.** Hay que `git merge origin/<rama>` ahí antes de empujar.
+- **Comprueba `lineage.depth` en la misma llamada en que miras `used_tokens`.** A partir de 6, la
+  madre siguiente tiene que nacer desde la raíz, no encadenada. Ver §1.13.
+
+## 1.18 Cola sugerida para quien venga (comprobada el 2026-11-21 a las 21:30 UTC)
+
+Lo que esté en vuelo manda. **Siguiente id libre: T-594** (`git fetch` antes de numerar).
+
+- **T-586 (P1, `ready`)** — ¿la clase `dark` falta solo en desarrollo, o en producción también? **Si
+  es en producción, el modo oscuro no funciona en ninguna pantalla.** Media hora de medición que
+  cambia el tamaño de la tarea; responderla **antes** de arreglar nada.
+- **T-592 (P1, `ready`)** — la e2e que tumba `navegador` al azar. Rompe la compuerta, no una
+  funcionalidad.
+- **T-590 (P2, `ready`)** — columna de pasajeros en la pantalla de cobros y en el CSV. Carril `b`, el
+  contrato ya está. **Cifras, no nombres.**
+- **T-585 ya está hecha**; **T-587, T-588, T-589, T-591** son la cola de contraste y paleta.
+- **T-083 (P1)** sigue siendo del propietario, y de ella depende T-577.
+- **T-334, T-336 y T-584 están `blocked` en el propietario: no las repartas.**
+
+**Reparte contra el criterio de salida de JD Tours**
+(`docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md` §3), no contra la lista de P1.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
