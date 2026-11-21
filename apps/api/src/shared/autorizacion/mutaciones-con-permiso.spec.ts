@@ -112,6 +112,15 @@ describe('mutaciones con permiso (T-089)', () => {
     expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto.leida as object)).toBeUndefined();
   });
 
+  /**
+   * Lecturas del archivo que piden MÁS que `archivo.ver`. `archivo.ver` no se pierde: lo impone el
+   * decorador de la clase (la prueba siguiente), y el guard combina clase y método. T-529: la lista
+   * de archivos sin responsable es para quien puede tomarlos, no para quien solo mira.
+   */
+  const LECTURAS_CON_MAS = new Map<string, Permiso[]>([
+    ['listarSinResponsable', ['archivo.operar']],
+  ]);
+
   it('las lecturas del archivo de viaje exigen archivo.ver (T-249: hay datos de menores)', () => {
     const proto = ArchivosController.prototype as unknown as Record<string, unknown>;
     // Todos los GET del controlador, no una lista fija: un GET nuevo sin permiso rompe esta prueba.
@@ -126,7 +135,7 @@ describe('mutaciones con permiso (T-089)', () => {
       expect(
         Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto[nombre] as object),
         nombre,
-      ).toEqual(['archivo.ver']);
+      ).toEqual(LECTURAS_CON_MAS.get(nombre) ?? ['archivo.ver']);
     }
   });
 

@@ -188,6 +188,54 @@ export const ListaDeArchivos = z.object({ datos: z.array(ResumenDeArchivo) });
 export type ListaDeArchivos = z.infer<typeof ListaDeArchivos>;
 
 /**
+ * **Por qué un archivo no tiene responsable** (T-529, ADR-0035 §2, H7). La regla es la MISMA que
+ * decide a quién se avisa de un plazo (`destinatariosDelAviso`, T-254): responde por un archivo el
+ * asesor de su oportunidad, si sigue activo y puede operar archivos.
+ *
+ *   · `SIN_OPORTUNIDAD` — el archivo no vino de una oportunidad (`oportunidadId` es `null`), así
+ *     que no hay de quién heredar el asesor. **Es el caso silencioso**: ese archivo no aparece en
+ *     el reporte propio de NADIE, y su asesor lee «0 por cobrar» sin que nada falle.
+ *   · `SIN_ASESOR` — la oportunidad existe pero no tiene asesor asignado.
+ *   · `ASESOR_NO_ELEGIBLE` — tiene asesor, pero ya no está activo o su rol perdió
+ *     `archivo.operar`. No se distingue cuál de las dos: para quien mira la pantalla, las dos
+ *     significan «hoy nadie va a actuar sobre esto».
+ */
+export const MotivoSinResponsable = z.enum(['SIN_OPORTUNIDAD', 'SIN_ASESOR', 'ASESOR_NO_ELEGIBLE']);
+export type MotivoSinResponsable = z.infer<typeof MotivoSinResponsable>;
+
+export const ArchivoSinResponsable = z.object({
+  motivo: MotivoSinResponsable,
+  /** El asesor que figura y ya no sirve; `null` salvo con `ASESOR_NO_ELEGIBLE`. */
+  asesorId: Id.nullable(),
+  archivo: ResumenDeArchivo,
+});
+export type ArchivoSinResponsable = z.infer<typeof ArchivoSinResponsable>;
+
+/**
+ * `GET /api/v1/archivos/sin-responsable` — los archivos ABIERTOS por los que hoy no responde
+ * nadie (T-529). Exige `archivo.ver` y `archivo.operar`: solo tiene sentido para quien puede
+ * tomarlos, que es el mismo grupo al que se avisa cuando no hay asesor.
+ */
+export const ListarArchivosSinResponsable = z
+  .object({
+    /** Cuántos archivos abiertos se revisan, de los más urgentes hacia abajo. */
+    limite: z.coerce.number().int().min(1).max(500).default(200),
+  })
+  .strict();
+export type ListarArchivosSinResponsable = z.infer<typeof ListarArchivosSinResponsable>;
+
+export const ListaDeArchivosSinResponsable = z.object({
+  /** En el mismo orden de urgencia que `GET /api/v1/archivos`: el plazo más próximo primero. */
+  datos: z.array(ArchivoSinResponsable),
+  /**
+   * Se revisaron `limite` archivos abiertos y había al menos esos: puede quedar alguno sin
+   * responsable fuera de la ventana. La lista es un mínimo, no el total.
+   */
+  truncado: z.boolean(),
+});
+export type ListaDeArchivosSinResponsable = z.infer<typeof ListaDeArchivosSinResponsable>;
+
+/**
  * `PUT /api/v1/archivos/:id/reservas/:reservaId` — fija el estado y los datos del paso.
  *
  * Idempotente: repetir el mismo cuerpo no cambia nada (las fechas de cada paso se escriben al

@@ -2,6 +2,7 @@
  * El archivo de viaje (ADR-0024 §3.7).
  *
  * - `GET  /api/v1/archivos`                            lista con avance y semáforo
+ * - `GET  /api/v1/archivos/sin-responsable`            los abiertos por los que no responde nadie
  * - `GET  /api/v1/archivos/:id`                        detalle con reservas y pasajeros
  * - `PUT  /api/v1/archivos/:id/reservas/:reservaId`    fija el estado y los datos del paso
  * - `PUT  /api/v1/archivos/:id/pasajeros`              reemplaza la lista completa
@@ -14,6 +15,9 @@
  * `archivo.ver` —el detalle trae nombres y edades de pasajeros, menores incluidos— y las tres
  * mutaciones `archivo.operar`. Los tres roles sembrados (DUENO, ASESOR, OPERACIONES) tienen los
  * dos; un rol que la agencia componga sin ellos recibe 403.
+ *
+ * **`sin-responsable` (T-529) exige los dos**: es una lista de archivos huérfanos para que alguien
+ * los tome, y quien no puede operarlos no tiene nada que hacer con ella.
  */
 import {
   Body,
@@ -31,12 +35,15 @@ import {
   CancelarArchivo,
   type DetalleDeArchivo,
   type ListaDeArchivos,
+  type ListaDeArchivosSinResponsable,
   ListarArchivos,
+  ListarArchivosSinResponsable,
   type Permiso,
   ReemplazarPasajeros,
 } from '@viajapro/contracts';
 import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
+import { ListarArchivosSinResponsableUseCase } from '../application/listar-sin-responsable.use-case.js';
 import { OperarArchivoUseCase } from '../application/operar-archivo.use-case.js';
 
 export const PERMISO_PARA_VER_ARCHIVOS: Permiso = 'archivo.ver';
@@ -47,7 +54,11 @@ export const PERMISO_PARA_OPERAR_ARCHIVOS: Permiso = 'archivo.operar';
 @RequierePermiso(PERMISO_PARA_VER_ARCHIVOS)
 @Controller('api/v1/archivos')
 export class ArchivosController {
-  constructor(@Inject(OperarArchivoUseCase) private readonly archivos: OperarArchivoUseCase) {}
+  constructor(
+    @Inject(OperarArchivoUseCase) private readonly archivos: OperarArchivoUseCase,
+    @Inject(ListarArchivosSinResponsableUseCase)
+    private readonly sinResponsable: ListarArchivosSinResponsableUseCase,
+  ) {}
 
   @RequierePermiso(PERMISO_PARA_VER_ARCHIVOS)
   @Get()
@@ -55,6 +66,19 @@ export class ArchivosController {
     @Query(new ZodValidationPipe(ListarArchivos)) params: ListarArchivos,
   ): Promise<ListaDeArchivos> {
     return this.archivos.listar(params);
+  }
+
+  /**
+   * **Va ANTES de `:id`**: Nest casa las rutas en orden de declaración y, al revés, esta ruta
+   * entraría por `:id` y el `ParseUUIDPipe` respondería 400.
+   */
+  @RequierePermiso(PERMISO_PARA_OPERAR_ARCHIVOS)
+  @Get('sin-responsable')
+  async listarSinResponsable(
+    @Query(new ZodValidationPipe(ListarArchivosSinResponsable))
+    params: ListarArchivosSinResponsable,
+  ): Promise<ListaDeArchivosSinResponsable> {
+    return this.sinResponsable.ejecutar(params);
   }
 
   @RequierePermiso(PERMISO_PARA_VER_ARCHIVOS)

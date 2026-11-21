@@ -95,7 +95,10 @@ export class ReferenciasDeCrm extends PuertoReferenciasDeCrm {
   }
 }
 
-/** T-254: quién es el asesor de una oportunidad, para que `notifications` sepa a quién avisar. */
+/**
+ * T-254: quién es el asesor de una oportunidad, para que `notifications` sepa a quién avisar.
+ * T-529: y de varias a la vez, para que `booking` pueda decir qué archivos no tienen responsable.
+ */
 @Injectable()
 export class AsesorDeOportunidadDeCrm extends PuertoAsesorDeOportunidad {
   async asesorDe(
@@ -108,6 +111,20 @@ export class AsesorDeOportunidadDeCrm extends PuertoAsesorDeOportunidad {
       select: { asesorId: true },
     });
     return o?.asesorId ?? null;
+  }
+
+  async asesoresDe(
+    tx: ClienteTenant,
+    tenantId: string,
+    oportunidadIds: readonly string[],
+  ): Promise<Array<{ oportunidadId: string; asesorId: string | null }>> {
+    if (oportunidadIds.length === 0) return [];
+    // `tenantId` explícito además de RLS: defensa en profundidad (R1).
+    const filas = await tx.oportunidad.findMany({
+      where: { tenantId, id: { in: [...oportunidadIds] } },
+      select: { id: true, asesorId: true },
+    });
+    return filas.map((f) => ({ oportunidadId: f.id, asesorId: f.asesorId }));
   }
 }
 

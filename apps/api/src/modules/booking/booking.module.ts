@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AbrirArchivoDeViajeUseCase } from './application/abrir-archivo-de-viaje.use-case.js';
+import { ListarArchivosSinResponsableUseCase } from './application/listar-sin-responsable.use-case.js';
 import { OperarArchivoUseCase } from './application/operar-archivo.use-case.js';
 import { RepositorioDeArchivos } from './application/puertos-de-archivos.js';
 import { RepositorioDeOperacionDeArchivos } from './application/puertos-de-operacion.js';
@@ -39,6 +40,9 @@ import { PlanificadorDePlazos } from './interface/planificador-de-plazos.js';
     { provide: RepositorioDeArchivos, useClass: RepositorioDeArchivosPrisma },
     ConsumidorAbrirArchivo,
     OperarArchivoUseCase,
+    // T-529: la lista de archivos sin responsable. Pide el asesor a `crm` y la elegibilidad a
+    // `identity` por sus puertos (R4); los dos módulos son `@Global()`, así que no se importan.
+    ListarArchivosSinResponsableUseCase,
     { provide: RepositorioDeOperacionDeArchivos, useClass: RepositorioDeOperacionDeArchivosPrisma },
     VigilarPlazosUseCase,
     { provide: PuertoDeAgenciasVigilables, useClass: AgenciasVigilablesPrisma },
