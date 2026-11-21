@@ -24,7 +24,7 @@ export function InsigniaCuentaRegresiva24h({ estado }: InsigniaCuentaRegresiva24
         data-testid="insignia-ventana-24h"
         data-nivel="cerrada"
         title={estado.explicacion}
-        className="flex shrink-0 items-center gap-1 rounded-md border border-neutral-200 bg-neutral-100 px-1.5 py-1 text-[10px] font-semibold text-neutral-700 sm:text-[11px] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+        className="flex shrink-0 items-center gap-1 rounded-md border border-neutral-200 bg-neutral-100 px-1.5 py-1 text-xs font-semibold text-neutral-700 sm:text-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
       >
         <Lock className="h-3 w-3 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
         <span className="hidden sm:inline">24h </span>
@@ -39,7 +39,7 @@ export function InsigniaCuentaRegresiva24h({ estado }: InsigniaCuentaRegresiva24
         data-testid="insignia-ventana-24h"
         data-nivel="ambar"
         title={estado.explicacion}
-        className="flex shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-1.5 py-1 text-[10px] font-semibold text-amber-900 sm:text-[11px] dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
+        className="flex shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-1.5 py-1 text-xs font-semibold text-amber-900 sm:text-xs dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
       >
         <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         <span className="hidden sm:inline">Por vencer · </span>
@@ -53,7 +53,7 @@ export function InsigniaCuentaRegresiva24h({ estado }: InsigniaCuentaRegresiva24
       data-testid="insignia-ventana-24h"
       data-nivel="abierta"
       title={estado.explicacion}
-      className="bg-ok-50 text-ok-800 border-ok-200 dark:bg-ok-950/40 dark:text-ok-300 dark:border-ok-900 flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-semibold sm:text-[11px]"
+      className="bg-ok-50 text-ok-800 border-ok-200 dark:bg-ok-950/40 dark:text-ok-300 dark:border-ok-900 flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-1 text-xs font-semibold sm:text-xs"
     >
       <Clock className="h-3 w-3" aria-hidden="true" />
       <span className="hidden sm:inline">Ventana 24h · </span>
@@ -96,7 +96,7 @@ export function BannerAvisoVentana24h({ estado, onAbrirPlantillas }: BannerAviso
       <button
         type="button"
         onClick={onAbrirPlantillas}
-        className="shrink-0 text-[11px] font-semibold underline hover:text-amber-950 dark:hover:text-amber-100"
+        className="flex min-h-[44px] shrink-0 items-center px-2 text-xs font-semibold underline hover:text-amber-950 dark:hover:text-amber-100"
       >
         Ver plantillas
       </button>
@@ -160,7 +160,7 @@ export function CompositorVentanaCerrada24h({
                 La ventana se cerró; tu borrador sigue aquí
               </p>
               {borradorLimpio && (
-                <p className="mt-1 line-clamp-2 rounded bg-amber-100/70 p-1.5 text-[11px] text-amber-800 italic dark:bg-amber-900/40 dark:text-amber-300">
+                <p className="mt-1 line-clamp-2 rounded bg-amber-100/70 p-1.5 text-xs text-amber-800 italic dark:bg-amber-900/40 dark:text-amber-300">
                   «{borradorLimpio}»
                 </p>
               )}

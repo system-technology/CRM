@@ -81,7 +81,7 @@ export function MigasDePan({
                 ) : item.href ? (
                   <Link
                     href={item.href}
-                    className="focus-visible:ring-acento-600 hover:text-acento-700 dark:hover:text-acento-400 flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                    className="focus-visible:ring-acento-600 hover:text-acento-700 dark:hover:text-acento-400 flex min-h-[44px] items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:underline focus-visible:ring-2 focus-visible:outline-none md:min-h-0 md:px-1"
                   >
                     {Icono && <Icono className="h-3.5 w-3.5" />}
                     <span>{item.etiqueta}</span>
