@@ -9598,3 +9598,15 @@ tasks:
     source: "registro tardio (R14): las ramas y PR del apodo usaron «T-362», que es otra tarea (subdominio por agencia) y sigue abierta; la rama original era a/T-000-apodo-ingreso-web"
     created_at: 2026-11-21T20:30:00.000Z
     owner: backend
+  - id: T-526
+    title: "Subir LIMITE_TASA_POR_TENANT en el job navegador del CI (hoy 600/min)"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: XS
+    status: backlog
+    acceptance:
+      - "El job navegador fija LIMITE_TASA_POR_TENANT junto a LIMITE_TASA_POR_IP (5000); sin eso, la suite agota los 600/min de la agencia demo y las pantallas ultimas dan «Demasiadas peticiones» (429). Ruta protegida (.github/): espera al propietario"
+    source: "T-511: la lista de miembros dio 429 en la corrida del CI; la prueba lo tolera pulsando «Reintentar»"
+    created_at: 2026-11-21T22:00:00.000Z
+    owner: devops

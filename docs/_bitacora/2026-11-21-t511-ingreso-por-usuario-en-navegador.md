@@ -12,6 +12,12 @@
   (el apodo es global hasta T-361) y un `afterAll` lo quita aunque la prueba falle.
 - Cada fallo lee el texto de error de la pantalla (diálogo o alerta de ingreso) y lo mete en el mensaje.
 
+## Lo que enseñó el CI
+
+- Corridas 1-3: 3 de las 4 pruebas nuevas verdes contra la API real (fijar usuario, ingresar con usuario, ingresar con correo, todo a 390 px).
+- La 4ª falló dos veces por causas de la **prueba**, no del producto: (1) `getByRole('alert')` resolvía a 2 elementos, porque Next añade el anunciador de rutas; (2) la lista de miembros daba **429** «Demasiadas peticiones»: el job sube el tope por IP (5000) pero no el **por agencia (600/min)**, que agotan las pruebas anteriores. La hipótesis de «sesión guardada muerta por otros ingresos» se descartó con el diagnóstico (la URL seguía en `/configuracion`).
+- La prueba ahora pulsa «Reintentar» hasta 75 s, como una asesora. El tope del CI queda en cola: T-526 (ruta protegida).
+
 ## Sin verificar
 
 No hay Postgres local: la prueba **no se ejecutó aquí**, ni siquiera se compiló (sin dependencias instaladas).

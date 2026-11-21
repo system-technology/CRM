@@ -33,6 +33,32 @@ async function sinDesborde(page: Page, donde: string): Promise<void> {
 /** El aviso del formulario de ingreso; Next anade otro `role=alert` (el anunciador de rutas). */
 const avisoDeIngreso = (page: Page) => page.getByRole('alert').filter({ hasText: /\S/ });
 
+/**
+ * Espera el boton de editar al miembro. Si la lista da «Demasiadas peticiones» (el limitador por
+ * agencia, 600/min, lo agotan las pruebas anteriores del mismo job), pulsa «Reintentar» como lo
+ * haria la asesora, hasta que pase la ventana de un minuto. El fallo dice POR QUE no aparecio.
+ */
+async function botonEditarUsuario(page: Page) {
+  const editar = page.getByRole('button', { name: `Editar usuario de ${miembroNombre}` });
+  try {
+    await expect(async () => {
+      const reintentar = page
+        .getByTestId('equipo-error')
+        .getByRole('button', { name: 'Reintentar' });
+      if (await reintentar.isVisible()) await reintentar.click();
+      await expect(editar).toBeVisible({ timeout: 4_000 });
+    }).toPass({ timeout: 75_000, intervals: [2_000, 5_000, 10_000] });
+  } catch {
+    const avisos = await page
+      .locator('[data-testid="equipo-error"], [data-testid="equipo-sin-permiso"]')
+      .allInnerTexts();
+    throw new Error(
+      `No aparecio «Editar usuario de ${miembroNombre}». URL: ${page.url()}. Avisos de la lista: ${JSON.stringify(avisos)}`,
+    );
+  }
+  return editar;
+}
+
 /** El miembro de la sesion, tal como lo lista la API (no se supone ni su id ni su nombre). */
 async function miembroDeLaSesion(page: Page): Promise<{ id: string; nombre: string }> {
   const res = await page.request.get(`${URL_API}/api/v1/identidad/miembros`);
@@ -96,8 +122,7 @@ test('se fija el usuario de un miembro en Configuracion > Equipo a 390 px', asyn
   ({ id: miembroId, nombre: miembroNombre } = await miembroDeLaSesion(page));
 
   await page.goto('/configuracion?pestana=equipo');
-  const editar = page.getByRole('button', { name: `Editar usuario de ${miembroNombre}` });
-  await expect(editar).toBeVisible({ timeout: 30_000 });
+  const editar = await botonEditarUsuario(page);
   const caja = await editar.boundingBox();
   expect(caja!.height, 'el boton «Usuario» es un objetivo tactil').toBeGreaterThanOrEqual(44);
   await sinDesborde(page, 'con la lista de miembros');
@@ -135,24 +160,7 @@ test.describe('sin sesion', () => {
 
 test('al quitar el usuario ya no entra con el, pero si con el correo', async ({ page }) => {
   await page.goto('/configuracion?pestana=equipo');
-  const editar = page.getByRole('button', { name: `Editar usuario de ${miembroNombre}` });
-  try {
-    await expect(editar).toBeVisible({ timeout: 30_000 });
-  } catch {
-    // Dice POR QUE: URL, avisos de la lista y los miembros que si se pintaron.
-    const texto = await page
-      .locator('body')
-      .innerText({ timeout: 2_000 })
-      .catch(() => '(sin cuerpo)');
-    const desde = Math.max(0, texto.indexOf('Total Usuarios'));
-    const avisos = await page
-      .locator('[data-testid="equipo-error"], [data-testid="equipo-sin-permiso"]')
-      .allInnerTexts();
-    const botones = await page.getByRole('button', { name: /^Editar usuario de/ }).count();
-    throw new Error(
-      `No aparecio «Editar usuario de ${miembroNombre}». URL: ${page.url()}. Botones «Editar usuario»: ${botones}. Avisos de la lista: ${JSON.stringify(avisos)}. Miembros en pantalla: ${texto.slice(desde, desde + 1200).replace(/\s+/g, ' ')}`,
-    );
-  }
+  const editar = await botonEditarUsuario(page);
   await editar.click();
   await guardarUsuario(page, '');
   await expect(
