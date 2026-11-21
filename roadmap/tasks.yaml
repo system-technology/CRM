@@ -12462,15 +12462,19 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: done
     acceptance:
-      - "Entrada en DIARIO.md separando lo verificado de lo supuesto, como pide su cabecera"
-      - "Tablero del orquestador con el mecanismo completo del cierre de tareas (dos pasos), las
-        trampas nuevas de commitlint y de los arboles de trabajo de subagentes, y la cola sugerida"
+      - Entrada en DIARIO.md separando lo verificado de lo supuesto, como pide su cabecera
+      - Tablero del orquestador con el mecanismo completo del cierre de tareas (dos pasos), las trampas nuevas
+        de commitlint y de los arboles de trabajo de subagentes, y la cola sugerida
       - "R14: un lote sin su rastro en el diario no esta terminado"
-    source: "cierre del lote de la madre septima (2026-11-21)"
+    source: cierre del lote de la madre septima (2026-11-21)
     owner: documentador
-
+    started_at: 2026-11-21T20:06:01.358Z
+    done_at: 2026-11-21T20:06:01.358Z
+    evidence: "Mergeado en main por el PR #485 (rama i/T-593-diario-del-lote) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 5f150305882db109f5e57461eabb62aaa8e2ba88
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
