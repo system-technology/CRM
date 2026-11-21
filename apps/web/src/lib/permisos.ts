@@ -36,13 +36,22 @@ export const PERMISOS_MUTACION_T089: readonly Permiso[] = [
 // =============================================================================
 
 export interface EtiquetaPermiso {
-  clave: Permiso;
+  clave: ClaveConEtiqueta;
   nombre: string;
   descripcion: string;
   categoria: 'bandeja' | 'crm' | 'cotizacion' | 'catalogo' | 'archivo' | 'administracion';
 }
 
-export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
+/**
+ * Los tres permisos de cobro (ADR-0034) entran en `PERMISOS` con la migración de T-329. Mientras esa
+ * migración no esté en `main`, no son parte de `Permiso`: se nombran aquí para que el mapa ya tenga su
+ * texto y compile ANTES y DESPUÉS del cambio del contrato. Con la unión el `Record` sigue siendo
+ * exhaustivo: un permiso nuevo sin etiqueta sigue siendo un error de compilación. Cuando `Permiso` ya
+ * los incluya, esta unión sobra y se quita (la limpia un PR posterior).
+ */
+type ClaveConEtiqueta = Permiso | 'cobro.ver' | 'cobro.registrar' | 'cobro.corregir';
+
+export const MAPA_ETIQUETAS_PERMISOS: Record<ClaveConEtiqueta, EtiquetaPermiso> = {
   'bandeja.operar': {
     clave: 'bandeja.operar',
     nombre: 'Operar bandeja',
@@ -107,6 +116,27 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
     descripcion:
       'Permite crear, renombrar, cambiar el color, ordenar y borrar las etiquetas de conversación de la agencia.',
     categoria: 'bandeja',
+  },
+  // Cobros (ADR-0034, T-329): solo el texto. Las pantallas de cobro son de T-331 y T-332.
+  'cobro.ver': {
+    clave: 'cobro.ver',
+    nombre: 'Ver cobros',
+    descripcion:
+      'Permite consultar el saldo, el historial de pagos y la vista de quién pagó y quién debe de los archivos de viaje.',
+    categoria: 'archivo',
+  },
+  'cobro.registrar': {
+    clave: 'cobro.registrar',
+    nombre: 'Registrar pagos',
+    descripcion: 'Permite registrar los pagos que hace el viajero en un archivo de viaje.',
+    categoria: 'archivo',
+  },
+  'cobro.corregir': {
+    clave: 'cobro.corregir',
+    nombre: 'Corregir cobros',
+    descripcion:
+      'Permite registrar devoluciones, ajustes del total, penalidades y reversos, y cambiar la fecha límite de cobro.',
+    categoria: 'archivo',
   },
   'usuarios.administrar': {
     clave: 'usuarios.administrar',
