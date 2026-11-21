@@ -9,21 +9,100 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 14:20 UTC**, por la madre `session_01R81Xh5b7wpteu5YpcDpw5p`, **que se releva aquí**. `main` en **`898ba390`**. **ONCE PR integrados** en el turno (#427, #428, #430, #429, #433, #434, #432, #435, #436, #437, #438). **Cero PR abiertos.**
+Última actualización: **2026-11-21, 15:15 UTC**, por la madre `session_01R81Xh5a2iFmSzSLVN6VcXy`. `main` en **`ef44c75e`**. Relevo recibido a las 15:05 UTC de `session_01R81Xh5b7wpteu5YpcDpw5p` (**275.757 tokens y 18,11 USD**, el doble del tope). **#446 integrado** (T-555); `main` en **`1e947f4b`**. Abierto: **#448** (este relevo).
 
 
 ## 1. Quién es quién
 
 - **Propietario:** Alfavear (español). Autorización literal: «tú tienes autorización mía para aprobar y destrabar los temas pendientes como si fuera yo»; «tú como sesión principal tienes toda mi autorización para aprobar los PRs y destrabar todo lo que nos bloquea». El 2026-11-21 añadió: **modo desatendido, avanzar en todos los frentes**.
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
-- **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
-- **El despertar de las 2 h ya apunta bien.** Tarea programada **`trig_01H8nNZUwV2DdTA2fnJzQkVh`** (`15 */2 * * *`), creada por la madre anterior el 2026-11-21 a las 09:53 UTC apuntando a la madre actual; la suya, `trig_016u2cLZTGLRrJvkZWgJpqpG`, quedó borrada. **Verificado con `list_triggers`**, no de palabra. Quedó así porque a la madre nueva el clasificador le deniega `create_trigger`: si vuelve a haber relevo, **la madre saliente crea la tarea de la entrante antes de retirarse**.
-- **Sesión madre ACTUAL: `session_01R81Xh5b7wpteu5YpcDpw5p`** (Opus, esfuerzo alto), desde las 12:25 UTC del 2026-11-21. La saliente, `session_01R81Xh3ygCnt8wYfALeA6yY`, llegó a 688 mil tokens y 122 USD.
-- **Sesión madre: SE RELEVÓ a las 14:20 UTC.** La saliente, `session_01R81Xh5b7wpteu5YpcDpw5p`, llegó a **450 mil tokens y 47 USD** — **el triple del tope de 150 mil**. Motivo exacto, para que no se repita: **comprobó el consumo de todas las hijas en cada vuelta y el suyo propio solo una vez, al arrancar, cuando marcaba 0.** El despertar de las dos horas trae ese paso el quinto; conviene hacerlo **el primero**.
-- **El despertar propio FUNCIONA, verificado:** `trig_01Cq7TrGZ9uGFc9uAmqQEDtr` disparó a las **14:15:28 UTC** directo en la madre, sin relevo en dos saltos. Era su primera vez.
-- **Sesión hija viva (1), y está BLOQUEADA:** `session_01R81Xh6LKjb37fMwSBRg2YL` — **T-531 y T-532** (carril `a`, reportes por asesor y por destino, **solo servidor**). **Lleva parada desde las 13:49 esperando un permiso de Bash que solo contesta el propietario en esa conversación.** No es un fallo suyo.
+- **Sesión madre ACTUAL: `session_01R81Xh5a2iFmSzSLVN6VcXy`** (Opus, esfuerzo alto), desde las **15:08 UTC** del 2026-11-21. Es la **cuarta** madre del día. Las tres anteriores se pasaron del tope de 150 mil: `…3ygCnt8wYfALeA6yY` con 688 mil y 122 USD, `…45hbFQHivoDJ8cbJQ` con 400 mil, y `…5b7wpteu5YpcDpw5p` con **275.757 tokens y 18,11 USD**.
+- **El despertar apunta bien y es ÚNICO: `trig_01RSjZimU6jHEhMXXe6kApQu`** (`47 */2 * * *`), creado por la madre saliente apuntando **directo** a la entrante. **Verificado con `list_triggers` a las 15:09 UTC:** una sola tarea programada, y su `persistent_session_id` es el de la madre actual. Sin relevo en dos saltos.
+- **El traspaso traía un id de tarea programada que NO existe** (`trig_01W27QjMm5BD8aFm1EJ6wa17`): la madre entrante iba a borrarlo. Es la **tercera vez** que el traspaso entre madres trae un id inventado. **No se borra ni se cita un id sin verlo antes en `list_triggers`.**
+- **Sobre el medidor de consumo propio.** La madre saliente avisó de que un `0` al arrancar significa «todavía no hay dato», no «el instrumento está roto». **Confirmado aquí, y matizado:** `external_metadata.context_usage.used_tokens` marcó **`0` en dos lecturas separadas** (15:08 y 15:12 UTC), con trabajo real en medio. Así que **tampoco es solo retraso de un instante**. Se anota como **«sin dato todavía»** y se sigue midiendo en cada vuelta; no se construye ninguna teoría sobre esa lectura ni se usa para decidir que queda margen. `rate_limit_info` sí traía dato (`seven_day`, `allowed_warning`): es otra cosa, no el consumo de contexto.
+- **Sesiones hijas (2):**
+  - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **#446 (T-555), ya integrado**. A las 15:25 se le reparte **T-556**.
+  - `session_01R81Xh6E99n8PmJd5Pso4ZS` — carril `i`, **T-562** (manual de usuario con capturas), repartida a las 15:46 UTC. **En Sonnet, no en Opus**: es redacción y capturas, no toca dinero ni aislamiento. Su **paso 0** es demostrar que puede arrancar la web en modo demo y capturar; si no puede, para y avisa **antes** de escribir el manual entero.
+  - `session_01R81Xh2nwGXCyRsqwWGZ8sf` — carril `b`, **T-561** (contrastes medidos), repartida a las 15:44 UTC. **Segunda sesión viva en el carril `b`**: se le dijo expresamente que no toque `mock-reportes-resumen.ts`, que es de T-556. Tocan archivos distintos; el riesgo es que un PR quede `behind`, no un conflicto.
+  - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`, **T-549**, repartida a las 15:10 UTC. Encargo acotado: el filtro de «sin responsable» **antes** del tope de filas, **por puerto y sin JOIN entre contextos (R4)**, con orden explícita de **parar y avisar** si exigiera ADR o migración.
+  - `session_01R81Xh2DhFQmHXUmF7Mqedn` — carril `a`, ociosa desde que entregó #441. **No se reutilizó**: una sesión nueva con `source_url` sale más barata que una con el contexto viejo encima.
+  - `session_01R81Xh6LKjb37fMwSBRg2YL` — **ARCHIVADA a las 15:19 UTC**. El traspaso la daba por «MUERTA»: **era falso y costó una hora de sesión**. Estaba **bloqueada en un permiso**, se desbloqueó sola, implementó T-531/T-532 y abrió **#447** para descubrir que #441 ya lo había entregado (cerrado sin integrar, `main` intacto). Se archiva para que no pueda revivir otra vez. Gastó **226.328 tokens y 1,22 USD** en duplicar trabajo ya hecho.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
+
+## 1.1 Decisión de producto del turno (2026-11-21, 15:25 UTC)
+
+**T-556 sube de P3 a P2 y se reparte por delante de T-550**, con la autorización de producto del propietario.
+El motivo, para que no haya que reconstruirlo: en modo demo la pantalla «Hoy» **enseña un error** donde debería
+haber un dato de muestra, y la demo es **lo único que mira quien evalúa el producto**. T-550 (la fracción de
+`parsearMontoAUnidades` con monedas de tres decimales) es un «el día que…» de manual: ninguna moneda habilitada
+tiene tres decimales. Se ordena según §3.1: **lo que hoy está roto va antes que lo que podría romperse**.
+
+Detrás sigue el hecho que no cambia por mucho código que se integre: **ninguna agencia ha visto nada todavía**,
+y lo que lo desbloquea no está en este repositorio, sino en la lista de chats a excluir de JD Tours (T-533).
+
+## 1.2 Orden del propietario: una sola madre viva (2026-11-21, 15:30 UTC)
+
+**«Importante: cada que crees una sesión orquestadora cierra la anterior.»** Literal.
+
+**Cómo se cumple, y por qué hacía falta:** al recibirla se comprobó con `list_sessions` y había **DOS madres
+vivas además de la actual**, las dos `IDLE` y conectadas:
+
+| Sesión | Estado real | Consumo real |
+|---|---|---|
+| `…5b7wpteu5YpcDpw5p` (relevo 12:25) | `IDLE` — **su propio resumen decía «sesión archivada». Era falso** | **497.542 tokens, 53,49 USD** |
+| `…4Z3eKYzxJCGZ717uK` (relevo 14:20) | `IDLE` — la que redactó este traspaso | **307.625 tokens, 21,32 USD** |
+
+Las dos archivadas a las 15:29, junto con la hija `…2DhFQmHXUmF7Mqedn` (255.180 tokens), que seguía `IDLE`
+después de entregar #441. **La orden queda metida en el prompt de la tarea programada**
+(`trig_01RSjZimU6jHEhMXXe6kApQu`, paso 2) para que no dependa de que una madre se acuerde.
+
+**Dos cosas que esto enseña y no se pueden olvidar:**
+- **Una sesión que afirma estar archivada puede no estarlo.** Se verifica con `session_status`, no con lo que
+  diga su resumen ni con lo que diga ella misma por `send_message`.
+- **El consumo real de una madre es mayor que el que traspasa**, porque sigue trabajando después de escribir el
+  relevo: la de las 14:20 traspasó «275.757 tokens y 18,11 USD» y acabó en **307.625 y 21,32**. Al leer un
+  traspaso, **tratar su cifra como un suelo, no como el total**.
+
+## 1.3 Revisión visual del propietario (2026-11-21, 15:40 UTC)
+
+Miró la aplicación y dijo: le gusta, pero **«el toque de contraste negro hace que se pierdan un poco los
+textos»**, y preguntó si se pueden manejar los dos modos. Preguntado dónde lo ve, señaló **la barra lateral,
+las pantallas de trabajo y el conjunto**.
+
+**Lo verificado antes de responderle, que cambió la respuesta:** los dos modos **ya existen** — `globals.css`
+redefine los tokens bajo `.dark` (`@variant dark`), **144 archivos** usan variantes `dark:`, y
+`selector-tema-densidad.tsx` ofrece claro / oscuro / seguir al sistema con persistencia en `viajapro_tema`.
+No hace falta construir el modo oscuro: hace falta **aplicarlo bien y que se lea**.
+
+- **T-561 (P2, repartida)** — el contraste. Como es sistemático y no de una pantalla, se arregla **en los
+  tokens**. Condición del encargo: **se mide, no se opina** (ratio por par texto/fondo, claro y oscuro, umbral
+  WCAG 2.1 AA) y lo que cierra la tarea es **una prueba que falle si un token baja del umbral**. Límite dado:
+  **la identidad no se toca**; se ajusta la luminancia, no la familia de color, y si hiciera falta cambiar el
+  azul de acento, la sesión para y pregunta, porque eso es decisión de marca del propietario.
+- **T-560 (P2, encolada)** — el tema **no se aplica en el arranque** (`layout.tsx` no lee la preferencia ni pone
+  la clase: primera pintura siempre clara, con parpadeo) y el conmutador **solo está montado en
+  `barra-modulos.tsx`**, así que desde el ingreso no se puede cambiar. Se reparte al liberarse el carril `b`:
+  no conviene una tercera sesión pisando `apps/web`.
+- **Inventariado, sin tocar:** la portada de ingreso usa colores **fijos fuera de los tokens**
+  (`#FDE68A`, `#C9A24B`, `bg-black/25` en `formulario-ingreso.tsx`), así que se ve igual en los dos modos. Es
+  estética de marca, no un defecto de contraste: lo decide el propietario.
+
+## 1.4 Manual de usuario (T-562, pedido por el propietario el 2026-11-21)
+
+Quiere **un manual funcional de lo que ya existe, con fotos**, para poder enseñar el producto. Repartido.
+
+**Tres decisiones del encargo, para que no se rehagan:**
+- **El alcance sale de la sección «Es real (en `main`)» de `ESTADO.md`**, no de la memoria de nadie. Lo que sea
+  maqueta o no se haya probado contra la API real, o no entra, o entra diciéndolo. Esto lo va a ver una agencia:
+  un manual que explica una maqueta como si funcionara hace más daño que no tener manual.
+- **Todas las capturas serán de modo demostración**, porque en este entorno no se puede levantar Postgres. **El
+  propio manual tiene que decirlo**, para que nadie lo enseñe creyendo que son datos reales.
+- **El texto va antes que las fotos.** T-556 (el modo demo enseña un error en «Hoy») y T-561 (contrastes) cambian
+  lo que saldría en las capturas: tomarlas ahora sería tirar el trabajo. Se capturan cuando esas dos entren.
+
+**Hay dos sesiones en el carril `i`** (esta y la del relevo): tocan archivos distintos, pero el segundo PR quedará
+`behind` y habrá que ponerlo al día. Contar con esa vuelta.
 
 ## 2. Reglas operativas que no se olvidan
 
@@ -37,6 +116,33 @@
 - **Subagentes:** nunca dos Opus a la vez (el límite de 5 h de la cuenta los mata con HTTP 429 y **no se reanudan**). Todo subagente que vaya a commitear trabaja en un `git worktree` aparte: el working tree es compartido.
 
 ## 3. Cola de integración (orden)
+
+### Lote de la tarde (2026-11-21, madre `…5a2iFmSzSLVN6VcXy`) — ABIERTO
+
+Arranca con `main` en **`ef44c75e`** y **un PR abierto, #446**.
+
+- **#446** (`b/T-555-web-por-asesor-y-destinos`) — T-555, carril `b` limpio (los 8 archivos en `apps/web`).
+  **Auditoría propia del código, no del informe (R13, toca dinero):**
+  - `destinosVendidos` **no suma nada entre monedas**: agrupa por destino y deja una fila por moneda tal
+    como la sirve el servidor. El ranking es por `aceptadas`, que es un **conteo**, no dinero (R8 respetado).
+  - En pantalla, cada moneda va en su línea con `formatearDinero(..., { conCodigo: true })`, el formateador
+    compartido que divide por `10 ** decimales` **según la moneda** (en COP no divide). No repite T-543.
+  - `filasDeAsesores` deja de hacer una consulta por asesor: las cifras llegan ya contadas en `porAsesor`.
+    Desaparece `MAXIMO_ASESORES_COMPARADOS` (12) y con él el tope silencioso de la comparación.
+  - **Hallazgo, no bloqueante:** el cambio **elimina el `.slice(0, maximo)`** de los destinos, que es
+    exactamente **T-557** (ya en la cola como P3). Y la clave de agrupación es `f.destino` **sin `trim()` ni
+    normalizar**, aunque el nombre que se pinta sí va con `trim()`: dos filas con el mismo nombre visible si
+    el servidor manda `"Cartagena"` y `"Cartagena "`. Es cosmético y cae dentro de T-557. **Cola, no bloquea** (§3.1).
+  - **Sin bloqueantes. INTEGRADO a las 15:22 UTC** con squash: `main` **`ef44c75e` → `1e947f4b`**. Verificación
+    a mano antes del merge, no del vigía: los **14 checks existen, los 14 `completed` + `success`**, ninguno nulo,
+    `mergeable_state=clean` y la base igual al `main` del momento. `navegador` entró en verde (la fragilidad de
+    T-548 no apareció).
+  - **El «alguien actualizó mi rama» que avisó la hija era yo.** El `update-branch` de las 15:11 sale a nombre de la
+    cuenta y se ve como `web-flow`/Alfavear. Los `cancelled` de `8cc3527` quedan clasificados: **concurrencia**, no
+    rojo ni fragilidad, reemplazados por el run de `b65e521`. Queda dicho para que nadie lo investigue otra vez.
+  - Queda en cola **T-559**: en la web no hay mutación que vigile que el margen por destino solo se pinte cuando el
+    servidor manda la clave. **No bloquea**: la compuerta real está en el servidor y **sí está probada**
+    (`obtener-resumen.use-case.spec.ts`, el `incluirMargen` sale del permiso). Es defensa en profundidad (§3.1).
 
 ### Lote de mediodía (2026-11-21, madre `…DpwSp`) — CERRADO
 
@@ -200,6 +306,18 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 - **El traspaso entre madres puede traer ids inventados.** El de la tarea programada venía mal el 2026-11-21. Comprobar
   con `list_triggers` y no heredar un id de memoria.
 - Un 23505 de un disparador puede llegar como P2002 sin restricción. `issue_write` con `labels` reemplaza etiquetas.
+
+- **El check `Carril y tarea` NO falla si el PR no menciona ninguna `T-xxx`: solo emite un `::warning::`**
+  (verificado el 2026-11-21 leyendo `.github/workflows/ownership.yml`). Lo que sí falla es el carril. Por eso
+  **un PR de documentación que solo registra tareas puede ir en una rama sin ningún id** — es la forma limpia de
+  no cerrar ninguna en falso, mejor que buscarle un id prestado.
+- **`update-branch` de GitHub es seguro para `convencion-de-commits`.** Su commit se llama `Merge branch 'main'
+  into …`, y `commitlint.config.cjs` **no desactiva `defaultIgnores`**, que ignora los mensajes que empiezan por
+  `Merge `. Verificado el 2026-11-21 antes de usarlo. Lo que sí lo tumba es un merge escrito a mano con `merge:`
+  como tipo (en minúscula no entra en `defaultIgnores`): ahí va `chore:`.
+
+- **Una sesión bloqueada en un permiso NO está muerta: está esperando, y su carril sigue ocupado.** `connection_status: disconnected` y `status_bucket: BLOCKED` dicen **dónde está**, no si va a seguir. Comprobar que no ha publicado nada **tampoco basta**. Antes de repartir su tarea a otra: **archivarla** (así no revive) **o esperarla**. Verificado el 2026-11-21 por el camino caro: se reasignó T-531/T-532 dándola por muerta, la sesión revivió, la implementó entera y abrió un PR duplicado.
+- **El medidor de consumo sí funciona MIRANDO A LAS HIJAS, aunque la madre no vea el suyo en caliente.** `get_session` de una hija trae `context_usage.used_tokens` y `usage.cost_usd` reales (verificado: 226.328 tokens y 1,22 USD en una Sonnet). Así que el consumo de la flota **se puede vigilar**; lo que no se ve en el momento es el propio. No confundir las dos cosas, y no dejar de mirar el propio por eso.
 
 ## 8. Sin verificar (heredado)
 
