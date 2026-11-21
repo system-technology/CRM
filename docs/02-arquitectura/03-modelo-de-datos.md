@@ -1417,3 +1417,46 @@ quién puede qué.
 corren en el CI (job `aislamiento-tenants`): la migración no se ejecutó contra una base local.
 Reversible con otra migración mientras no haya movimientos reales; después, el libro no se borra: se
 supersede ADR-0034.
+
+## El permiso `reportes.ver_agencia` (T-341, ADR-0035 §3, migración `20261121160000_permiso_reportes_ver_agencia`)
+
+Sin tabla nueva ni cambio de forma: un permiso más en el catálogo cerrado y un relleno.
+
+```
+  roles_permisos_del_catalogo   + 'reportes.ver_agencia'      (quince en total)
+
+  rol sembrado          reportes.ver_agencia
+  DUENO                        sí
+  ASESOR                       NO   → ve «lo propio», que es la AUSENCIA del permiso
+  OPERACIONES                  NO   → igual (ADR-0035 §3, pregunta 2 [No])
+  propios (sin clave)   sin cambio: los compone la agencia desde Ajustes
+```
+
+**Por qué así.**
+
+- **Un solo permiso, y su ausencia es el nivel «propio».** «Propio» es el mínimo de cualquier
+  miembro: un `reportes.ver_propio` sería superficie sin uso ni prueba. Tampoco hay nivel «equipo»
+  (no hay tabla de equipos ni sedes): queda nombrado en el ADR y en T-491.
+- **El nivel lo da un permiso, no la clave del rol.** Los roles son tabla por agencia (R12) y se
+  renombran y se componen; un `if rol === 'DUENO'` se rompe con el primer rol propio.
+- **Ni `ASESOR` ni `OPERACIONES`.** Entre asesores de una misma agencia esto es un requisito de
+  seguridad, no de presentación (decisión D3 del propietario): la web no puede ser la que oculta.
+- **Relleno sin duplicar ni quitar**, agencia por agencia con `app.current_tenant` (RLS forzada
+  alcanza al dueño), solo sobre el rol con clave `DUENO`; ningún `UPDATE` sin filtro de agencia.
+  Los roles que creó la agencia no se tocan. La migración aborta si un DUENO queda sin el permiso
+  o con repetidos, **o si un ASESOR u OPERACIONES acaba teniéndolo**.
+- **CHECK en dos pasos** (`NOT VALID` + `VALIDATE`, con aserción final de que quedó validado): solo
+  amplía la lista, así que todo lo existente valida. El cinturón comprueba además que los catorce
+  permisos anteriores siguen ahí.
+- **El permiso nace inerte.** Nadie lo lee todavía: quien deriva el alcance de la sesión es T-342
+  (`alcanceDeReporte`, contrato con unión discriminada, 403 con `asesorId` ajeno). El orden
+  inverso —el alcance antes que el permiso— sí habría dejado un hueco.
+- Reflejo exacto en `PERMISOS` (`packages/contracts/src/identidad.ts`, R3), en `ROLES_SEMBRADOS`
+  (`packages/database/prisma/siembra-de-tenant.ts`, lo que reciben las agencias nuevas) y en la
+  etiqueta legible de la web (`apps/web/src/lib/permisos.ts`).
+- **`aislamiento.spec.ts` no cambia**: no hay tabla nueva ni excepción de RLS que declarar (R1).
+- Pruebas: `packages/database/tests/permisos-de-reportes.spec.ts` (CHECK vigente con el permiso y
+  con los catorce anteriores; relleno reejecutado sobre agencias «como eran antes», incluidas una
+  que renombró su rol, una que ya lo tenía a mano y una sin `DUENO`; el relleno aborta si un
+  `ASESOR` lo lleva; `reportes.ver_propio` rechazado con 23514; siembra) y
+  `packages/contracts/src/identidad.spec.ts` (quince, sin repetidos).

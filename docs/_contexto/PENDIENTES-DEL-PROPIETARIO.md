@@ -4,7 +4,7 @@
 > [`../08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md`](../08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md) §3.2).
 > Se ordena por **lo que más bloquea**. Una línea tachada es una que ya se resolvió. Aquí **no hay secretos**: solo nombres.
 
-Última revisión: 2026-11-21 (02:30 UTC).
+Última revisión: 2026-11-21 (cierre del segundo lote).
 
 ## Bloquean la presentación al cliente (Ola 0)
 
@@ -24,6 +24,10 @@
 | 7 | **Contestar el permiso de Bash** pendiente en la sesión de despliegue (agente del PR 1b) | Solo se contesta en esa sesión |
 | 8 | **Poner las sesiones en modo Auto** (menú junto al cuadro de texto) | Sin eso se detienen en cada permiso y el trabajo desatendido no avanza |
 | 8b | **Decir si la sesión del punto 8 (cobros) puede trabajar sin supervisión** | Esa sesión no aceptó mi orden de autonomía sin tu confirmación escrita en su propia conversación (pidió A, B o C). Hoy trabaja bajo la A: un PR por tarea, sin auto-merge, con auditoría de seguridad antes de integrar (T-328 a T-330). Para la B, escríbele en esa sesión que sí |
+| 8c | **Las sesiones no pueden levantar Postgres en local**: el clasificador del modo automático lo deniega | Por eso «probado en navegador» significa casi siempre «contra API simulada». Limita toda verificación de pantalla (ejemplo: T-511). Si quieres verificación real, permite esa llamada o corre la prueba tú |
+| 8d | **El clasificador también deniega `git push --force-with-lease`** | Para corregir el asunto de un commit ya empujado hay que recrear la rama y abrir otro PR (pasó dos veces la madrugada del 2026-11-21). Solo tú puedes permitirlo en la configuración |
+| 8e | **Sigue pendiente**: redesplegar con el `main` actual (solo con tu confirmación) y regenerar la clave de la demo | La clave se perdió al archivarse la sesión de despliegue; se regenera resembrando. Los puntos 1, 2 y 5 siguen igual |
+| 8f | **El despertar automático de las 2 h apunta a la sesión madre equivocada** (lo más urgente de esta lista) | Al relevarse la madre a las 08:50 UTC del 2026-11-21, la tarea programada `trig_016u2cLZTGLRrJvkZWgJpqpG` quedó apuntando a la **anterior** (`session_01R81Xh45hbFQHivoDJ8cbJQ`). La madre nueva es **`session_01R81Xh3ygCnt8wYfALeA6yY`** y **no pudo repuntarla**: el clasificador le denegó `create_trigger` («Destructive or Unwanted Actions»), `update_trigger` solo deja cambiar el prompt desde la conversación a la que la tarea escribe, y pedírselo a la madre anterior por `send_message` también se denegó («Undermining Oversight»). **No se rodeó ninguna de las tres.** Mitigación provisional: un aviso en la cabecera del `TABLERO-DEL-ORQUESTADOR.md` que la madre anterior lee en el paso 0 de su prompt y que le dice que solo reenvíe el despertar. **Arreglo de verdad, dos opciones:** (a) añadir una regla de permiso para `mcp__claude-code-remote__create_trigger` a la madre, o (b) crear tú la tarea programada (`15 */2 * * *`) apuntando a `session_01R81Xh3ygCnt8wYfALeA6yY` con el prompt de orquestación, y borrar la vieja. Sin esto, el riesgo es que a las 10:15 UTC **dos madres orquesten a la vez** y rompan la integración serializada |
 | 9 | **Red del entorno en la nube**: añadir `developers.facebook.com` (o ampliar el nivel de red) | Menú del entorno → Edit → Network access |
 
 ## Decisiones de producto y de negocio
