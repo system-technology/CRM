@@ -69,9 +69,15 @@ Se conecta el número tal cual; todo lo que llega se guarda (cifrado, ADR-0015),
 Se conecta por coexistencia, pero:
 
 1. **Lista de exclusión por agencia** (configurable por la agencia, R12): números e IDs de usuario
-   (BSUID) de proveedores y contactos personales. Lo que llegue de o hacia un excluido **se descarta
-   en el borde del webhook antes de persistir**: no se guarda contenido ni se crea contacto (como
-   mucho, un contador sin datos personales).
+   (BSUID) de proveedores y contactos personales. **No se filtra en el borde:** por ADR-0008 §4 el
+   webhook guarda la carga bruta sellada en la tabla global de recepciones **antes** de responder 200
+   y antes de saber de qué agencia es. Lo que llegue de o hacia un excluido se persiste sellado en
+   ese staging sin agencia, **nunca entra a tablas de negocio**, y al clasificarlo en el trabajador se
+   anula su contenido (motivo `EXCLUIDO`, vía `anular_payload`; `purgar_payloads` como respaldo). El
+   filtro corre antes de registrar el mensaje, crear el contacto, descargar media, escribir el outbox
+   o emitir el evento en vivo; en los ecos se filtra por el **destinatario** (`to`/`to_user_id`), y
+   por BSUID cuando no llega teléfono. Ni teléfono ni BSUID van a logs ni a trazas; el contador es
+   agregado por agencia, nunca por contacto.
 2. **Sin historial ni libreta por defecto.** No se llama a la sincronización de historial ni de
    contactos salvo que el dueño lo pida expresamente; si lo pide, pasa por el mismo filtro.
 3. **Aviso de privacidad y política de tratamiento de la agencia** actualizados (responsable: la
@@ -81,7 +87,11 @@ Se conecta por coexistencia, pero:
 - **Gana:** el dueño no cambia de número ni de app; los clientes no notan nada; reduce mucho lo
   que guardamos de proveedores y personales.
 - **Cuesta:** **el filtro es nuestro, no de Meta**: el dato ya cruzó a nuestro servidor (y por
-  Meta). Un proveedor nuevo entra hasta que alguien lo marca. Si el mensaje llega sin teléfono, el
+  Meta) y queda sellado en staging hasta anularse. Un proveedor nuevo entra hasta que alguien lo
+  marca, y **marcarlo tarde no borra lo ya guardado**: hace falta una supresión real de lo anterior
+  (mensajes, S3, outbox). La propia lista es PII (teléfonos de familiares): cifrada o en HMAC,
+  editable solo por dueño o administrador y con cada cambio auditado, para que un asesor no pueda
+  excluir a un cliente y ocultar conversaciones. Si el mensaje llega sin teléfono, el
   filtro tiene que funcionar también por BSUID. Hay que construir la lista, el filtro y su prueba.
   El número de la agencia queda expuesto a bloqueos de calidad por lo que salga del CRM, y un bloqueo
   corta también a los proveedores.
@@ -114,8 +124,13 @@ poco a poco al nuevo (aviso, enlace `wa.me`, QR en el material).
 **Recomendación de quien redacta (inferencia, no decisión):** **B para el piloto**, con estas
 condiciones previas, y **C como salida** si alguna falla:
 
-- La lista de exclusión y el filtro antes de persistir existen y tienen prueba antes de conectar el
-  número real.
+- La lista de exclusión y el filtro en el trabajador existen y tienen prueba de punta a punta antes
+  de conectar el número real: un entrante y un eco excluidos no dejan filas de negocio, ni media, ni
+  outbox, ni log.
+- El vínculo número–agencia de Embedded Signup se deriva de la sesión, del canje del `code` y de la
+  comprobación en Graph, nunca del cuerpo de la petición (ya exigido en `04-integraciones` §2.3).
+- **Sin historial ni libreta en el piloto** (no suscribir `history` ni `smb_app_state_sync`;
+  recomendación de `auditor-seguridad`).
 - JD Tours actualiza su aviso de privacidad y firma el contrato de encargo.
 - El dueño acepta mover sus chats personales fuera del número.
 - La elegibilidad del número se confirma en la prueba real (T-337 pendiente; T-080).
@@ -127,7 +142,8 @@ y no A: A guarda datos de terceros sin finalidad, y eso no se arregla después.
 Lo que el propietario tiene que decidir:
 
 1. B, C (o A) para JD Tours.
-2. Si se pide el historial de 180 días (solo se puede en las primeras 24 h).
+2. Si se pide el historial de 180 días (solo se puede en las primeras 24 h). `auditor-seguridad`
+   pide «no» en el piloto: pedirlo «por si acaso» va contra la minimización.
 3. Si la exclusión se aplica descartando (recomendado) o guardando aparte con otro régimen.
 4. Quién habla con el dueño de JD Tours sobre el aviso de privacidad y sus chats personales.
 
@@ -158,10 +174,41 @@ Lo que el propietario tiene que decidir:
 - Si Meta publica una forma de excluir chats o contactos en la coexistencia.
 - Si el abogado concluye que el tratamiento de chats de proveedores necesita otra base o lo prohíbe.
 - Si en el piloto el filtro deja pasar proveedores con frecuencia (más de uno por semana sin marcar).
+- Si el dueño no saca sus chats personales del número: el piloto pasa a C.
 - Si Meta cambia el plazo de inactividad o los requisitos (revisión trimestral, ADR-0002).
 
 ---
 
 ## Auditoría de seguridad
 
-_Pendiente: se añade tras la vuelta de `auditor-seguridad` (ver el PR)._
+Una vuelta, 2026-11-21 (R13). Revisó también `registrar-recepcion.ts` y `procesar-change.ts`.
+
+**Veredicto:** **B aceptable con cambios** (incorporados arriba). **C aceptable** si el número es
+solo de API; si va en coexistencia, hereda todo lo de B. De acuerdo con la recomendación (B para el
+piloto, C como salida) si se cumplen los bloqueantes.
+
+**Qué datos entran:** en A, entrantes y ecos de todos los chats 1:1 (clientes, proveedores, familia,
+posibles menores y datos de salud), 180 días de historial con media de 14 días y la libreta
+completa. En B llegan los mismos entrantes y ecos; el filtro solo decide qué se conserva; historial
+y libreta no llegan si no se piden. En C solo API, clientes y algún proveedor o conocido que escriba
+al número nuevo.
+
+**Bloqueantes antes de conectar un número real:**
+1. **[CRÍTICO]** Vínculo número–agencia en Embedded Signup derivado de la sesión, del canje del
+   `code` y de la comprobación en Graph; nunca de `waba_id`/`phone_number_id` del cuerpo.
+2. **[ALTO]** El filtro en el trabajador, con prueba de punta a punta (sin filas, media, outbox ni
+   log para un excluido), y el texto de §B.1 corregido (hecho en esta versión).
+3. Sin historial ni libreta en el piloto (decisión 2 cerrada en «no» por minimización).
+4. Contrato de encargo y aviso de privacidad; el dueño saca sus chats personales del número.
+
+**Aislamiento entre agencias:** índices de contacto y de exclusión únicos por `(tenant_id, bsuid)`,
+nunca globales; tablas nuevas con `tenant_id`, RLS forzada y `WITH CHECK`, fuera de
+`excepciones_rls`. Ecos, historial y contactos se enrutan solo por el directorio con
+`metadata.phone_number_id`; `account_update` no trae ese campo y nunca debe resolver la agencia por
+`entry.id` ni por el contenido. Hoy el código clasifica todo campo distinto de `messages` como
+`CAMPO_NO_SOPORTADO` y anula su contenido: mantenerlo.
+
+**A la cola (no bloquea la prueba controlada):** supresión retroactiva al marcar tarde (sí bloquea
+producción); cifrado o HMAC de la lista; que `PARTNER_REMOVED` y `ACCOUNT_OFFBOARDED` revoquen el
+canal (reconectar con otro socio tarda 15 min); marcar como excluido desde el primer mensaje;
+revisión jurídica de la base de tratamiento de proveedores.
