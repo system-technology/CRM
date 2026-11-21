@@ -31,8 +31,13 @@ import {
   type TipoCategoriaSeguimiento,
 } from '../../../lib/seguimientos-logica';
 
+import { AvisoSoloLoPropio } from '../../../components/comun/aviso-de-alcance';
+import { alcanceDeVista, TEXTO_SOLO_LO_PROPIO } from '../../../lib/alcance-de-vista';
+import { usePermisos } from '../../../lib/permisos';
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 export default function SeguimientosPage() {
+  const { sesion } = usePermisos();
+  const soloLoPropio = alcanceDeVista(sesion) === 'PROPIO';
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<MensajeErrorDetallado | null>(null);
@@ -185,6 +190,13 @@ export default function SeguimientosPage() {
           </button>
         </div>
       </header>
+
+      {soloLoPropio && (
+        <AvisoSoloLoPropio
+          testId="aviso-solo-lo-propio"
+          texto={TEXTO_SOLO_LO_PROPIO.seguimientos}
+        />
+      )}
 
       {/* Tarjetas KPI de Resumen */}
       <section
@@ -403,7 +415,7 @@ export default function SeguimientosPage() {
             </div>
 
             {/* Selector de Asesor */}
-            {asesoresDisponibles.length > 0 && (
+            {!soloLoPropio && asesoresDisponibles.length > 0 && (
               <div className="relative">
                 <select
                   data-testid="select-filtro-asesor"

@@ -10,6 +10,7 @@ import {
   ResumenDeReportes,
   type ResumenDeReportes as ResumenDeReportesTipo,
 } from '@viajapro/contracts';
+import { TEXTO_REPORTES_SOLO_ADMINISTRACION } from './alcance-de-vista';
 import { obtenerBaseApi } from './api-base';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { estaUsandoApiReal } from './crm-api';
@@ -65,7 +66,7 @@ export async function obtenerResumenDeReportesApi(
     if (res.status === 403) {
       throw new ErrorReportesApi(
         err.success ? err.data.error.code : 'PERMISO_DENEGADO',
-        'No tienes permiso para ver los reportes.',
+        TEXTO_REPORTES_SOLO_ADMINISTRACION.titulo,
         403,
       );
     }
