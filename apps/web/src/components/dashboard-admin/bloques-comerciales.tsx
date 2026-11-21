@@ -1,17 +1,18 @@
 'use client';
 
 /**
- * Bloques comerciales del dashboard de administración (T-344): ventas por moneda, embudo con
- * cotizaciones y tiempos de respuesta. Todos pintan lo que la API devolvió, con la comparación
+ * Bloques comerciales del dashboard de administración (T-344): ventas por moneda, ventas por
+ * destino (T-555), embudo con cotizaciones y tiempos de respuesta. Todos pintan lo que la API devolvió, con la comparación
  * contra el periodo anterior del mismo largo (ADR-0035 §5).
  */
 import React from 'react';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import type { ResumenDeReportes } from '@viajapro/contracts';
+import type { ResumenDeAgencia } from '@viajapro/contracts';
 import { formatearDinero } from '../../lib/formato';
 import {
   barrasDelEmbudo,
   compararVentasPorMoneda,
+  destinosVendidos,
   presentarP90,
   presentarTasa,
   sentidoDeVariacion,
@@ -21,9 +22,9 @@ import {
 import { calcularVariacionPorcentual, formatearMinutosReporte } from '../../lib/reportes-logica';
 
 export interface ParDeResumenes {
-  actual: ResumenDeReportes;
+  actual: ResumenDeAgencia;
   /** `null` si no se pudo pedir el anterior: se compara contra nada, y se dice. */
-  anterior: ResumenDeReportes | null;
+  anterior: ResumenDeAgencia | null;
   /** Rótulo del periodo anterior, ya en texto («1–31 oct»). */
   etiquetaAnterior: string;
 }
@@ -322,5 +323,68 @@ export function TiemposDeRespuesta({ datos }: { datos: ParDeResumenes }) {
         </div>
       </dl>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Ventas por destino (T-532, T-555)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Lo vendido en el periodo, por destino y moneda: el servidor manda una fila por cada par y aquí se
+ * pintan juntas por destino, **cada moneda en su línea (R8)**. Si la clave `ventasPorDestino` no
+ * vino (un servidor anterior), se dice; no se pinta «sin ventas».
+ */
+export function VentasPorDestino({ datos }: { datos: ParDeResumenes }) {
+  const filas = datos.actual.ventasPorDestino;
+  if (filas === undefined) {
+    return (
+      <p
+        data-testid="destinos-no-disponible"
+        className="text-sm text-neutral-700 dark:text-neutral-300"
+      >
+        El servidor no envió las ventas por destino. Vuelve a intentarlo en un momento.
+      </p>
+    );
+  }
+  const destinos = destinosVendidos(filas);
+  if (destinos.length === 0) {
+    return (
+      <p className="text-sm text-neutral-700 dark:text-neutral-300">
+        Aún no hay ventas cerradas en este periodo. Cuando una cotización pase a Aceptada, su
+        destino aparece aquí.
+      </p>
+    );
+  }
+  return (
+    <ul className="grid gap-x-8 md:grid-cols-2 xl:grid-cols-3">
+      {destinos.map((d) => (
+        <li
+          key={d.destino}
+          className="flex flex-col gap-0.5 border-b border-neutral-100 py-2.5 dark:border-neutral-800"
+          data-testid="destino-vendido"
+        >
+          <p className="text-sm font-medium text-neutral-900 dark:text-white">
+            {d.destino}{' '}
+            <span className="font-normal text-neutral-600 dark:text-neutral-400">
+              ·{' '}
+              {d.aceptadas === 1
+                ? '1 cotización aceptada'
+                : `${d.aceptadas} cotizaciones aceptadas`}
+            </span>
+          </p>
+          {d.monedas.map((m) => (
+            <p
+              key={m.moneda}
+              data-testid={`destino-vendido-${m.moneda}`}
+              className="cifra text-xs text-neutral-700 dark:text-neutral-300"
+            >
+              {formatearDinero(m.ventas, { conCodigo: true })}
+              {m.margen ? ` · margen ${formatearDinero(m.margen, { conCodigo: true })}` : ''}
+            </p>
+          ))}
+        </li>
+      ))}
+    </ul>
   );
 }
