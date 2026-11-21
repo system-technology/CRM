@@ -123,6 +123,21 @@ describe('Bandeja — «Cotizar» con contexto y llegada desde el detalle de la 
     expect(cotizar.className).toContain('min-h-[44px]');
   });
 
+  it('con la ventana de 24 h cerrada también se puede cotizar desde el chat', async () => {
+    vi.spyOn(inboxApi, 'obtenerConversacionDetalle').mockResolvedValue({
+      ...DETALLE,
+      ventana: { abierta: false, expiraEn: '2026-01-01T00:00:00.000Z', minutosRestantes: 0 },
+    });
+    await act(async () => {
+      render(<BandejaConversacionPage />);
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(screen.getByTestId('compositor-ventana-cerrada')).toBeDefined();
+    const cotizar = screen.getByTestId('boton-cotizar-desde-chat');
+    expect(cotizar.getAttribute('href')).toContain(`conversacion=${CONV_ID}`);
+    expect(cotizar.className).toContain('min-h-[44px]');
+  });
+
   it('«Enviar cotización» y el resto del compositor miden 44 px o más en el celular', async () => {
     await act(async () => {
       render(<BandejaConversacionPage />);

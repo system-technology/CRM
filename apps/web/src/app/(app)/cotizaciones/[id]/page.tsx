@@ -331,7 +331,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
               volverTexto={conversacionParam ? 'Volver al chat' : 'Volver a Cotizaciones'}
             />
 
-            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-3 py-1 text-xs font-bold">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-3 py-1 text-sm font-bold">
               Cotización Oficial Guardada
             </span>
           </div>
@@ -370,11 +370,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       ? 'Cotización no encontrada'
                       : 'Error al consultar la cotización'}
                   </h3>
-                  <p className="mt-1 text-xs">{errorCarga.mensaje}</p>
+                  <p className="mt-1 text-sm">{errorCarga.mensaje}</p>
                   <div className="mt-4">
                     <Link
                       href="/cotizador"
-                      className="boton-primario inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs"
+                      className="boton-primario inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold shadow-xs"
                     >
                       Ir al Cotizador
                     </Link>
@@ -388,7 +388,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
           {notificacion && (
             <div
               role="status"
-              className={`animate-in fade-in flex items-center justify-between gap-3 rounded-2xl p-4 text-xs font-semibold shadow-xs duration-200 ${
+              className={`animate-in fade-in flex items-center justify-between gap-3 rounded-2xl p-4 text-sm font-semibold shadow-xs duration-200 ${
                 notificacion.tipo === 'exito'
                   ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                   : 'border border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'
@@ -421,10 +421,10 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-neutral-100 px-2.5 py-0.5 text-xs font-bold text-neutral-700 uppercase dark:bg-neutral-800 dark:text-neutral-300">
+                      <span className="rounded-md bg-neutral-100 px-2.5 py-0.5 text-sm font-bold text-neutral-700 uppercase dark:bg-neutral-800 dark:text-neutral-300">
                         {cotizacion.estado}
                       </span>
-                      <span className="text-xs text-neutral-400">
+                      <span className="text-sm text-neutral-400">
                         Registrada: {formatearFecha(cotizacion.creadaEn)}
                       </span>
                     </div>
@@ -433,7 +433,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       {cotizacion.titulo}
                     </h1>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-neutral-600 dark:text-neutral-400">
+                    <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
                       <span className="flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 text-neutral-400" />
                         Viajero: <strong>{contacto?.nombre || 'Contacto registrado'}</strong>
@@ -453,7 +453,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     <EnlacesDelViaje
                       className="mt-3"
                       enlaces={[
-                        enlaceDeConversacion(enlaces.conversacionId),
+                        enlaceDeConversacion(
+                          conversacionParam
+                            ? { tipo: 'listo', valor: conversacionParam }
+                            : enlaces.conversacionId,
+                        ),
                         enlaceDeContacto(cotizacion.contactoId, contacto?.nombre),
                         enlaceDeArchivo(
                           enlaces.archivos.tipo === 'cargando'
@@ -479,7 +483,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     ) : (
                       <p
                         data-testid="aviso-sin-conversacion"
-                        className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700 sm:max-w-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                        className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700 sm:max-w-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
                       >
                         {buscandoConversacion
                           ? 'Buscando la conversación de WhatsApp de este viajero…'
@@ -491,7 +495,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       type="button"
                       data-testid="btn-abrir-modal-whatsapp"
                       onClick={() => setModalWhatsAppAbierto(true)}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       title="Abre WhatsApp fuera del canal de la agencia: no queda en el chat ni cambia el estado"
                     >
                       <MessageSquare className="h-4 w-4" aria-hidden="true" />
@@ -501,7 +505,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     <button
                       type="button"
                       onClick={abrirModalModificar}
-                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition-colors"
+                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-xs transition-colors"
                       title="Modificar parámetros creando una nueva versión"
                     >
                       <Edit3 className="h-4 w-4" />
@@ -511,7 +515,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     <Link
                       href={`/cotizaciones/${cotizacion.id}/imprimir`}
                       data-testid="enlace-vista-imprimible"
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       title="Abrir vista imprimible A4 para el cliente (sin neto ni margen)"
                     >
                       <Printer className="h-4 w-4" />
@@ -523,7 +527,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       data-testid="btn-duplicar-version"
                       onClick={() => void manejarDuplicarVersion()}
                       disabled={duplicandoVersion}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       title="Duplicar esta versión exacta como versión siguiente"
                     >
                       <Copy className="h-4 w-4" />
@@ -537,7 +541,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       data-testid="btn-comparar-versiones"
                       onClick={() => setModalCompararAbierto(true)}
                       disabled={cotizacion.versiones.length < 2}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       title={
                         cotizacion.versiones.length < 2
                           ? 'Se requieren al menos 2 versiones para comparar'
@@ -554,10 +558,10 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
               {/* Selector de Versiones (Tabs/Pills) */}
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-xs font-bold text-neutral-500">
+                  <span className="text-sm font-bold text-neutral-500">
                     Historial de versiones ({versionesCronologicas.length})
                   </span>
-                  <span className="text-xs text-neutral-400">
+                  <span className="text-sm text-neutral-400">
                     Haga clic en una versión para ver exactamente lo que se cotizó ese día
                   </span>
                 </div>
@@ -572,7 +576,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         key={v.id}
                         type="button"
                         onClick={() => setVersionSeleccionadaNumero(v.numero)}
-                        className={`flex min-h-[44px] items-center gap-3 rounded-xl border px-4 py-2 text-xs font-semibold transition-all ${
+                        className={`flex min-h-[44px] items-center gap-3 rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
                           activa
                             ? 'border-acento-600 bg-acento-50 text-acento-950 dark:border-acento-500 dark:bg-acento-950/40 dark:text-acento-200 shadow-xs'
                             : 'border-neutral-200 bg-neutral-50/70 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/40 dark:text-neutral-300'
@@ -580,7 +584,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       >
                         <div className="flex items-center gap-1.5">
                           <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-black ${
+                            className={`flex h-5 w-5 items-center justify-center rounded-full text-sm font-black ${
                               activa
                                 ? 'bg-acento-700 text-white'
                                 : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200'
@@ -591,7 +595,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                           <span className="font-bold">Versión {v.numero}</span>
                         </div>
 
-                        <span className="text-xs font-normal opacity-75">({fechaTxt})</span>
+                        <span className="text-sm font-normal opacity-75">({fechaTxt})</span>
 
                         <span className="cifra font-extrabold text-neutral-900 dark:text-white">
                           {formatearDinero(v.venta)}
@@ -609,16 +613,16 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                   {/* Tarjeta de Parámetros de Viaje */}
                   <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
-                      <span className="text-acento-700 dark:text-acento-300 text-xs font-bold">
+                      <span className="text-acento-700 dark:text-acento-300 text-sm font-bold">
                         Detalles de la Versión {versionActual.numero}
                       </span>
-                      <span className="flex items-center gap-1 text-xs text-neutral-400">
+                      <span className="flex items-center gap-1 text-sm text-neutral-400">
                         <Clock className="h-3 w-3" />
                         {formatearFechaHora(versionActual.creadaEn)}
                       </span>
                     </div>
 
-                    <div className="mt-4 space-y-3 text-xs">
+                    <div className="mt-4 space-y-3 text-sm">
                       <div>
                         <span className="text-neutral-500">Paquete Turístico:</span>
                         <p className="font-bold text-neutral-900 dark:text-white">
@@ -680,11 +684,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/60 pb-3 dark:border-amber-900/60">
                         <div className="flex items-center gap-2">
                           <Shield className="h-4 w-4 text-amber-700 dark:text-amber-400" />
-                          <h3 className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                          <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">
                             Auditoría de Margen (ADR-0011)
                           </h3>
                         </div>
-                        <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                        <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-sm font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-200">
                           cotizacion.ver_neto_y_margen
                         </span>
                       </div>
@@ -692,7 +696,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       {(() => {
                         const desglose = calcularDesgloseMargen(versionActual, true);
                         return (
-                          <div className="mt-4 space-y-2.5 text-xs">
+                          <div className="mt-4 space-y-2.5 text-sm">
                             <div className="flex items-center justify-between rounded-xl bg-white/80 p-2.5 shadow-2xs dark:bg-neutral-900/80">
                               <span className="text-neutral-600 dark:text-neutral-400">
                                 Costo Neto Total:
@@ -741,7 +745,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                               </span>
                             </div>
 
-                            <p className="pt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                            <p className="pt-1 text-sm leading-relaxed text-amber-800 dark:text-amber-300">
                               * Confidencial: El neto del mayorista y el margen se omiten en
                               propuestas por WhatsApp y al cliente final (R10).
                             </p>
@@ -761,11 +765,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
                           Líneas de Precio — Versión {versionActual.numero}
                         </h2>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-sm text-neutral-500">
                           Tarifas congeladas en el momento de crear esta versión
                         </p>
                       </div>
-                      <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                      <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-sm font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
                         {versionActual.lineas.length}{' '}
                         {versionActual.lineas.length === 1 ? 'línea' : 'líneas'}
                       </span>
@@ -822,10 +826,10 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                   {/* Acciones de WhatsApp */}
                   <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs sm:flex-row dark:border-neutral-800 dark:bg-neutral-900">
                     <div>
-                      <h4 className="text-xs font-bold text-neutral-900 dark:text-white">
+                      <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
                         Propuesta para WhatsApp (Versión {versionActual.numero})
                       </h4>
-                      <p className="text-xs text-neutral-600">
+                      <p className="text-sm text-neutral-600">
                         Copia el texto comercial para pegarlo donde lo necesites. El envío con
                         seguimiento de estado es «Enviar en esta conversación».
                       </p>
@@ -835,7 +839,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       <button
                         type="button"
                         onClick={copiarPropuestaWhatsApp}
-                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                       >
                         {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         <span>{copiado ? '¡Copiado!' : 'Copiar Texto'}</span>
@@ -879,7 +883,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       >
                         Crear Versión {(cotizacion?.versiones.length ?? 1) + 1}
                       </h2>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-sm text-neutral-500">
                         Modifica composición de viaje conservando la Versión {versionActual.numero}
                       </p>
                     </div>
@@ -890,7 +894,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     onClick={() => setModalModificarAbierto(false)}
                     disabled={guardandoVersion}
                     aria-label="Cerrar modal"
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                   >
                     ×
                   </button>
@@ -900,7 +904,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                   onSubmit={(e) => {
                     void manejarCrearNuevaVersion(e);
                   }}
-                  className="space-y-4 p-6 text-xs"
+                  className="space-y-4 p-6 text-sm"
                 >
                   {errorModificar && (
                     <div
@@ -927,7 +931,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       onChange={setModFecha}
                       disabled={guardandoVersion}
                       required
-                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
@@ -947,7 +951,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModAdultos(Math.max(1, modAdultos - 1))}
-                          className="flex h-11 w-11 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           -
                         </button>
@@ -957,7 +961,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModAdultos(modAdultos + 1)}
-                          className="flex h-11 w-11 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           +
                         </button>
@@ -973,7 +977,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModNinos(Math.max(0, modNinos - 1))}
-                          className="flex h-11 w-11 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           -
                         </button>
@@ -983,7 +987,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModNinos(modNinos + 1)}
-                          className="flex h-11 w-11 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           +
                         </button>
@@ -999,7 +1003,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModInfantes(Math.max(0, modInfantes - 1))}
-                          className="flex h-11 w-11 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           -
                         </button>
@@ -1009,7 +1013,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <button
                           type="button"
                           onClick={() => setModInfantes(modInfantes + 1)}
-                          className="flex h-11 w-11 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           +
                         </button>
@@ -1030,7 +1034,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       value={modAcomodacion}
                       onChange={(e) => setModAcomodacion(e.target.value as Acomodacion)}
                       disabled={guardandoVersion}
-                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     >
                       <option value="SENCILLA">Sencilla (1 persona)</option>
                       <option value="DOBLE">Doble (2 personas)</option>
@@ -1052,11 +1056,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       valor={modVigenteHasta}
                       onChange={setModVigenteHasta}
                       disabled={guardandoVersion}
-                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-sm text-neutral-500">
                     * El servidor recalculará los importes oficiales. La Versión{' '}
                     {versionActual.numero} no cambiará.
                   </p>
@@ -1066,14 +1070,14 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       type="button"
                       onClick={() => setModalModificarAbierto(false)}
                       disabled={guardandoVersion}
-                      className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 px-4 py-2.5 text-xs font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                      className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={guardandoVersion}
-                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs"
+                      className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-xs"
                     >
                       {guardandoVersion ? (
                         <>
