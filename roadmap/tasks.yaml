@@ -11737,7 +11737,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     acceptance:
       - "T-520 unifico formato.ts y cobros-logica.ts, pero siguen vivas: apps/web/src/lib/dinero-entrada.ts
         (DECIMALES_POR_MONEDA = { COP: 0 }, con 2 por defecto) y la tabla en linea de cotizaciones-diff.ts"
@@ -11746,6 +11746,9 @@ tasks:
     source: aviso de la sesion de T-520/T-521, 2026-11-21
     created_at: 2026-11-21T13:20:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #433: el commit dice literalmente «cae la ultima tabla de decimales (T-543, T-544)». Se cerro a mano el 2026-11-22 al encontrarla abierta con su trabajo hecho."
+    commit: ad6e706a
+
   - id: T-545
     title: "Cobros: los archivos CANCELADOS con penalidad pendiente no entran en porCobrar"
     type: bug
@@ -12527,7 +12530,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     acceptance:
       - "Las dos son sync:false en render.yaml: su valor solo existe en el panel y olvidarlas es facil. Sin
         ellas el codigo cae a localhost EN SILENCIO y el sintoma es que la web se ve pero nadie entra, sin una
@@ -12543,6 +12546,9 @@ tasks:
         {error:{code:ORIGEN_NO_CONFIABLE,message:Origen no permitido.}}"
     source: sintoma del cliente del piloto y lectura del codigo (2026-11-21)
     owner: backend
+    evidence: "Integrado en main por el PR #489. apps/api/src/shared/red/urls-publicas.ts avisa al arrancar si las URL publicas faltan o apuntan a loopback. Se cerro a mano el 2026-11-22: el cierre automatico no disparo."
+    commit: 04201820
+
   - id: T-600
     title: "Demo: preparar staging por el CI para que el cliente pueda entrar (siembra mas credencial)"
     type: feature
@@ -12931,7 +12937,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
     acceptance:
       - "Es el trabajo real de T-608, que el cierre automatico dio por hecho por el nombre de la rama. El PR
         #499 solo encolo la peticion"
@@ -12947,6 +12953,8 @@ tasks:
         vamos a hacer» y «ya esta, mira»"
     source: trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)
     owner: datos
+    evidence: "Integrado en main por el PR #509: siete hilos con sus etiquetas, incluidas «Ya reservo», «Reserva pendiente» y «Nuevo». OJO: esta en el CODIGO, no en staging. La siembra corre dentro de preparar-demo-staging.yml y NO se ha relanzado, a proposito, porque ese workflow rota la contrasena y la imprime en claro en un repositorio publico. Ver punto 22 de PENDIENTES-DEL-PROPIETARIO.md."
+    commit: 6a666763
 
   - id: T-622
     title: "La agencia puede sustituir el paquete de imagenes por defecto por las suyas"
@@ -13106,7 +13114,8 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: review
+    status: blocked
+    blocked_reason: "human_required: falta .claude/settings.json, y el clasificador deniega que una sesion escriba ahi. El fragmento exacto esta en docs/09-ia/10-guia-web-moderna.md section 5."
     acceptance:
       - "Lo pidio el propietario: evaluarla, instalarla y DEJARLA ESTABLECIDA COMO REGLA para que otras
         sesiones lo sepan y lo implementen"
@@ -13325,13 +13334,19 @@ tasks:
     notes: "Esta en blocked y no en ready a proposito: ninguna sesion de codigo puede resolverla. Ademas,
       create_trigger quedo denegado por el clasificador del modo automatico («Destructive or Unwanted
       Actions») antes incluso de toparse con el limite de linaje."
+    reconciled_note: "REVISADA el 2026-11-22: sigue siendo cierto que no se pueden crear sesiones hijas
+      ni una sucesora (linaje 8 de 8), pero YA NO BLOQUEA el trabajo. El compactado automatico mantiene
+      viva la sesion indefinidamente (umbral 784k de 1M, verificado), y los subagentes en proceso
+      sustituyen a las sesiones hijas sin perder capacidad. Lo unico que sigue sin poder hacerse es
+      programar un despertar propio."
+
   - id: T-592
     title: "QA: la e2e 09-reportes-por-alcance rompe el job navegador al azar y bloquea integraciones ajenas"
     type: test
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     acceptance:
       - "MEDIDO, no supuesto (2026-11-21, 20:30 UTC): el job navegador salio rojo a la vez en #480 y #481, dos
         PR sin nada en comun (uno toca clases de color, el otro anade tres enteros al contrato de cobros). Se
@@ -13347,6 +13362,9 @@ tasks:
         el ingreso de la siembra es lo fragil, se arregla el ingreso"
     source: dos relanzamientos limpios medidos por la madre del lote (2026-11-21)
     owner: qa
+    evidence: "Integrado en main por el PR #498. ingresarPorPantalla espera el cupo del limitador y reintenta solo ante «Demasiados intentos». Se cerro a mano el 2026-11-22: el cierre automatico no disparo."
+    commit: 57deaa27
+
   - id: T-585
     title: "Reportes: el dashboard de administracion esta duplicado (ReportesListo repite reportes-reales)"
     type: refactor
