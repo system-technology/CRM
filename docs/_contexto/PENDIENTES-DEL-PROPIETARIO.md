@@ -210,36 +210,66 @@ misma operación, y hoy lo son.
 Mientras tanto, **lo que tu cliente ve sigue siendo la demo de antes**: una sola conversación y el
 desplegable de etiquetas vacío al filtrar.
 
-## 23. BLOQUEANTE: la compuerta de rutas protegidas no existe (2026-11-22)
+## 23. T-619: la compuerta de rutas protegidas ya existe como check, falta hacerla obligatoria (2026-11-22)
 
-**Lo descubrí pasando por ella, no auditándola.** El PR **#511** se integró en `main` **sin una sola
-revisión**, tocando `CLAUDE.md` y cuatro ficheros de `.claude/`. Y horas antes yo te había dicho que
-ese PR «esperaba tu aprobación». **Era falso.**
+**Qué estaba roto (medido contra la API):** la protección de `main` tiene
+`require_code_owner_reviews: true` pero `required_approving_review_count: 0`, y con el contador en 0
+GitHub no exige la revisión del code owner. El PR #511 se integró con `CLAUDE.md` y cuatro ficheros de
+`.claude/` sin una sola revisión. **R11 era falso.** Y subir el contador a 1 «a secas» no sirve: te
+haría aprobar todos los PR, no solo los de rutas protegidas.
 
-Medido contra la API:
+**Qué se hizo:** un check propio, `rutas-protegidas`
+(`.github/workflows/rutas-protegidas.yml` + `scripts/comprobar-aprobacion-owner.mjs`). Mira los
+ficheros del PR contra `humanRequired` de `ownership.json` (la misma lista que usa «Carril y tarea»;
+no hay una segunda). Si ninguno cae, pasa en verde. Si alguno cae, exige una revisión **APROBADA de
+`@Alfavear` sobre el commit actual** y falla si no la hay. Cuando apruebas,
+`rutas-protegidas-reevaluar.yml` repite la ejecución sobre el mismo commit. Los PR normales no se
+enteran.
 
-```
-require_code_owner_reviews: true
-required_approving_review_count: 0
-```
+**Lo único que solo puedes hacer tú, y solo DESPUÉS de que este PR esté en `main`:**
 
-**Con el contador en 0, GitHub no exige la revisión del code owner.** El `.github/CODEOWNERS` está
-bien escrito y es espejo fiel de `humanRequired` en `ownership.json`. Lo que falla es que la
-protección de rama **no lo hace cumplir**.
+1. Añadir `rutas-protegidas` a los checks obligatorios de `main`. Por línea de comandos:
+   `gh api -X POST repos/system-technology/CRM/branches/main/protection/required_status_checks/contexts --input - <<< '["rutas-protegidas"]'`,
+   o en Settings → Branches → regla de `main` → «Require status checks». **No lo hagas antes de
+   integrar el PR:** mientras el check no se haya ejecutado nunca, GitHub lo espera para siempre y
+   todos los PR quedan bloqueados.
+2. **No toques `required_approving_review_count`** (déjalo en 0): subirlo es justo lo que obligaría a
+   aprobarlo todo.
+3. Decidir con quién se abren los PR que tocan rutas protegidas. **GitHub no deja que el autor de un
+   PR lo apruebe.** El #511 lo abrió `Alfavear`: si los agentes siguen abriendo PR con tu cuenta, tú no
+   puedes aprobarlos y el check fallará con un mensaje que lo dice. Esos PR deben abrirse con la App
+   integradora (`altardiario-integradora[bot]`, autora de #514) para que la aprobación sea tuya y
+   humana. Las Apps no pueden aprobar.
 
-Así que **R11 miente hoy**: «Las rutas protegidas esperan la aprobación del propietario» no es cierto.
-Por §3.1 eso es bloqueante, no cola: *una compuerta que no corre no es una compuerta*.
+**Qué implica para el flujo:** `dismiss_stale_reviews: true` descarta la aprobación al empujar un
+commit, y el check además exige que la aprobación sea del commit actual. Con «rama al día» obligatoria,
+un PR protegido aprobado que se queda atrás de `main` y se actualiza **necesita una aprobación
+nueva**. Hay que aprobar al final, cuando el PR ya no va a cambiar. Mientras el punto 1 no esté hecho,
+sigue valiendo: **no activar auto-merge en un PR que toque rutas protegidas.**
 
-**Lo que hice al descubrirlo:** desactivar el auto-merge de **#490** y **#503**, los otros dos con
-rutas protegidas. No entran hasta que decidas.
+**No verificado todavía:** que `GITHUB_TOKEN` con `pull-requests: read` lea las revisiones, y que la
+repetición dispare el check obligatorio sobre el commit correcto, solo se pueden comprobar en
+GitHub Actions al abrirse el PR (el script sí se probó contra #511 y #514 con la API real). Además,
+`ownership.json` lista `opencode.jsonc` y `.github/CODEOWNERS` no: la compuerta protege lo primero y
+GitHub no. Relacionado con el punto 13 (T-083).
 
-**El arreglo es tuyo y es configuración del servidor** (Settings → Branches → `main`): subir
-**`required_approving_review_count` a 1**. Ninguna sesión puede tocar la protección de rama.
+### Y hay una segunda via, nativa, verificada despues de escribir lo anterior
 
-**Decide esto antes, porque tiene coste:** con el contador en 1, **todo PR pasa a necesitar tu
-aprobación**, no solo los de rutas protegidas. Hoy integro decenas al día sin molestarte; con ese
-cambio, cada uno te espera. La alternativa —exigir la revisión **solo** en las rutas del `CODEOWNERS`
-mediante una *ruleset*— **no la he investigado**. Dímelo y la miro antes de que toques nada.
+La pregunta «¿puede GitHub exigir aprobacion solo en ciertas rutas?» quedo sin responder en el
+informe de esta rama porque `docs.github.com` no se podia leer desde aquel entorno. Se leyo despues
+y **la respuesta es que si**, con la regla **Required reviewers** de una *ruleset*. Literal:
 
-Conecta con el punto **13 (T-083)**, que ya decía que el JSON de ramas protegidas difiere del
-servidor en tres campos. Resulta que la diferencia no era cosmética.
+> «Optionally, you can require review or approval from specific teams when a pull request changes
+> certain files or directories.»
+
+Acepta patrones de ruta, admite exclusiones con `!`, llega a 15 equipos y **solo funciona en
+repositorios de organizacion**, que es nuestro caso. Exige un **equipo**, no un usuario suelto, asi
+que habria que crear uno contigo dentro.
+
+Tambien quedo confirmado que **«Restrict file paths» es de *pushes***, no de pull requests, y que
+**el contador de aprobaciones se aplica a TODOS los PR**. Lo que NO esta documentado es que pasa con
+el contador en 0 (lo sabemos porque lo medimos aqui) ni si el autor puede aprobar su propio PR.
+
+**Las dos vias valen y no se estorban.** La *ruleset* es mas limpia; el check deja el motivo escrito
+en rojo en el CI y no depende de equipos. Decide tu.
+

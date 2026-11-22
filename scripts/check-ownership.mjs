@@ -7,7 +7,7 @@
 // Sin carril reconocible solo informa (no falla). OVERRIDE=1 (etiqueta `override-lane`)
 // convierte el fallo en aviso. Salida 1 = el PR toca rutas de otro carril.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { cargarOwnership, toRegex } from './lib/globs-ownership.mjs';
 
 const arg = (n, d) => {
   const i = process.argv.indexOf(n);
@@ -16,16 +16,8 @@ const arg = (n, d) => {
 const git = (a) => execFileSync('git', a, { encoding: 'utf8' }).trim();
 const base = arg('--base', 'origin/main');
 const branch = arg('--branch', process.env.BRANCH || git(['branch', '--show-current']));
-const own = JSON.parse(readFileSync(new URL('../ownership.json', import.meta.url), 'utf8'));
+const own = cargarOwnership();
 
-function toRegex(glob) {
-  const s = glob
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '\0')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\0/g, '.*');
-  return new RegExp(`^${s}$`);
-}
 const matchers = (list) => list.map(toRegex);
 const any = (ms, f) => ms.some((m) => m.test(f));
 
