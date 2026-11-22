@@ -12499,6 +12499,24 @@ tasks:
     source: "peticion del propietario (2026-11-21)"
     owner: backend
 
+  - id: T-606
+    title: "Contrato: volver pasajeros obligatorio en FilaDeCobro cuando no queden respuestas antiguas"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on:
+      - T-590
+    acceptance:
+      - "T-582 lo dejo opcional para que la web existente compilara, y T-590 pinta un guion cuando no
+        viene. La API lo envia SIEMPRE"
+      - "Cuando no queden respuestas antiguas en vuelo, volverlo obligatorio: entonces el guion sobra
+        y la pantalla deja de contemplar un caso que no ocurre"
+      - "Al hacerlo, quitar tambien las pruebas del caso sin dato, que dejarian de tener sentido"
+    source: "cola declarada por la sesion de T-590 (2026-11-22)"
+    owner: backend
+
   - id: T-603
     title: "CI: el job de pruebas da 5 ingresos por minuto y la suite necesita 7"
     type: infra
@@ -12906,7 +12924,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: review
     depends_on:
       - T-582
     acceptance:
