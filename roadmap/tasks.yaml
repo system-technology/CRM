@@ -13186,6 +13186,49 @@ tasks:
       - "OJO: el check rutas-protegidas esta en main pero NO es obligatorio todavia, asi que siguen siendo 8, no 9, y R11 sigue siendo falsa"
     source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
     owner: documentador
+  - id: T-642
+    title: "Decision de producto: el cotizador asume 2 adultos sin que la asesora pueda elegirlo"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: es una decision de producto del propietario y del dueno-de-producto, no del arquitecto ni de frontend."
+    acceptance:
+      - "SALE del diagnostico de T-321. Cuando ninguna tarifa filtra por acomodacion, tipo de pasajero,
+        edad o silla, `pideComposicion` es false y el selector de pasajeros se OCULTA"
+      - "Pero el estado arranca en 2 adultos y eso es lo que se guarda y se cobra. En una excursion
+        POR_PERSONA el precio depende del numero de personas, asi que se esta cobrando un supuesto que
+        la asesora no eligio"
+      - "`seleccion-de-tarifas.ts` dice que `pideComposicion` solo decide si se pregunta QUIENES viajan:
+        «para saber cuantos van basta un numero». Ocultar el CUANTOS no era su proposito"
+      - "PROPUESTA del agente que lo diagnostico, a decidir: que el selector de adultos, ninos e
+        infantes se muestre SIEMPRE, y que `pideComposicion` solo oculte acomodacion y edades"
+      - "T-321 arregla la incoherencia entre cotizar y guardar. ESTA tarea es distinta: decide si el
+        numero de pasajeros debe poder elegirse siempre"
+    source: "decision de producto que destapo el arreglo de T-321 (2026-11-22)"
+    owner: dueno-de-producto
+
+  - id: T-643
+    title: "Comprobar si mensajes.wamid lleva dentro el telefono del interlocutor"
+    type: test
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "HALLAZGO del ADR-0037 (T-090), SIN CONFIRMAR y senalado por el propio arquitecto como «el
+        unico punto que podria ser bloqueante en vez de cola»"
+      - "Si el wamid de Meta codifica el telefono del interlocutor, entonces cifrar `texto` y dejar el
+        `wamid` DEJA EL TELEFONO EN CLARO en la tabla mas grande del sistema"
+      - "Y no se puede borrar sin mas: `wamid` sostiene la unicidad que da la idempotencia de R5"
+      - "No se pudo comprobar sin un wamid real: hace falta mirar uno de verdad, o la documentacion de
+        Meta sobre el formato del identificador"
+      - "Si se confirma: decidir si se cifra, se trunca o se sustituye por un hash con sal, SIN perder
+        la idempotencia. Eso seria un ADR o una enmienda al ADR-0037"
+    source: "hallazgo sin confirmar del borrador de ADR-0037 (2026-11-22)"
+    owner: whatsapp
+
   - id: T-639
     title: "Bandeja: marcarLeida existe y nadie la llama, asi que el contador de sin leer no se limpia"
     type: bug
