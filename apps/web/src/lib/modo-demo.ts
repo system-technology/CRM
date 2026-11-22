@@ -24,6 +24,29 @@ export const EVENTO_CAMBIO_MODO_DEMO = 'viajapro:cambio-modo-demo';
  * Evalúa si la aplicación debe operar en modo demostración (datos simulados).
  */
 export function esModoDemo(): boolean {
+  return esModoDemoDelNavegador() ?? esModoDemoDelEntorno();
+}
+
+/**
+ * Lo que el SERVIDOR también puede saber: solo las variables de entorno, sin `?demo=` ni `localStorage`.
+ * Es el valor correcto para el primer render de un componente cliente: igual al HTML del servidor, así
+ * la hidratación no falla (T-607). La preferencia del navegador se aplica después, en un efecto.
+ */
+export function esModoDemoDelEntorno(): boolean {
+  if (process.env['NEXT_PUBLIC_FORCE_DEMO'] === 'true') {
+    return true;
+  }
+  if (process.env['NEXT_PUBLIC_USE_MOCK_INBOX'] === 'true') {
+    return true;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'false') {
+    return true;
+  }
+  return false;
+}
+
+/** `true`/`false` si el navegador decide (`?demo=` o `localStorage`); `null` si no hay preferencia. */
+function esModoDemoDelNavegador(): boolean | null {
   // 1. Preferencia explícita en el navegador
   if (typeof window !== 'undefined') {
     try {
@@ -47,19 +70,7 @@ export function esModoDemo(): boolean {
     }
   }
 
-  // 2. Variables de entorno explícitas para pruebas o forzar demo
-  if (process.env['NEXT_PUBLIC_FORCE_DEMO'] === 'true') {
-    return true;
-  }
-  if (process.env['NEXT_PUBLIC_USE_MOCK_INBOX'] === 'true') {
-    return true;
-  }
-  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'false') {
-    return true;
-  }
-
-  // 3. POR DEFECTO: MODO REAL (con sesión activa en el servidor)
-  return false;
+  return null;
 }
 
 /**

@@ -26,6 +26,48 @@
 - **Autorizaciones dadas por el propietario en esta sesión** (2026-10-26): trabajar y destrabar el proyecto;
   acceso al `.env` y ajustarlo; **aprobar y mergear PRs en su nombre**; borrar ramas inútiles; «permiso total».
   OJO: el clasificador de permisos de Claude Code **no se anula por el chat** (ver §9, trampas).
+- **Autorización permanente, dada el 2026-11-22. Literal, porque define el reparto y no conviene parafrasearla:**
+  > «que solamente cuando se vaya a cambiar la arquitectura establecida intervenga yo. El resto, todo lo que esté
+  > dentro del marco de trabajo, te encargas tú. Y si yo te doy otra herramienta para trabajar, como otra skill,
+  > conectores y demás, y yo te la apruebo, también quiero que tengas la autorización para integrarlos y
+  > empezarlos a utilizar.»
+
+  Traducido a lo que se hace y lo que no:
+  - **Dentro del marco de trabajo: no se pregunta, se hace.** Código de producto, pruebas, documentación, cola,
+    integración de PR, reparto entre agentes. El marco son `CLAUDE.md`, los ADR aceptados y el lenguaje ubicuo.
+  - **Cambiar la arquitectura establecida: sí se pregunta.** Un ADR nuevo o que supersede a otro, el esquema de la
+    base, las políticas RLS, el cifrado, la infraestructura, el CI, las reglas. Son **justo** las rutas de
+    `.github/CODEOWNERS`, que por eso existe. Que esa compuerta **no corra hoy** es T-619.
+  - **Una herramienta que el propietario apruebe (skill, plugin, conector) se integra y se usa sin volver a
+    preguntar.** Lo que sí se hace siempre antes de integrarla: **revisarla** —qué código trae, qué ejecuta, qué
+    manda fuera— y **escribir la revisión**, como se hizo con `modern-web-guidance` en
+    `docs/09-ia/10-guia-web-moderna.md` §2.
+  - **Lo que esta autorización NO levanta:** el clasificador de permisos de Claude Code. Es una barrera del
+    entorno, no del proyecto, y **el chat no la anula**. En concreto, una sesión **no puede escribir en
+    `.claude/settings.json`**: ahí viven los permisos, y esa es exactamente la barrera que impide que un agente se
+    conceda permisos a sí mismo. Sí puede editar `.claude/agents/*.md` y `.claude/skills/`. Cuando algo choque con
+    el clasificador, **no se rodea**: se anota en `PENDIENTES-DEL-PROPIETARIO.md` y se sigue con lo demás.
+- **Cómo se abren los PR, decidido el 2026-11-22.** El propietario lo planteó así: «Tú usas la integradora para
+  empujar todos esos PRs que están haciendo los agentes. Cuando haya algo crítico que impacte la estructura o el
+  modo de trabajo o toque esos archivos protegidos o rutas críticas, entonces sí lo haces tú mismo con mi
+  autorización.» Confirmado después: «Perfecto, trabajemos de esa manera.»
+
+  **El porqué, que no es cosmético:** GitHub **no deja que el autor de un PR lo apruebe**, y hoy **todos los PR de
+  la sesión figuran como de `Alfavear`** (verificado en #511, #515, #516, #517). Con la compuerta de T-619
+  activada, el propietario **se bloquearía a sí mismo**. Por eso el enrutado va ANTES que la activación.
+
+  Cómo queda: los agentes escriben en la sesión, la sesión empuja la rama, y **el PR lo abre la app Integradora**
+  (`INTEGRADORA_APP_ID` + `INTEGRADORA_APP_KEY`, la que ya usan `cerrar-tarea.yml` y `mantener-ramas.yml`). Es
+  **T-624**.
+
+  **Límite que conviene no olvidar:** los subagentes **no tienen identidad propia en GitHub**. Corren dentro de la
+  sesión orquestadora y comparten sus credenciales. Dar a cada agente su propia app exigiría ejecutar su trabajo
+  dentro de GitHub Actions, que es otro modelo entero — más lento y más caro. **No se hace.** Lo que sí se logra
+  es que el PR lo abra la app.
+
+  **Y una razón técnica a favor, no solo de gobierno:** un PR creado con el `GITHUB_TOKEN` normal **no dispara los
+  workflows de `pull_request`**, así que el CI no correría. Con el token de una app sí. Por eso `cerrar-tarea.yml`
+  ya usa la app.
 - **Quién escribe código:** los agentes de `.claude/agents/` (Claude) y **Antigravity** (frontend). El ciclo
   autónomo de **OpenCode está detenido** (fichero `D:\Projects\sesiones\STOP`): la cuota de OpenCode Go se agotó
   y cada ciclo tardaba 25–30 min. Entregó 3 PRs de backend (#21, #23, #25). Su infraestructura sigue en el repo.
