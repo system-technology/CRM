@@ -26,6 +26,7 @@ import {
   obtenerTableroPipeline,
   moverOportunidadDeEtapa,
   estaUsandoApiReal,
+  estaUsandoApiRealSegunEntorno,
   CrmApiError,
 } from '../../../lib/crm-api';
 import {
@@ -69,12 +70,13 @@ function PipelineContenido() {
   const setFiltroTexto = (v: string) => actualizarFiltro('filtroTexto', v);
   const setFiltroAsesor = (v: string) => actualizarFiltro('filtroAsesor', v);
 
-  // Estado del origen de datos y configuración (Tarea 0c.14)
-  const [esModoSimulado, setEsModoSimulado] = useState<boolean>(!estaUsandoApiReal());
+  // Estado del origen de datos y configuración (Tarea 0c.14). Los valores iniciales no leen `?demo=`: el
+  // servidor no lo ve y la hidratación fallaría (T-607); el efecto de carga los corrige tras montar.
+  const [esModoSimulado, setEsModoSimulado] = useState<boolean>(!estaUsandoApiRealSegunEntorno());
   const [errorConfiguracion, setErrorConfiguracion] = useState<string | null>(null);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [mostrarDemoForzado, setMostrarDemoForzado] = useState<boolean>(false);
-  const [cargandoApi, setCargandoApi] = useState<boolean>(estaUsandoApiReal());
+  const [cargandoApi, setCargandoApi] = useState<boolean>(estaUsandoApiRealSegunEntorno());
 
   const cargarTablero = () => {
     if (!estaUsandoApiReal() || esDemo) {

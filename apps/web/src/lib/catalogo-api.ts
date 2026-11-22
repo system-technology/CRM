@@ -1,4 +1,4 @@
-import { estaUsandoApiReal } from './crm-api';
+import { estaUsandoApiReal, estaUsandoApiRealSegunEntorno } from './crm-api';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { obtenerBaseApi } from './api-base';
 export { obtenerBaseApi };
@@ -44,6 +44,17 @@ export function estaUsandoCatalogoReal(): boolean {
     return true;
   }
   return estaUsandoApiReal();
+}
+
+/** Como `estaUsandoCatalogoReal()` sin `?demo=` ni `localStorage`: lo que el servidor también ve (T-607). */
+export function estaUsandoCatalogoRealSegunEntorno(): boolean {
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'false') {
+    return false;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true') {
+    return true;
+  }
+  return estaUsandoApiRealSegunEntorno();
 }
 
 export class CatalogoApiError extends Error {
