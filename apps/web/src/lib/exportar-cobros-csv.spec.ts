@@ -88,6 +88,25 @@ describe('exportarCobrosCSV (T-335)', () => {
     expect(cabecera).not.toContain('margen');
   });
 
+  it('pasajeros: SOLO cifras, en columnas numéricas (T-590, R10)', () => {
+    const csv = exportarCobrosCSV([
+      fila({ pasajeros: { adultos: 2, ninos: 1, infantes: 1, total: 4 } }),
+    ]);
+    const cab = celdas(lineas(csv)[0]!);
+    const i = cab.indexOf('Adultos');
+    expect(i).toBeGreaterThan(-1);
+    expect(cab.slice(i, i + 4)).toEqual(['Adultos', 'Niños', 'Infantes', 'Pasajeros']);
+    expect(celdas(lineas(csv)[1]!).slice(i, i + 4)).toEqual(['2', '1', '1', '4']);
+    // Ni nombres ni edades: la vista la lee también OPERACIONES (`cobro.ver`) y el CSV sale de la agencia.
+    expect(cab.join(';').toLowerCase()).not.toMatch(/nombre|edad|pasaporte|nacimiento/);
+  });
+
+  it('sin `pasajeros` las celdas quedan vacías, nunca 0 (no es «cero pasajeros»)', () => {
+    const csv = exportarCobrosCSV([fila()]);
+    const i = celdas(lineas(csv)[0]!).indexOf('Adultos');
+    expect(celdas(lineas(csv)[1]!).slice(i, i + 4)).toEqual(['', '', '', '']);
+  });
+
   it('sin filas, solo la cabecera', () => {
     expect(lineas(exportarCobrosCSV([]))).toHaveLength(1);
   });

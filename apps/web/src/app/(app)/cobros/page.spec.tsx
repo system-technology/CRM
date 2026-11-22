@@ -147,6 +147,22 @@ describe('Cobros: quién pagó y quién debe (T-332, T-335)', () => {
     expect(nombre).toMatch(/^cobros-viajapro-\d{4}-\d{2}-\d{2}\.csv$/);
   });
 
+  it('pasajeros: total y composición en cada archivo; guion si el servidor no lo envía (T-590)', async () => {
+    vi.mocked(api.listarCobros).mockResolvedValue(
+      vista([fila(1, { pasajeros: { adultos: 2, ninos: 1, infantes: 1, total: 4 } }), fila(2)]),
+    );
+    render(<CobrosPage />);
+    await screen.findAllByTestId('fila-de-cobro');
+    const celdas = screen.getAllByTestId('pasajeros-de-cobro');
+    // móvil + escritorio: dos presentaciones por archivo
+    expect(celdas).toHaveLength(4);
+    expect(celdas[0]!.textContent).toBe('4');
+    expect(screen.getAllByText('4 pasajeros: 2 adultos, 1 niño, 1 infante')).toHaveLength(2);
+    expect(screen.getAllByText('2 ad · 1 niño · 1 inf')).toHaveLength(2);
+    expect([celdas[1]!, celdas[3]!].map((c) => c.textContent)).toEqual(['—', '—']);
+    expect(screen.getAllByText('Pasajeros: sin dato')).toHaveLength(2);
+  });
+
   it('estado vacío con filtro: lo dice y ofrece volver a «Todos»', async () => {
     vi.mocked(api.listarCobros).mockResolvedValue(vista([]));
     render(<CobrosPage />);
