@@ -227,3 +227,18 @@ código: es trabajar sobre una copia vieja de `main` o de la documentación.
    a reescribirla; revisa el mensaje antes de empujar.
 6. **Al cerrar la sesión:** `ESTADO.md` y bitácora. Ver la sección «Cómo actualizar este archivo»
    de [`ESTADO.md`](../../ESTADO.md).
+
+## Abrir el PR con la app Integradora (T-624)
+
+GitHub no deja que el autor de un PR lo apruebe, y los PR que abre la sesión orquestadora figuran como del
+propietario. Para que el propietario pueda aprobar las rutas protegidas, el PR lo abre la app Integradora:
+
+- **Disparador explícito.** Un push a `a/**`, `b/**` o `i/**` abre el PR solo si el **último commit** lleva
+  en su mensaje la línea `Abrir-PR: si`. Sin ella, el push es trabajo en curso y no pasa nada. También se
+  puede lanzar a mano: Actions, «Abrir PR con la Integradora», con el nombre de la rama.
+- **Idempotente:** si la rama ya tiene un PR abierto, no abre otro.
+- Título = asunto del commit; cuerpo = cuerpo del commit + plantilla de PR del repositorio.
+- Sin `INTEGRADORA_APP_ID`/`INTEGRADORA_APP_KEY` avisa y termina; abre el PR a mano.
+- No activa el auto-merge: decide quien integra.
+
+Flujo: `.github/workflows/abrir-pr.yml`.
