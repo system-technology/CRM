@@ -290,6 +290,19 @@ function fechaMas(ahora: Date, dias: number): string {
 const ID_DEMO = (n: number): string =>
   `01932000-0000-7000-8000-0000000e${n.toString().padStart(4, '0')}`;
 
+/** Composición de la maqueta: cifras, como la API real (T-590). */
+function pasajerosDemo(i: number) {
+  const composiciones: ReadonlyArray<readonly [number, number, number]> = [
+    [2, 0, 0],
+    [2, 2, 0],
+    [4, 0, 0],
+    [2, 1, 1],
+    [1, 0, 0],
+  ];
+  const [adultos, ninos, infantes] = composiciones[i % composiciones.length] ?? [1, 0, 0];
+  return { adultos, ninos, infantes, total: adultos + ninos + infantes };
+}
+
 /** Archivos abiertos de la maqueta: destinos y fechas coherentes con el resto de la demo. */
 export function crearVistaDeCobrosDemo(ahora: Date): VistaDeCobrosTipo {
   // [destino, días para salir, total, pagado, moneda, estado de cobro, días al plazo]
@@ -313,6 +326,7 @@ export function crearVistaDeCobrosDemo(ahora: Date): VistaDeCobrosTipo {
       contactoId: ID_DEMO(100 + i),
       destino,
       fechaSalida: fechaMas(ahora, dias),
+      pasajeros: pasajerosDemo(i),
       total: dinero(total),
       pagado: dinero(pagado),
       saldo: dinero(total - pagado),

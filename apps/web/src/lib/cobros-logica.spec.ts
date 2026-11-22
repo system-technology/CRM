@@ -12,6 +12,7 @@ import {
   fraseDeSaldo,
   hoyEnLaAgencia,
   mensajeDeErrorDeCobro,
+  pasajerosEnPantalla,
   saldoEnPantalla,
   sinSigno,
 } from './cobros-logica';
@@ -312,5 +313,37 @@ describe('ecoDeMonto — lo que se va a registrar, a la vista antes de pulsar (T
     expect(ecoDeMonto('0', 'COP')).toBeNull();
     expect(ecoDeMonto('-5', 'COP')).toBeNull();
     expect(ecoDeMonto('abc', 'COP')).toBeNull();
+  });
+});
+
+describe('pasajerosEnPantalla (T-590): cifras, nunca nombres', () => {
+  it('todos adultos: solo el total, sin desglose que no aporta', () => {
+    expect(pasajerosEnPantalla({ adultos: 3, ninos: 0, infantes: 0, total: 3 })).toEqual({
+      total: '3',
+      detalle: null,
+      etiqueta: '3 pasajeros: 3 adultos',
+    });
+  });
+
+  it('con niños e infantes: total + composición compacta y etiqueta accesible', () => {
+    expect(pasajerosEnPantalla({ adultos: 2, ninos: 1, infantes: 1, total: 4 })).toEqual({
+      total: '4',
+      detalle: '2 ad · 1 niño · 1 inf',
+      etiqueta: '4 pasajeros: 2 adultos, 1 niño, 1 infante',
+    });
+  });
+
+  it('un solo pasajero va en singular', () => {
+    expect(pasajerosEnPantalla({ adultos: 1, ninos: 0, infantes: 0, total: 1 }).etiqueta).toBe(
+      '1 pasajero: 1 adulto',
+    );
+  });
+
+  it('sin dato: guion, NUNCA 0 (que se leería como «cero pasajeros»)', () => {
+    expect(pasajerosEnPantalla(undefined)).toEqual({
+      total: '—',
+      detalle: null,
+      etiqueta: 'Pasajeros: sin dato',
+    });
   });
 });
