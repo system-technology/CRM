@@ -12499,6 +12499,68 @@ tasks:
     source: "peticion del propietario (2026-11-21)"
     owner: backend
 
+  - id: T-603
+    title: "CI: el job de pruebas da 5 ingresos por minuto y la suite necesita 7"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: .github/workflows/ci.yml es ruta protegida y espera aprobacion del propietario."
+    acceptance:
+      - "CAUSA DE FONDO de T-592, medida: el limitador de Better Auth da 5 intentos por minuto POR IP
+        y todo el job sale de la misma IP. La suite hace 7 ingresos por pantalla (01 hace 2, 08 hace 3,
+        09 hace 2) en unos 90 segundos"
+      - "T-592 hace que la prueba ESPERE el cupo, que es lo correcto desde su carril, pero no cambia
+        el cupo. Puede anadir hasta un minuto a cada corrida"
+      - "Lo limpio es subir el tope SOLO en el job de prueba, como ya se hace con LIMITE_TASA_POR_IP
+        en ci.yml. NO tocar el limitador de produccion: ahi protege de verdad"
+      - "Al hacerlo, revisar si el ayudante de reintento de T-592 sigue haciendo falta o puede
+        simplificarse"
+    source: "medicion de la sesion de T-592 (2026-11-22)"
+    owner: devops
+
+  - id: T-604
+    title: "QA: una prueba de 08 puede pasar en vacio porque el 429 y el rechazo de credenciales comparten titulo"
+    type: test
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "ENCONTRADO al arreglar T-592: la prueba «al quitar el usuario ya no entra con el» espera
+        toContainText('Error de autenticacion'). Ese es TAMBIEN el titulo de la alerta de un 429 del
+        limitador, asi que la prueba pasaria aunque el limitador cortara y el usuario nunca llegara a
+        intentar entrar"
+      - "Es cobertura falsa en una prueba de PERMISOS: dice que comprueba que un usuario dado de baja
+        no entra, y en realidad acepta cualquier alerta"
+      - "Debe exigir el texto que solo sale al rechazar credenciales («Los datos no coinciden») y NO
+        el titulo generico"
+      - "EXIGENCIA: verla fallar. Forzar el caso del 429 y comprobar que con la asercion nueva la
+        prueba se pone en rojo, que es lo que hoy no hace"
+      - "Revisar si hay mas pruebas que afirmen cosas sobre el titulo generico de la alerta"
+    source: "hallazgo de la sesion de T-592 (2026-11-22)"
+    owner: qa
+
+  - id: T-605
+    title: "QA: 08 conserva su propio ingreso y no usa el ayudante que espera el cupo"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on:
+      - T-592
+    acceptance:
+      - "08 usa 3 de los 5 cupos por minuto y hoy no desborda, pero tiene su propia funcion de
+        ingreso: si alguien anade un ingreso mas a la suite, volvera la intermitencia"
+      - "Pasarla a ingresarPorPantalla de auxiliares.ts"
+      - "Ademas, sin investigar: en el job 137020978172 la primera prueba de 08 fallo a los 30,9 s en
+        un toHaveText, y 09 paso en esa misma corrida. Puede ser el limitador por agencia (600 por
+        minuto) que 08 ya contempla en botonEditarUsuario. Si reaparece, merece tarea propia"
+    source: "cola declarada por la sesion de T-592 (2026-11-22)"
+    owner: qa
+
   - id: T-602
     title: "Hilo: el traspaso a la proxima madre se escribe ANTES de quedarse sin contexto, no despues"
     type: docs
