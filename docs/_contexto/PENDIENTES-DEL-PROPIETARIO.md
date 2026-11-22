@@ -160,3 +160,116 @@ responde en el servicio real.
 Es lo mismo que el punto de `scripts/diagnostico-ingreso.mjs` (PR #490): sin permiso para hablar por
 HTTP con lo que ya está en pie, cada comprobación del despliegue acaba siendo una suposición, y de
 suposiciones heredadas viene justo el problema que se corrigió hoy.
+
+## 21. Instalar el plugin `modern-web-guidance` (autorizado el 2026-11-22, no lo puede hacer un agente)
+
+**Lo autorizaste y lo intenté. El clasificador del modo automático deniega que una sesión escriba en
+`.claude/settings.json`** — es la barrera que impide que un agente se conceda permisos a sí mismo.
+**No la rodeé**, ni con el editor ni delegándolo.
+
+Todo lo demás está hecho: el repositorio **revisado línea a línea** (no contiene ni un fichero
+ejecutable en el commit `64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65`, v1.0.1), el analizador **ejecutado
+sobre el código real**, y los 25 hallazgos aprovechables ya implementados (T-615 y T-616). Los 4
+descartados, con su motivo, están en `docs/09-ia/10-guia-web-moderna.md` §3.
+
+**Lo que tienes que pegar está en `docs/09-ia/10-guia-web-moderna.md` §5**, literal y listo para
+fusionar con lo que ya hay. Son tres bloques: `env` con `DISABLE_TELEMETRY`, `extraKnownMarketplaces`
+fijado al commit revisado, y `enabledPlugins`. Más dos entradas en `permissions.allow`.
+
+**Y un aviso que cambia el valor de todo esto:** una **sesión en la nube no carga
+`extraKnownMarketplaces`**, porque requiere el diálogo de confianza de la carpeta, que en la nube
+nunca aparece. O sea: aunque lo commitees, **las sesiones como esta seguirán sin el plugin**. Quien
+lo aprovecha es tu Claude Code local, y aun así hay que correr una vez por clon
+`claude plugin install modern-web-guidance@googlechrome --scope project`.
+
+Lo que **sí** funciona aquí y en el CI sin instalar nada es la CLI por `npx`. Por eso las entradas de
+`permissions.allow` son lo más útil de todo el bloque: sin ellas, cada análisis me pide permiso.
+
+## 22. Las etiquetas nuevas de la demo NO llegan a staging sin que tú lances el workflow (2026-11-22)
+
+**T-614 está integrado (#509): la demo ya trae siete hilos con sus etiquetas puestas, incluidas «Ya
+reservó», «Reserva pendiente» y «Nuevo», las palabras exactas de tu cliente. Pero eso está en el
+código, no en la base de staging.** `deploy-staging.yml` **migra pero no siembra**. La siembra solo
+corre dentro de `preparar-demo-staging.yml`, que es manual.
+
+**No lo he lanzado, y no es por falta de permiso técnico. Es que lanzarlo haría daño:**
+
+1. El workflow exige una contraseña como **input obligatorio y sin valor por defecto**, y **con otra
+   contraseña rotas la que hay**. Si lo lanzo, **le cambio la contraseña a tu cliente justo después
+   de que consiguiera entrar.**
+2. **El resumen de la ejecución muestra el correo y la contraseña EN CLARO**, y este repositorio es
+   **público**. Lo advierte su propia cabecera. Ya pasó una vez: por eso `DemoViaja2026` está en el
+   punto de rotación.
+
+Así que o lo lanzas tú con la contraseña que quieras (y la rotas después), o arreglamos primero el
+workflow. **Lo segundo es lo que recomiendo**, y lo dejo encolado: partirlo en dos caminos, uno
+**«solo sembrar»** que no toque credenciales ni pida contraseña, y otro **«rotar credencial»** que
+siga exigiéndola. Sembrar datos de demostración y tocar una contraseña no tienen por qué ser la
+misma operación, y hoy lo son.
+
+Mientras tanto, **lo que tu cliente ve sigue siendo la demo de antes**: una sola conversación y el
+desplegable de etiquetas vacío al filtrar.
+
+## 23. T-619: la compuerta de rutas protegidas ya existe como check, falta hacerla obligatoria (2026-11-22)
+
+**Qué estaba roto (medido contra la API):** la protección de `main` tiene
+`require_code_owner_reviews: true` pero `required_approving_review_count: 0`, y con el contador en 0
+GitHub no exige la revisión del code owner. El PR #511 se integró con `CLAUDE.md` y cuatro ficheros de
+`.claude/` sin una sola revisión. **R11 era falso.** Y subir el contador a 1 «a secas» no sirve: te
+haría aprobar todos los PR, no solo los de rutas protegidas.
+
+**Qué se hizo:** un check propio, `rutas-protegidas`
+(`.github/workflows/rutas-protegidas.yml` + `scripts/comprobar-aprobacion-owner.mjs`). Mira los
+ficheros del PR contra `humanRequired` de `ownership.json` (la misma lista que usa «Carril y tarea»;
+no hay una segunda). Si ninguno cae, pasa en verde. Si alguno cae, exige una revisión **APROBADA de
+`@Alfavear` sobre el commit actual** y falla si no la hay. Cuando apruebas,
+`rutas-protegidas-reevaluar.yml` repite la ejecución sobre el mismo commit. Los PR normales no se
+enteran.
+
+**Lo único que solo puedes hacer tú, y solo DESPUÉS de que este PR esté en `main`:**
+
+1. Añadir `rutas-protegidas` a los checks obligatorios de `main`. Por línea de comandos:
+   `gh api -X POST repos/system-technology/CRM/branches/main/protection/required_status_checks/contexts --input - <<< '["rutas-protegidas"]'`,
+   o en Settings → Branches → regla de `main` → «Require status checks». **No lo hagas antes de
+   integrar el PR:** mientras el check no se haya ejecutado nunca, GitHub lo espera para siempre y
+   todos los PR quedan bloqueados.
+2. **No toques `required_approving_review_count`** (déjalo en 0): subirlo es justo lo que obligaría a
+   aprobarlo todo.
+3. Decidir con quién se abren los PR que tocan rutas protegidas. **GitHub no deja que el autor de un
+   PR lo apruebe.** El #511 lo abrió `Alfavear`: si los agentes siguen abriendo PR con tu cuenta, tú no
+   puedes aprobarlos y el check fallará con un mensaje que lo dice. Esos PR deben abrirse con la App
+   integradora (`altardiario-integradora[bot]`, autora de #514) para que la aprobación sea tuya y
+   humana. Las Apps no pueden aprobar.
+
+**Qué implica para el flujo:** `dismiss_stale_reviews: true` descarta la aprobación al empujar un
+commit, y el check además exige que la aprobación sea del commit actual. Con «rama al día» obligatoria,
+un PR protegido aprobado que se queda atrás de `main` y se actualiza **necesita una aprobación
+nueva**. Hay que aprobar al final, cuando el PR ya no va a cambiar. Mientras el punto 1 no esté hecho,
+sigue valiendo: **no activar auto-merge en un PR que toque rutas protegidas.**
+
+**No verificado todavía:** que `GITHUB_TOKEN` con `pull-requests: read` lea las revisiones, y que la
+repetición dispare el check obligatorio sobre el commit correcto, solo se pueden comprobar en
+GitHub Actions al abrirse el PR (el script sí se probó contra #511 y #514 con la API real). Además,
+`ownership.json` lista `opencode.jsonc` y `.github/CODEOWNERS` no: la compuerta protege lo primero y
+GitHub no. Relacionado con el punto 13 (T-083).
+
+### Y hay una segunda via, nativa, verificada despues de escribir lo anterior
+
+La pregunta «¿puede GitHub exigir aprobacion solo en ciertas rutas?» quedo sin responder en el
+informe de esta rama porque `docs.github.com` no se podia leer desde aquel entorno. Se leyo despues
+y **la respuesta es que si**, con la regla **Required reviewers** de una *ruleset*. Literal:
+
+> «Optionally, you can require review or approval from specific teams when a pull request changes
+> certain files or directories.»
+
+Acepta patrones de ruta, admite exclusiones con `!`, llega a 15 equipos y **solo funciona en
+repositorios de organizacion**, que es nuestro caso. Exige un **equipo**, no un usuario suelto, asi
+que habria que crear uno contigo dentro.
+
+Tambien quedo confirmado que **«Restrict file paths» es de *pushes***, no de pull requests, y que
+**el contador de aprobaciones se aplica a TODOS los PR**. Lo que NO esta documentado es que pasa con
+el contador en 0 (lo sabemos porque lo medimos aqui) ni si el autor puede aprobar su propio PR.
+
+**Las dos vias valen y no se estorban.** La *ruleset* es mas limpia; el check deja el motivo escrito
+en rojo en el CI y no depende de equipos. Decide tu.
+

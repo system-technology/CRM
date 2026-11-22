@@ -15,6 +15,30 @@ densidad de información importan más que la decoración.
 
 `CLAUDE.md`, `docs/02-arquitectura/08-frontend.md`, `docs/07-ingenieria/01-convenciones.md`.
 
+## Antes de implementar una pantalla: busca en `modern-web-guidance` (R15)
+
+Es la guía de los equipos de **Chrome, Edge, Firefox y MDN** sobre cómo hace hoy la plataforma web
+lo que vas a construir: diálogos y popovers, tablas, modo oscuro, posicionamiento por anclaje,
+transiciones de vista, animaciones por scroll, formularios y autorrelleno, accesibilidad, Core Web
+Vitals. **No hace falta instalar nada:**
+
+```sh
+DISABLE_TELEMETRY=1 npx -y modern-web-guidance@latest search "<2-5 palabras en inglés>"
+DISABLE_TELEMETRY=1 npx -y modern-web-guidance@latest retrieve "<id>"
+```
+
+La consulta describe la capacidad, no el dominio ni el framework: «light dismiss dialog», no «cerrar
+el modal de ajustes en React». Divide las tareas con varias funcionalidades en varias búsquedas.
+
+**Precedencia: `CLAUDE.md` → la skill `diseno-web` → esta guía.** Ella decide la técnica; `diseno-web`
+decide la forma. Si chocan, manda `diseno-web` y lo anotas en el PR.
+
+**Y lee el sitio antes de aplicar cualquier hallazgo.** Medido el 2026-11-22: de 29 hallazgos reales,
+**4 eran falsos positivos**, y uno habría metido datos personales en un log. La herramienta sirve
+para encontrar, no para decidir. Detalle: `docs/09-ia/10-guia-web-moderna.md`.
+
+Para buscar deuda ya escrita: `DISABLE_TELEMETRY=1 npx -y modern-web-guidance@latest legacy-scan apps/web`.
+
 ## Stack y cómo se usa
 
 - **Next.js App Router.** Server Components por defecto. `"use client"` solo cuando hay estado,
