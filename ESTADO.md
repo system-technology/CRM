@@ -35,6 +35,28 @@ comprobarse.** Staging está vivo (verificado por HTTP el 2026-11-21 a las 22:55
 que **no ha entrado un mensaje de WhatsApp real desde un celular** (T-080, punto 18 de los
 pendientes).
 
+### Diagnóstico de pantallas, con la navegabilidad como eje (2026-11-22, T-618)
+
+El propietario preguntó «¿qué ha cambiado en el diseño? Veo todo igual» y después fijó la
+prioridad: «importante mejorar mucho la navegabilidad». Se levantó la web compilada en modo
+demostración y se miraron **las 13 rutas a 1440 y a 390 px, en claro y en oscuro** (52 capturas, 30
+versionadas), con recorridos reales de Playwright. Resultado:
+[`docs/01-producto/07-diagnostico-de-pantallas.md`](docs/01-producto/07-diagnostico-de-pantallas.md)
+y [bitácora](docs/_bitacora/2026-11-22-diagnostico-de-pantallas.md). **No se tocó `apps/`.**
+
+Lo medido, no opinado: las 9 tarjetas del pipeline y el icono de chat de Contactos enlazan a
+`/bandeja` y no a `/bandeja/<id>`; la cadena chat → cotización → archivo → cobro solo está enlazada
+hacia atrás; **Configuración no se alcanza desde la interfaz** en demostración (ni menú, ni «Más»,
+ni paleta); **Contactos no se puede usar a 390 px** (tabla de 877 px en una caja de 340 con
+`overflow: hidden`, 0 de 8 fichas alcanzables); la tarjeta de seguimientos de «Hoy» se queda blanca
+en tema oscuro porque `neutral-850` no existe en `@theme` (contraste ≈ 1,1 : 1 sobre un importe); y
+«Ventana cerrada» se pinta con el verde de éxito. Además, tres incumplimientos de ADR-0032 (migas
+«Bandeja» en vez de «Conversaciones», migas a mano con un nivel «CRM» en `/seguimientos`, y ningún
+detalle sobrescribe su `document.title`) y una divergencia entre el ADR §4 y el código sobre qué va
+en la barra móvil. La recomendación es un lote **S**: arreglar los dos enlaces rotos, cerrar la
+cadena hacia delante copiando el patrón que ya funciona en Archivo de viaje, y devolver
+Configuración al menú.
+
 ### Cierre del lote nocturno de cobros y permisos (2026-11-21)
 
 `main` arranca en **`580dd67f`** y cierra en **`716f400d`**, con cero PR abiertos al empezar y al terminar. Tres sesiones en paralelo, elegidas contra el
