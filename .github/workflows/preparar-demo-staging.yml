@@ -1,0 +1,103 @@
+# Prepara la DEMO de staging para que alguien pueda entrar (T-600). SOLO MANUAL.
+#
+# Por que existe: `deploy-staging.yml` migra pero no siembra, y ningun script del repositorio ponia
+# contrasena a nadie. Resultado: esquema completo, y nadie podia iniciar sesion. Este workflow
+# diagnostica lo que hay, siembra la agencia demo si falta, y crea un usuario dueno con el correo y
+# la contrasena que escriba quien lo lanza. Es idempotente: se puede lanzar otra vez, y con otra
+# contrasena sirve para rotarla.
+#
+# Lo que NO hace, a proposito:
+#   - No corre en push ni dentro de `deploy-staging.yml`: sembrar en cada despliegue seria un desastre.
+#   - No tiene ninguna contrasena en el repositorio: es un `input` OBLIGATORIO y sin valor por defecto
+#     (un defecto en este YAML seria la contrasena, publica).
+#   - No toca el inicio de sesion: solo anade datos. La contrasena se hashea con Better Auth.
+#   - No corre contra una base con agencias ajenas a la demo (puede haber datos reales): el script se niega.
+#
+# Usa el Environment `staging` (limitado a `main`: el workflow solo funciona lanzado sobre `main`) y
+# su secreto DIRECT_URL, como `deploy-staging.yml`. El resumen de la ejecucion muestra el correo y la
+# contrasena EN CLARO: en un repositorio publico lo ve cualquiera que vea la ejecucion. Rotarla.
+
+name: Preparar demo de staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      correo:
+        description: 'Correo con el que se entra (usuario dueno de la agencia demo)'
+        required: true
+        default: 'demo@viajapro.app'
+        type: string
+      contrasena:
+        description: 'Contrasena con la que se entra (12 a 128 caracteres). Sin valor por defecto a proposito.'
+        required: true
+        type: string
+
+concurrency:
+  group: preparar-demo-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '9.12.0'
+
+jobs:
+  preparar:
+    name: preparar
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      # Lo fija el workflow, no quien lo lanza. El script se niega si no vale `staging`.
+      PREPARAR_DEMO_ENTORNO: staging
+      DATABASE_URL: ${{ secrets.DIRECT_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      DEMO_CORREO: ${{ inputs.correo }}
+      DEMO_CONTRASENA: ${{ inputs.contrasena }}
+    steps:
+      # Guardia explicita: solo staging, solo desde main, y con la conexion presente.
+      - name: Negarse si no es staging
+        run: |
+          if [ "$PREPARAR_DEMO_ENTORNO" != "staging" ]; then
+            echo "::error::Este workflow solo prepara staging."
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Solo se lanza sobre main (es lo que el Environment staging permite): $GITHUB_REF."
+            echo "## Demo de staging: NO se preparo (rama $GITHUB_REF, debe ser main)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Faltan los secretos del Environment 'staging' (DIRECT_URL). No se hizo nada."
+            echo "## Demo de staging: NO se preparo (falta el secreto DIRECT_URL del Environment staging)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Instalar
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Generar el cliente y compilar el dominio
+        run: pnpm --filter @viajapro/database run generate && pnpm --filter @viajapro/domain build
+
+      # Cuenta lo que hay ANTES de tocar nada y aplica las guardias. Si se niega, no se siembra.
+      - name: Diagnosticar
+        run: pnpm --filter @viajapro/api exec tsx src/modules/identity/scripts/preparar-demo-staging.ts diagnosticar
+
+      # La semilla existente, idempotente. En staging no pone apodos (no es loopback).
+      - name: Sembrar la agencia demo
+        run: pnpm --filter @viajapro/database exec tsx prisma/seed.ts
+
+      - name: Crear la credencial
+        run: pnpm --filter @viajapro/api exec tsx src/modules/identity/scripts/preparar-demo-staging.ts credencial
