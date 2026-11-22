@@ -81,7 +81,7 @@ export class LeerCobroUseCase {
       }));
 
     // Lo más urgente primero: fecha límite ascendente, y a igual fecha, número de file.
-    const ordenadas = [...filas].sort(
+    const ordenadas = filas.toSorted(
       (x, y) =>
         x.calculado.fechaLimite.localeCompare(y.calculado.fechaLimite) ||
         x.archivo.numero - y.archivo.numero,
