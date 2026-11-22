@@ -1296,7 +1296,7 @@ describe('la lista ordena por plazo en la base ANTES del límite (T-251)', () =>
     expect(primeroSinPlazo).toBeGreaterThanOrEqual(0);
     expect(completa.slice(primeroSinPlazo).every((a) => a.proximoPlazo === null)).toBe(true);
     const sinPlazo = completa.slice(primeroSinPlazo).map((a) => a.numero);
-    expect(sinPlazo).toEqual([...sinPlazo].sort((x, y) => y - x));
+    expect(sinPlazo).toEqual(sinPlazo.toSorted((x, y) => y - x));
     expect(completa[primeroSinPlazo]?.id).toBe(reciente.id);
     expect(completa.findIndex((a) => a.id === reciente.id)).toBeLessThan(
       completa.findIndex((a) => a.id === anterior.id),

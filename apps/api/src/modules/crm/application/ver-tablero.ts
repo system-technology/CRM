@@ -28,8 +28,7 @@ export class VerTablero {
     ]);
 
     const columnas = etapas
-      .slice()
-      .sort((a, b) => a.orden - b.orden)
+      .toSorted((a, b) => a.orden - b.orden)
       .map((etapa) => {
         const datos = porEtapa.get(etapa.id);
         return {

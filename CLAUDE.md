@@ -13,7 +13,7 @@ mueve a `docs/` y aquí queda solo el enlace.
 WhatsApp: el dominio del turismo (pasajeros, tarifas netas, itinerarios, archivos de viaje,
 proveedores) está en el núcleo del modelo.
 
-Estado actual: **en construcción, sin agencia real todavía y sin servicio desplegado.** Hay catálogo,
+Estado actual: **en construcción y sin agencia real todavía. Hay staging desplegado y en pie** (verificado por HTTP el 2026-11-21: la web responde y la API de Render devuelve `baseDeDatos: ok`, `rol: viajapro_app`, `aislamiento: forzado`), **y un cliente del propietario probándolo: el 2026-11-22 consiguió iniciar sesión** (T-594, T-600). Este párrafo decía «sin servicio desplegado» y era falso. Hay catálogo,
 cotizador, autenticación, CRM, bandeja, reportes, recepción y envío de WhatsApp (probados con el número
 de prueba de Meta y con una Graph API falsa) y un modo de un solo proceso sin Redis, con el CI de
 10 checks (8 obligatorios: `.github/proteccion-main.json`). Faltan el despliegue, el cifrado de PII (ADR-0015), la prueba de la web
@@ -48,6 +48,7 @@ contra la API, pagos y automatizaciones. El repositorio es **público** (`system
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum`. | Sin configurabilidad perdemos clientes; con configurabilidad infinita nos volvemos un CRM genérico y perdemos la ventaja. Ver ADR-0006. |
 | R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola (`roadmap/tasks.yaml`, ADR-0016) con dueño, no bloquea. | Un revisor siempre encuentra algo: ese es su encargo. Revisar revisiones tiene rendimientos decrecientes y consume el tiempo que el producto necesita. Ver §3.1. |
 | R14 | **Todo cambio se documenta, lo hecho y lo que se va a hacer.** Cada PR deja su rastro en la documentación versionada, en el mismo PR (o, como tarde, en el PR de cierre del lote): lo que se hizo, en `ESTADO.md`, `docs/_contexto/DIARIO.md` y `docs/_bitacora/`; lo que se va a hacer, en `roadmap/tasks.yaml` y en la hoja de ruta o el paso a paso que corresponda (`docs/08-roadmap/`); cada decisión estructural, en un ADR (R7); y cada cambio de comportamiento, en la doc de su tema (lenguaje ubicuo, runbook, seguridad). Un plan, una hoja de ruta o un paso a paso que solo existe en una conversación o en el `CHECKPOINT.local.md` **no existe**. Un cambio sin su rastro no está terminado. | Hay muchas sesiones y la memoria de una conversación muere al compactar. Lo que no está escrito se pierde, se contradice o se repite. Ver §9. |
+| R15 | **Antes de escribir interfaz web se consulta `modern-web-guidance` (Google Chrome, Edge, Firefox y MDN), y ningún hallazgo suyo se aplica sin leer el sitio.** Vale para pantallas, CSS, animaciones, formularios, accesibilidad y JS de cliente; **no** para backend, infraestructura ni herramientas. Funciona sin instalar nada: `DISABLE_TELEMETRY=1 npx -y modern-web-guidance@latest search "<2-5 palabras en inglés>"` y luego `retrieve`. Para encontrar deuda: `legacy-scan <ruta>`. **Precedencia: `CLAUDE.md` → la skill `diseno-web` → esta guía.** La guía decide la técnica; `diseno-web` decide la forma; si chocan, manda `diseno-web` y el choque se anota. Detalle y revisión de seguridad: `docs/09-ia/10-guia-web-moderna.md`. | Los modelos arrastran patrones viejos de su entrenamiento y escriben JavaScript pesado donde la plataforma ya tiene algo nativo. Medido el 2026-11-22: 29 hallazgos reales en el repositorio — **y 4 falsos positivos**, uno de los cuales habría metido datos personales en un log al «propagar la causa» de un error que se despoja a propósito por R10. **Sirve para encontrar, no para decidir.** |
 
 ### 3.1 La regla de parada
 
@@ -126,6 +127,10 @@ Contextos delimitados **que existen como módulo** en `apps/api/src/modules/`: `
   ambos: `docs/01-producto/02-lenguaje-ubicuo.md` es el diccionario.
 - **Pruebas:** co-localizadas, `*.spec.ts` (unitarias) y `*.e2e-spec.ts` (integración).
 - **Errores:** nunca `catch` silencioso. Los errores de dominio son clases tipadas, no cadenas.
+- **Interfaz web:** antes de implementar una pantalla, un componente o una animación, se busca en
+  `modern-web-guidance` (R15). Dos órdenes: `search "<2-5 palabras en inglés>"` y luego `retrieve`.
+  Nada de nombres de framework ni de dominio en la consulta — «light dismiss dialog», no «cerrar el
+  modal de ajustes en React».
 
 ## 7. Comandos
 

@@ -253,11 +253,18 @@ export async function sembrarMotivosDePerdida(
 // las agencias que ya existían. Editables y borrables como cualquier otra. Ojo: volver a sembrar
 // una agencia (`pnpm db:seed` sobre la demo) repone la que la agencia hubiera borrado; las agencias
 // reales no se re-siembran.
+/** Una etiqueta sembrable: nombre, clave de color de la paleta (CHECK en la base) y orden. */
+export interface EtiquetaSembrada {
+  readonly nombre: string;
+  readonly color: string;
+  readonly orden: number;
+}
+
 export const ETIQUETAS_SEMBRADAS = [
   { nombre: 'Pagado', color: 'verde', orden: 0 },
   { nombre: 'Pago pendiente', color: 'ambar', orden: 1 },
   { nombre: 'Seguimiento', color: 'azul', orden: 2 },
-] as const satisfies ReadonlyArray<{ nombre: string; color: string; orden: number }>;
+] as const satisfies ReadonlyArray<EtiquetaSembrada>;
 
 /** La clave de la unicidad de la base: `lower(btrim(nombre))`. */
 const nombreNormalizado = (nombre: string): string => nombre.trim().toLowerCase();
@@ -267,17 +274,29 @@ const nombreNormalizado = (nombre: string): string => nombre.trim().toLowerCase(
  * orden), se le deja la suya. La unicidad es de expresión (`lower(btrim(nombre))`) y Prisma no
  * sabe hacer `upsert` sobre ella: se filtra lo que ya existe y el resto entra con
  * `skipDuplicates` (ON CONFLICT DO NOTHING), que además cubre a dos siembras a la vez.
+ *
+ * Recibe la lista para que la agencia demo pueda añadir las suyas (T-614) por el mismo camino, sin
+ * copiar aquí la comparación con `lower(btrim(nombre))` ni la carrera que cubre `skipDuplicates`.
  */
-export async function sembrarEtiquetas(tx: ClienteDeSiembra, tenantId: string): Promise<void> {
+export async function sembrarEtiquetasDadas(
+  tx: ClienteDeSiembra,
+  tenantId: string,
+  etiquetas: ReadonlyArray<EtiquetaSembrada>,
+): Promise<void> {
   const existentes = new Set(
     (await tx.label.findMany({ where: { tenantId }, select: { nombre: true } })).map((e) =>
       nombreNormalizado(e.nombre),
     ),
   );
-  const faltan = ETIQUETAS_SEMBRADAS.filter((e) => !existentes.has(nombreNormalizado(e.nombre)));
+  const faltan = etiquetas.filter((e) => !existentes.has(nombreNormalizado(e.nombre)));
   if (faltan.length === 0) return;
   await tx.label.createMany({
     data: faltan.map((e) => ({ tenantId, nombre: e.nombre, color: e.color, orden: e.orden })),
     skipDuplicates: true,
   });
+}
+
+/** Las tres que recibe TODA agencia. Son las mismas que sembró la migración 20261121110000. */
+export async function sembrarEtiquetas(tx: ClienteDeSiembra, tenantId: string): Promise<void> {
+  await sembrarEtiquetasDadas(tx, tenantId, ETIQUETAS_SEMBRADAS);
 }

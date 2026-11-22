@@ -167,10 +167,13 @@ test('al quitar el usuario ya no entra con el, pero si con el correo', async ({ 
     page.locator('tr', { hasText: miembroNombre }).getByTestId('usuario-de-ingreso'),
   ).toHaveText('Sin usuario (entra con su correo)');
 
-  const limpio = await page.context().browser()!.newContext({
-    viewport: { width: 390, height: 844 },
-    storageState: { cookies: [], origins: [] },
-  });
+  const limpio = await page
+    .context()
+    .browser()!
+    .newContext({
+      viewport: { width: 390, height: 844 },
+      storageState: { cookies: [], origins: [] },
+    });
   try {
     const otra = await limpio.newPage();
     await otra.goto('/ingresar');
@@ -181,6 +184,9 @@ test('al quitar el usuario ya no entra con el, pero si con el correo', async ({ 
       avisoDeIngreso(otra),
       'con el usuario quitado, entrar con el debe mostrar el error de autenticacion',
     ).toContainText('Error de autenticación');
+    // T-604: el 429 ya no comparte título con el rechazo, pero se exige también el texto propio de
+    // las credenciales malas para que un aviso de límite o de red nunca pase por este.
+    await expect(avisoDeIngreso(otra)).toContainText('Los datos no coinciden');
     await expect(otra).toHaveURL(/\/ingresar/);
   } finally {
     await limpio.close();
