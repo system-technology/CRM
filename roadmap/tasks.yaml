@@ -13186,6 +13186,60 @@ tasks:
       - "OJO: el check rutas-protegidas esta en main pero NO es obligatorio todavia, asi que siguen siendo 8, no 9, y R11 sigue siendo falsa"
     source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
     owner: documentador
+  - id: T-639
+    title: "Bandeja: marcarLeida existe y nadie la llama, asi que el contador de sin leer no se limpia"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "HALLAZGO de T-126, SIN CONFIRMAR: inboxApi.marcarLeida esta definido en
+        apps/web/src/lib/inbox-api.ts:381 y un grep no encuentra a NADIE que lo llame desde la web.
+        La busqueda excluyo specs y mocks"
+      - "Si se confirma, abrir una conversacion NUNCA limpia su contador de sin leer, y el primer paso
+        del flujo critico («ver el chat nuevo con contador de sin leer y abrirlo») queda a medias"
+      - "PRIMERO CONFIRMARLO, mirando el codigo. Si resulta que si se llama por otra via, cerrar la
+        tarea diciendo por donde"
+      - "Si es cierto: llamarla al abrir la conversacion, y anadir la prueba e2e que hoy no se pudo
+        escribir porque habria fallado. Para esa prueba la fila necesita un data-testid"
+    source: "hallazgo de la sesion de T-126 (2026-11-22)"
+    owner: frontend
+
+  - id: T-640
+    title: "Los flujos criticos no definen H1 a H6, pero media cola los nombra"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "MEDIDO en T-126: docs/01-producto/04-flujos-criticos.md NO define H1 a H6. Define dos flujos:
+        contacto a cobro (10 pasos) y «Hoy» (4 pasos)"
+      - "«H1 a H6» solo existe como rotulo en la cabecera de apps/web/e2e/02-flujo-h1-h6.e2e-spec.ts:
+        ingreso, webhook, bandeja, abrir conversacion, oportunidad y cotizar"
+      - "T-126, que es P0, se escribio hablando de H1 a H6, asi que su criterio apunta a algo que el
+        documento no define. Lo mismo varias tareas mas"
+      - "Decidir: o el documento define H1 a H6 de verdad, o la cola deja de nombrarlos y habla de los
+        dos flujos. Lo que no vale es que media cola cite una numeracion que no existe"
+    source: "desajuste encontrado al mapear la cobertura en T-126 (2026-11-22)"
+    owner: documentador
+
+  - id: T-641
+    title: "Sin cobertura: reservas con time limit dentro del archivo de viaje"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    acceptance:
+      - "Paso 8 del flujo de contacto a cobro: CERO cobertura, medido en T-126"
+      - "SI se puede cubrir en CI, sin WhatsApp: el FormularioReserva ya existe"
+      - "No se hizo en T-126 porque no habia navegador para comprobar los selectores y no se quisieron
+        inventar. Quien la tome, que los verifique contra la pantalla"
+    source: "hueco declarado por la sesion de T-126 (2026-11-22)"
+    owner: qa
+
   - id: T-626
     title: "Contactos no se puede usar en el telefono: 0 de 8 enlaces alcanzables"
     type: bug
