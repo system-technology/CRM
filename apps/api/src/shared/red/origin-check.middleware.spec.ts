@@ -9,7 +9,8 @@
 
 import { ProhibidoError } from '@viajapro/domain';
 import type { NextFunction, Request, Response } from 'express';
-import { describe, expect, it } from 'vitest';
+import { Logger } from '@nestjs/common';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OriginCheckMiddleware, OrigenNoConfiableError } from './origin-check.middleware.js';
 
 const WEB_ORIGIN = 'http://localhost:3000';
@@ -175,6 +176,30 @@ describe('OriginCheckMiddleware', () => {
       delete (req.headers as Record<string, string>).origin;
       middleware.use(req, res, next);
       expect(llamado()).toBe(true);
+    });
+  });
+
+  describe('diagnóstico del rechazo', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllEnvs();
+    });
+
+    it('el registro dice qué Origin llegó y cuáles eran los de confianza', () => {
+      vi.stubEnv('WEB_PUBLIC_URL', 'https://staging.agencia.example');
+      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      setup();
+      expect(() =>
+        middleware.use(
+          peticion('POST', '/api/v1/auth/sign-in/email', { origin: 'https://otra.example' }),
+          res,
+          next,
+        ),
+      ).toThrow(OrigenNoConfiableError);
+      const mensaje = String(warn.mock.calls[0]?.[0]);
+      expect(mensaje).toContain('https://otra.example');
+      expect(mensaje).toContain('https://staging.agencia.example');
+      expect(mensaje).toContain('WEB_PUBLIC_URL');
     });
   });
 });
