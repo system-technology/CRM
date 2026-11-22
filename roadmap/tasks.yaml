@@ -12930,6 +12930,36 @@ tasks:
     source: "trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)"
     owner: datos
 
+  - id: T-619
+    title: "BLOQUEANTE: la compuerta de rutas protegidas NO existe en el servidor, pese a R11"
+    type: infra
+    phase: 1
+    priority: P0
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: es configuracion del servidor (Settings, Branches, main). Ninguna sesion puede cambiar la proteccion de rama."
+    acceptance:
+      - "MEDIDO el 2026-11-22 contra la API: la proteccion de main tiene
+        require_code_owner_reviews: true PERO required_approving_review_count: 0. Con el contador en
+        0, GitHub NO exige la revision del code owner"
+      - "NO ES TEORICO: el PR #511 se integro SIN UNA SOLA REVISION tocando CLAUDE.md y cuatro
+        ficheros de .claude/. gh api pulls/511/reviews devuelve una lista vacia"
+      - "R11 afirma: «Las rutas protegidas esperan la aprobacion del propietario». Eso es FALSO hoy.
+        El CODEOWNERS esta bien escrito y es espejo fiel de ownership.json, pero la proteccion no lo
+        hace cumplir"
+      - "Es bloqueante por section 3.1: una compuerta que no corre no es una compuerta. La madre lo
+        descubrio pasando por ella, no auditandola"
+      - "ARREGLO: subir required_approving_review_count a 1. EFECTO SECUNDARIO que hay que decidir
+        antes: pasa a exigir aprobacion en TODO PR, no solo en los de rutas protegidas"
+      - "ALTERNATIVA SIN DECIDIR: mirar si una ruleset permite exigir la revision solo en las rutas
+        del CODEOWNERS. No se ha investigado"
+      - "Conecta con T-083, que ya decia que el JSON de ramas protegidas difiere del servidor en tres
+        campos. La diferencia no era cosmetica"
+      - "Mientras no se arregle: NO activar auto-merge en un PR que toque rutas protegidas. Se
+        desactivo a mano en #490 y #503 al descubrirlo"
+    source: "lo descubrio la madre al integrarse #511 sin aprobacion (2026-11-22)"
+    owner: devops
+
   - id: T-615
     title: "Web: usa toSorted y toReversed en vez de copiar el array solo para ordenarlo"
     type: refactor
