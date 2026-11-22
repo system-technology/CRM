@@ -3,6 +3,7 @@
  * Un solo sitio: dos arranques que configuraran Express por separado acabarían divergiendo en lo
  * que más duele (el cuerpo crudo de los webhooks, la confianza en el proxy, el CORS).
  */
+import { Logger } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { cuerpoCrudoDeWebhooks } from './shared/red/cuerpo-crudo-de-webhooks.js';
 import {
@@ -10,9 +11,13 @@ import {
   RUTA_DE_IMPORTACIONES,
 } from './shared/red/cuerpo-de-importaciones.js';
 import { leerProxyDeConfianza } from './shared/red/proxy-de-confianza.js';
+import { avisarDeUrlsPublicas } from './shared/red/urls-publicas.js';
 import { DominioExcepcionFilter } from './shared/filtros/dominio-excepcion.filter.js';
 
 export function configurarApi(app: NestExpressApplication): void {
+  // T-597: avisa, sin abortar, si las URL públicas faltan o apuntan a localhost fuera de desarrollo.
+  avisarDeUrlsPublicas(process.env, new Logger('arranque'));
+
   app.useGlobalFilters(new DominioExcepcionFilter());
 
   // Sin saltos de confianza por defecto: `req.ip` es la del socket y `x-forwarded-for` se ignora.

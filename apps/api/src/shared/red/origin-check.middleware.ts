@@ -68,7 +68,13 @@ export class OriginCheckMiddleware implements NestMiddleware {
     const esDeConfianza = origenEsDeConfianza(origen, deConfianza);
 
     if (!esDeConfianza) {
-      this.log.warn(`Origin no permitido: ${origen} (método: ${metodo}, ruta: ${ruta})`);
+      // Qué llegó y qué se esperaba: es lo que distingue una web mal configurada (la lista trae
+      // `localhost` en un despliegue real) de un sitio ajeno. Los orígenes no son secretos.
+      this.log.warn(
+        `Origin no permitido: ${JSON.stringify(origen)} (método: ${metodo}, ruta: ${ruta}). ` +
+          `Orígenes de confianza: ${JSON.stringify(deConfianza)}. ` +
+          'Si el Origin es la web legítima, revisa WEB_PUBLIC_URL en el panel.',
+      );
       // Nest lo traduce a 403 vía el filtro global DominioExcepcionFilter
       throw new OrigenNoConfiableError();
     }
