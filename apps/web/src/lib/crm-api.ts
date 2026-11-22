@@ -1,4 +1,4 @@
-import { esModoDemo } from './modo-demo';
+import { esModoDemo, esModoDemoDelEntorno } from './modo-demo';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { usaAuthReal, haySesionActiva } from './auth-api';
 import { obtenerBaseApi } from './api-base';
@@ -64,6 +64,18 @@ export function obtenerTenantDemo(): string {
 
 export function estaUsandoApiReal(): boolean {
   if (esModoDemo()) {
+    return false;
+  }
+  return estaUsandoApiRealSegunEntorno();
+}
+
+/**
+ * Lo mismo que `estaUsandoApiReal()` pero sin `?demo=` ni `localStorage`: lo que el servidor también ve.
+ * Úsalo para el valor INICIAL de un estado de un componente cliente (igual al HTML del servidor, así
+ * la hidratación no falla) y corrige con `estaUsandoApiReal()` en un efecto (T-607).
+ */
+export function estaUsandoApiRealSegunEntorno(): boolean {
+  if (esModoDemoDelEntorno()) {
     return false;
   }
   if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'false') {
