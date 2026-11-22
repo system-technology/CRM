@@ -12499,6 +12499,27 @@ tasks:
     source: "peticion del propietario (2026-11-21)"
     owner: backend
 
+  - id: T-602
+    title: "Hilo: el traspaso a la proxima madre se escribe ANTES de quedarse sin contexto, no despues"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: review
+    acceptance:
+      - "Pedido por el propietario (2026-11-22): que la sesion madre, antes de compactar o de llegar
+        al limite, escriba ella misma con que contexto se queda, para que no haya reprocesos"
+      - "docs/_contexto/TRASPASO-PROXIMA-MADRE.md: estado verificado, PR abiertos, lo que cambio de
+        verdad en el hilo, las comprobaciones de la cola, las trampas nuevas, lo que espera al
+        propietario y como repartir"
+      - "Va en el REPOSITORIO y no en CHECKPOINT.local.md a proposito: el checkpoint es local y no
+        sobrevive al contenedor ni al cierre de la sesion. Lo que no se empuja, se pierde"
+      - "Se escribe cuando el contexto esta fresco, no al limite: si se espera, el compactado puede
+        dispararse antes y lo que se salva es un resumen de un resumen"
+      - "La proxima madre lo actualiza en vez de empezar otro: un solo documento de traspaso vivo"
+    source: "instruccion del propietario sobre compactado y reprocesos (2026-11-22)"
+    owner: documentador
+
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
