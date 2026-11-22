@@ -15,15 +15,15 @@ const porTexto = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 /** El catálogo en un orden estable: `leer` no ordena las tarifas y el hash no debe depender de eso. */
 function instantanea(actual: CatalogoActual): unknown {
-  return [...actual.paquetes]
-    .sort((a, b) => porTexto(a.id, b.id))
+  return actual.paquetes
+    .toSorted((a, b) => porTexto(a.id, b.id))
     .map((p) => ({
       ...p,
-      vigencias: [...p.vigencias]
-        .sort((a, b) => porTexto(`${a.desde}|${a.hasta}`, `${b.desde}|${b.hasta}`))
+      vigencias: p.vigencias
+        .toSorted((a, b) => porTexto(`${a.desde}|${a.hasta}`, `${b.desde}|${b.hasta}`))
         .map((v) => ({
           ...v,
-          tarifas: [...v.tarifas].sort((a, b) =>
+          tarifas: v.tarifas.toSorted((a, b) =>
             porTexto(normalizarNombre(a.nombre), normalizarNombre(b.nombre)),
           ),
         })),

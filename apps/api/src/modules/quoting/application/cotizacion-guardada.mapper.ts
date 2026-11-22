@@ -103,8 +103,8 @@ export function aCotizacionGuardada(
     enviadaEn: c.enviadaEn ? c.enviadaEn.toISOString() : null,
     creadaEn: c.creadoEn.toISOString(),
     actualizadaEn: c.actualizadoEn.toISOString(),
-    versiones: [...c.versiones]
-      .sort((a, b) => a.numero - b.numero)
+    versiones: c.versiones
+      .toSorted((a, b) => a.numero - b.numero)
       .map((v) => aVersionDeCotizacion(v, incluirMargen)),
   };
 }

@@ -17,6 +17,12 @@ cualquier decisión estética.
 `docs/01-producto/06-diseno-y-ux.md` (principios y sistema de diseño),
 `docs/01-producto/04-flujos-criticos.md`, `docs/02-arquitectura/08-frontend.md`.
 
+**Y antes de proponer un patrón de interfaz, mira si la plataforma web ya lo resuelve** (R15 de
+`CLAUDE.md`): `DISABLE_TELEMETRY=1 npx -y modern-web-guidance@latest search "<2-5 palabras en
+inglés>"`. Te evita diseñar a mano un selector, un *tooltip* posicionado o un diálogo que se cierra
+al tocar fuera, cuando ya hay una forma nativa. **Tú sigues decidiendo la forma**; la guía solo dice
+con qué se construye. Detalle: `docs/09-ia/10-guia-web-moderna.md`.
+
 ## El usuario real
 
 No es un ejecutivo mirando un dashboard. Es alguien que:

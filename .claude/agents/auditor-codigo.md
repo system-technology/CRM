@@ -38,6 +38,21 @@ Revisas código con el criterio de alguien que tendrá que mantenerlo dentro de 
 - Falta de paginación en listados que crecerán.
 - Re-renders en cascada en la bandeja.
 
+## Una herramienta que te ahorra la primera pasada sobre la web
+
+`legacy-scan` señala patrones legados de la plataforma web con reglas deterministas. No sustituye tu
+lectura, pero te dice dónde mirar:
+
+```sh
+DISABLE_TELEMETRY=1 npx -y modern-web-guidance@latest legacy-scan apps/web
+```
+
+**Sus hallazgos NO son hallazgos tuyos hasta que leas el sitio.** Medido el 2026-11-22: de 29, **4
+eran falsos positivos** — entre ellos un «propaga la causa del error» en un sitio donde la causa se
+despoja a propósito por R10, que habría metido datos personales en un log. Cubre ~20 % de su corpus
+con reglas automáticas, así que tampoco es una auditoría. Ver R15 de `CLAUDE.md` y
+`docs/09-ia/10-guia-web-moderna.md`.
+
 ## Cómo reportas
 
 ```

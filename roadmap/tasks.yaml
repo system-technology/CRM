@@ -12698,6 +12698,10 @@ tasks:
       - "Decirselo al cliente con una captura o un recorrido corto: es la diferencia entre «lo vamos a hacer»
         y «ya esta, mira»"
       - "OJO: la siembra corre dentro de preparar-demo-staging.yml, asi que hay que relanzarlo despues"
+      - "AVISO (2026-11-22): esta tarea la cerro el cierre automatico por el NOMBRE DE LA RAMA
+        (i/T-608-feedback-del-cliente) cuando el PR #499 solo ENCOLABA la peticion del cliente. El trabajo que
+        describen los criterios de arriba -sembrar las etiquetas y asignarlas- NO se hizo. Se mueve a T-614.
+        Se deja done como registro del encolado, no del trabajo"
     source: audio del cliente del piloto, transcrito por el propietario (2026-11-22)
     owner: frontend
     started_at: 2026-11-22T01:08:06.139Z
@@ -12751,6 +12755,132 @@ tasks:
         que un asistente abierto"
     source: audio del cliente del piloto, transcrito por el propietario (2026-11-22)
     owner: ingeniero-ia
+  - id: T-602
+    title: "Hilo: el traspaso a la proxima madre se escribe ANTES de quedarse sin contexto, no despues"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    acceptance:
+      - "Pedido por el propietario (2026-11-22): que la sesion madre, antes de compactar o de llegar al
+        limite, escriba ella misma con que contexto se queda, para que no haya reprocesos"
+      - "docs/_contexto/TRASPASO-PROXIMA-MADRE.md: estado verificado, PR abiertos, lo que cambio de verdad en
+        el hilo, las comprobaciones de la cola, las trampas nuevas, lo que espera al propietario y como
+        repartir"
+      - "Va en el REPOSITORIO y no en CHECKPOINT.local.md a proposito: el checkpoint es local y no sobrevive
+        al contenedor ni al cierre de la sesion. Lo que no se empuja, se pierde"
+      - "Se escribe cuando el contexto esta fresco, no al limite: si se espera, el compactado puede dispararse
+        antes y lo que se salva es un resumen de un resumen"
+      - "La proxima madre lo actualiza en vez de empezar otro: un solo documento de traspaso vivo"
+    source: instruccion del propietario sobre compactado y reprocesos (2026-11-22)
+    owner: documentador
+    started_at: 2026-11-22T03:41:11.279Z
+    done_at: 2026-11-22T03:41:11.280Z
+    evidence: "Mergeado en main por el PR #507 (rama i/T-602-traspaso-y-diario) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 2aa3fdb32b01df91d322b21952b39acfe79de50e
+  - id: T-603
+    title: "CI: el job de pruebas da 5 ingresos por minuto y la suite necesita 7"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: .github/workflows/ci.yml es ruta protegida y espera aprobacion del propietario."
+    acceptance:
+      - "CAUSA DE FONDO de T-592, medida: el limitador de Better Auth da 5 intentos por minuto POR IP y todo
+        el job sale de la misma IP. La suite hace 7 ingresos por pantalla (01 hace 2, 08 hace 3, 09 hace 2) en
+        unos 90 segundos"
+      - T-592 hace que la prueba ESPERE el cupo, que es lo correcto desde su carril, pero no cambia el cupo.
+        Puede anadir hasta un minuto a cada corrida
+      - "Lo limpio es subir el tope SOLO en el job de prueba, como ya se hace con LIMITE_TASA_POR_IP en
+        ci.yml. NO tocar el limitador de produccion: ahi protege de verdad"
+      - Al hacerlo, revisar si el ayudante de reintento de T-592 sigue haciendo falta o puede simplificarse
+    source: medicion de la sesion de T-592 (2026-11-22)
+    owner: devops
+  - id: T-604
+    title: "QA: una prueba de 08 puede pasar en vacio porque el 429 y el rechazo de credenciales comparten titulo"
+    type: test
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "ENCONTRADO al arreglar T-592: la prueba «al quitar el usuario ya no entra con el» espera
+        toContainText('Error de autenticacion'). Ese es TAMBIEN el titulo de la alerta de un 429 del
+        limitador, asi que la prueba pasaria aunque el limitador cortara y el usuario nunca llegara a intentar
+        entrar"
+      - "Es cobertura falsa en una prueba de PERMISOS: dice que comprueba que un usuario dado de baja no
+        entra, y en realidad acepta cualquier alerta"
+      - Debe exigir el texto que solo sale al rechazar credenciales («Los datos no coinciden») y NO el titulo
+        generico
+      - "EXIGENCIA: verla fallar. Forzar el caso del 429 y comprobar que con la asercion nueva la prueba se
+        pone en rojo, que es lo que hoy no hace"
+      - Revisar si hay mas pruebas que afirmen cosas sobre el titulo generico de la alerta
+    source: hallazgo de la sesion de T-592 (2026-11-22)
+    owner: qa
+  - id: T-605
+    title: "QA: 08 conserva su propio ingreso y no usa el ayudante que espera el cupo"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on:
+      - T-592
+    acceptance:
+      - "08 usa 3 de los 5 cupos por minuto y hoy no desborda, pero tiene su propia funcion de ingreso: si
+        alguien anade un ingreso mas a la suite, volvera la intermitencia"
+      - Pasarla a ingresarPorPantalla de auxiliares.ts
+      - "Ademas, sin investigar: en el job 137020978172 la primera prueba de 08 fallo a los 30,9 s en un
+        toHaveText, y 09 paso en esa misma corrida. Puede ser el limitador por agencia (600 por minuto) que 08
+        ya contempla en botonEditarUsuario. Si reaparece, merece tarea propia"
+    source: cola declarada por la sesion de T-592 (2026-11-22)
+    owner: qa
+  - id: T-606
+    title: "Contrato: volver pasajeros obligatorio en FilaDeCobro cuando no queden respuestas antiguas"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on:
+      - T-590
+    acceptance:
+      - T-582 lo dejo opcional para que la web existente compilara, y T-590 pinta un guion cuando no viene. La
+        API lo envia SIEMPRE
+      - "Cuando no queden respuestas antiguas en vuelo, volverlo obligatorio: entonces el guion sobra y la
+        pantalla deja de contemplar un caso que no ocurre"
+      - Al hacerlo, quitar tambien las pruebas del caso sin dato, que dejarian de tener sentido
+    source: cola declarada por la sesion de T-590 (2026-11-22)
+    owner: backend
+  - id: T-607
+    title: "Web: el modo demo rompe la hidratacion y obliga a regenerar todo el marco en cada carga"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-586
+    acceptance:
+      - "MEDIDO en T-586 con un observador sobre html y next build + next start: en las pantallas del marco
+        (app) con ?demo=1 la hidratacion FALLA (React 418), React regenera el documento y vacia los atributos
+        de html. Eso es lo que borraba la clase dark"
+      - "T-586 repone el tema despues, que arregla lo que el usuario ve, pero NO arregla esto: cada carga de
+        la demo sigue pagando una re-renderizacion completa del marco y el error sigue en consola"
+      - "El desajuste concreto es el boton selector-vista-demo de BarraModulos: esDemo lee ?demo=1 y
+        localStorage en el PRIMER render, y el servidor no puede saberlo. Esta en barra-modulos.tsx y en
+        modo-demo"
+      - "Arreglo: que esDemo se resuelva TRAS el montaje, no en el primer render, de forma que servidor y
+        cliente pinten lo mismo la primera vez"
+      - "EXIGENCIA: verlo fallar antes. Medir con el mismo observador que uso T-586 y demostrar que despues la
+        hidratacion no falla, no solo que el tema aguanta"
+      - "Comprobar de paso si fuera de demo la aplicacion hidrata limpia: T-586 no pudo medirlo porque no
+        habia API ni base en la sesion"
+    source: causa de fondo declarada por la sesion de T-586, no silenciada (2026-11-22)
+    owner: frontend
   - id: T-613
     title: "Hilo: el cliente del piloto ya entra; el estado decia lo contrario"
     type: docs
@@ -12773,6 +12903,138 @@ tasks:
     evidence: "Mergeado en main por el PR #504 (rama i/T-613-cliente-entra) con el CI en verde: format, analyze,
       tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 4dc6bd1ef2a6a85a00859c1359619d423ce365a7
+  - id: T-614
+    title: "Demo: sembrar las etiquetas de conversacion que el cliente pidio, porque la funcion existe y no se ve"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: in_progress
+    acceptance:
+      - "Es el trabajo real de T-608, que el cierre automatico dio por hecho por el nombre de la rama. El PR
+        #499 solo encolo la peticion"
+      - "VERIFICADO EN EL CODIGO: etiquetar conversaciones YA ESTA CONSTRUIDO (T-323..T-326 done): modulo en
+        la API y filtro por etiqueta en la bandeja. NO hay que construirlo"
+      - "HIPOTESIS SIN CONFIRMAR, y lo primero que hay que comprobar: la agencia demo no tiene etiquetas
+        sembradas, asi que al entrar no se ve nada y parece que no existe"
+      - "Si se confirma: sembrar en la agencia demo «Ya reservo», «Reserva pendiente» y «Nuevo», con color, y
+        asignarlas a conversaciones de ejemplo para que se vean funcionando y no vacias"
+      - "R1: tenant_id y RLS en todo. Es siembra, NO esquema: si hiciera falta una migracion, parar y decirlo"
+      - La siembra corre dentro de preparar-demo-staging.yml, asi que hay que relanzarlo despues de integrar
+      - "Cuando este, ensenarselo al cliente con una captura o un recorrido corto: es la diferencia entre «lo
+        vamos a hacer» y «ya esta, mira»"
+    source: trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)
+    owner: datos
+
+  - id: T-619
+    title: "BLOQUEANTE: la compuerta de rutas protegidas NO existe en el servidor, pese a R11"
+    type: infra
+    phase: 1
+    priority: P0
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: es configuracion del servidor (Settings, Branches, main). Ninguna sesion puede cambiar la proteccion de rama."
+    acceptance:
+      - "MEDIDO el 2026-11-22 contra la API: la proteccion de main tiene
+        require_code_owner_reviews: true PERO required_approving_review_count: 0. Con el contador en
+        0, GitHub NO exige la revision del code owner"
+      - "NO ES TEORICO: el PR #511 se integro SIN UNA SOLA REVISION tocando CLAUDE.md y cuatro
+        ficheros de .claude/. gh api pulls/511/reviews devuelve una lista vacia"
+      - "R11 afirma: «Las rutas protegidas esperan la aprobacion del propietario». Eso es FALSO hoy.
+        El CODEOWNERS esta bien escrito y es espejo fiel de ownership.json, pero la proteccion no lo
+        hace cumplir"
+      - "Es bloqueante por section 3.1: una compuerta que no corre no es una compuerta. La madre lo
+        descubrio pasando por ella, no auditandola"
+      - "DECIDIDO POR EL PROPIETARIO (2026-11-22), literal: «que solamente cuando se vaya a cambiar
+        la arquitectura establecida intervenga yo. El resto, todo lo que este dentro del marco de
+        trabajo, te encargas tu». Asi que el arreglo NO es subir el contador a 1 a secas: eso le
+        haria aprobar TODOS los PR, y entran decenas al dia"
+      - "LO QUE HAY QUE CONSEGUIR: aprobacion suya SOLO cuando el PR toca rutas de
+        .github/CODEOWNERS. Cero friccion en el resto"
+      - "Primero responder, con la documentacion de GitHub delante: si una ruleset puede exigir
+        revision solo en ciertas rutas. Si NO se puede, decirlo claramente y pasar a la alternativa"
+      - "ALTERNATIVA: un check OBLIGATORIO del CI que mire los ficheros del PR; si ninguno cae en el
+        CODEOWNERS pasa en verde, y si alguno cae exige una revision aprobada de @Alfavear. Reutilizar
+        scripts/check-ownership.mjs y su lista humanRequired en vez de mantener una segunda lista"
+      - "Conecta con T-083, que ya decia que el JSON de ramas protegidas difiere del servidor en tres
+        campos. La diferencia no era cosmetica"
+      - "Mientras no se arregle: NO activar auto-merge en un PR que toque rutas protegidas. Se
+        desactivo a mano en #490 y #503 al descubrirlo"
+    source: "lo descubrio la madre al integrarse #511 sin aprobacion (2026-11-22)"
+    owner: devops
+
+  - id: T-615
+    title: "Web: usa toSorted y toReversed en vez de copiar el array solo para ordenarlo"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: review
+    acceptance:
+      - "Primer fruto de T-617. legacy-scan de modern-web-guidance senalo 11 sitios en apps/web con
+        la regla js/copying-array-methods"
+      - "Los 11 eran arrays de verdad y se cambiaron. Es ES2023 y apps/web/tsconfig.json ya declara
+        target ES2023 con lib DOM, DOM.Iterable y ES2023: no se toco ningun tsconfig"
+      - "Se dejaron intactos cinco spreads que NO son copia de array: dos Set, dos iteradores de Map
+        y dos concatenaciones. De esos, el analizador solo habia marcado dos"
+      - "MEDIDO: typecheck 9 de 9, lint 7 de 7, y 2096 pruebas en 211 ficheros de apps/web en verde.
+        Repetido legacy-scan: cero coincidencias"
+      - "NO se probo en un navegador real: el soporte lo da por hecho el target del tsconfig"
+    source: "hallazgo de legacy-scan al adoptar la guia web moderna (2026-11-22)"
+    owner: frontend
+
+  - id: T-616
+    title: "API: toSorted y toReversed, y propaga la causa del error donde se estaba perdiendo"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: review
+    acceptance:
+      - "Segundo fruto de T-617. legacy-scan senalo 17 hallazgos en apps/api y 1 en packages/database"
+      - "Aplicados 14: los 13 de copying-array-methods y el error-cause de
+        packages/database/scripts/mutaciones-aislamiento.mjs, que ahora pasa cause y deja de perder el
+        error original. Encaja con «nunca catch silencioso» (CLAUDE.md section 6)"
+      - "DESCARTADO error-cause en notifications/interface/consumidor-de-correo.ts: ahi el error se
+        despoja A PROPOSITO por R10, porque puede traer la direccion o el cuerpo. Aplicado a ciegas
+        habria metido datos personales en un log"
+      - "DESCARTADOS los dos structured-clone: en confirmar-importacion.use-case.ts y
+        catalogo.prisma.ts la vuelta por JSON NORMALIZA a algo serializable, no copia. structuredClone
+        conserva Date y undefined y cambiaria lo que se escribe en una columna JSON de Postgres"
+      - "DESCARTADO promise-with-resolvers: es ES2024 y nuestro lib es ES2023. Subir el lib es otra
+        decision"
+      - "MEDIDO: typecheck 9 de 9, lint 7 de 7, 475 pruebas unitarias en 36 ficheros. Las e2e NO se
+        ejecutaron: necesitan Postgres, las corre el CI"
+    source: "hallazgo de legacy-scan al adoptar la guia web moderna (2026-11-22)"
+    owner: backend
+
+  - id: T-617
+    title: "Adoptar la guia web moderna de Chrome como regla del proyecto, con su revision de seguridad"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: M
+    status: review
+    acceptance:
+      - "Lo pidio el propietario: evaluarla, instalarla y DEJARLA ESTABLECIDA COMO REGLA para que otras
+        sesiones lo sepan y lo implementen"
+      - "REVISION DE SEGURIDAD HECHA ANTES: repositorio clonado y revisado en el commit
+        64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65 (v1.0.1). No contiene ni un fichero ejecutable: ni
+        hooks, ni .mcp.json, ni bin. Solo Markdown, JSON, un TOML e imagenes. Lo que ejecuta codigo es
+        la CLI de npm, que es otra superficie"
+      - "MEDIDO sobre el codigo real: 11 hallazgos en apps/web, 17 en apps/api, 1 en packages/database,
+        0 en domain y contracts. De 29, CUATRO eran falsos positivos y uno habria metido datos
+        personales en un log"
+      - "Escrito como R15 en CLAUDE.md, que se carga en todas las sesiones, mas la seccion 6, la skill
+        diseno-web, los agentes frontend, diseno-ux y auditor-codigo, y el modelo operativo"
+      - "Precedencia fijada: CLAUDE.md -> diseno-web -> la guia. Ella decide la tecnica, diseno-web
+        decide la forma. Si chocan manda diseno-web y el choque se anota"
+      - "PENDIENTE DEL PROPIETARIO: .claude/settings.json. El clasificador deniega que una sesion
+        escriba ahi, y una sesion en la nube NO carga extraKnownMarketplaces de ninguna forma. El
+        fragmento exacto esta en docs/09-ia/10-guia-web-moderna.md section 5"
+    source: "peticion del propietario tras encontrar el repositorio (2026-11-22)"
+    owner: documentador
+
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
