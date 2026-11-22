@@ -92,7 +92,7 @@ async function main() {
   const equipo = [
     {
       correo: 'dueno@agenciademo.test',
-      nombre: 'Marcela Duarte',
+      nombre: 'John Duarte',
       clave: 'DUENO',
       apodo: 'dueno.demo',
     },
@@ -113,7 +113,9 @@ async function main() {
     const apodo = conApodos ? { apodo: persona.apodo } : {};
     const identidad = await prisma.identidad.upsert({
       where: { correo: persona.correo },
-      update: {},
+      // El nombre SÍ se actualiza al resembrar. Con `update: {}` un cambio aquí no llegaba nunca a
+      // una base ya sembrada: el código decía una cosa y la demo enseñaba otra (T-601).
+      update: { nombre: persona.nombre },
       create: { correo: persona.correo, nombre: persona.nombre },
     });
     const rolId = rolPorClave.get(persona.clave);
