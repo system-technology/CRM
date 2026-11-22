@@ -23,6 +23,7 @@ import {
   CLASE_TONO,
   ETIQUETA_ESTADO_DE_COBRO,
   ETIQUETA_SITUACION,
+  pasajerosEnPantalla,
   TONO_ESTADO_DE_COBRO,
   saldoEnPantalla,
 } from '../../../lib/cobros-logica';
@@ -72,6 +73,31 @@ function Saldo({ fila }: { fila: FilaDeCobro }) {
   );
 }
 
+/**
+ * Cuántos viajan: total grande y, si hay niños o infantes, la composición debajo. Solo cifras
+ * (R10): esta vista la lee también OPERACIONES y se exporta. Sin dato, «—» y no `0`.
+ */
+function Pasajeros({ fila, alineado }: { fila: FilaDeCobro; alineado?: 'derecha' }) {
+  const { total, detalle, etiqueta } = pasajerosEnPantalla(fila.pasajeros);
+  return (
+    <span className={alineado === 'derecha' ? 'block text-right' : 'block'}>
+      <span className="sr-only">{etiqueta}</span>
+      <span
+        aria-hidden="true"
+        data-testid="pasajeros-de-cobro"
+        className="font-semibold tabular-nums"
+      >
+        {total}
+      </span>
+      {detalle && (
+        <span aria-hidden="true" className="block text-xs text-neutral-700 dark:text-neutral-300">
+          {detalle}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function TablaDeCobros({ filas }: { filas: readonly FilaDeCobro[] }) {
   return (
     <>
@@ -113,6 +139,10 @@ function TablaDeCobros({ filas }: { filas: readonly FilaDeCobro[] }) {
                 </dd>
               </div>
             </dl>
+            <div className="mt-2 flex items-baseline gap-2 text-xs text-neutral-700 dark:text-neutral-300">
+              <span>Pasajeros</span>
+              <Pasajeros fila={f} />
+            </div>
             <p className="mt-2 text-xs text-neutral-700 dark:text-neutral-300">
               {ETIQUETA_SITUACION[f.situacion]} · Plazo de cobro: {dia(f.fechaLimite)}
             </p>
@@ -125,8 +155,11 @@ function TablaDeCobros({ filas }: { filas: readonly FilaDeCobro[] }) {
         <caption className="sr-only">Archivos de viaje abiertos con total, pagado y saldo</caption>
         <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
           <tr>
-            <th scope="col" className="w-[30%] px-4 py-2 font-medium">
+            <th scope="col" className="w-[26%] px-4 py-2 font-medium">
               Archivo
+            </th>
+            <th scope="col" className="w-[11%] px-3 py-2 text-right font-medium">
+              Pasajeros
             </th>
             <th scope="col" className="px-3 py-2 text-right font-medium">
               Total
@@ -137,7 +170,7 @@ function TablaDeCobros({ filas }: { filas: readonly FilaDeCobro[] }) {
             <th scope="col" className="px-3 py-2 text-right font-medium">
               Saldo
             </th>
-            <th scope="col" className="w-[24%] px-4 py-2 font-medium">
+            <th scope="col" className="w-[22%] px-4 py-2 font-medium">
               Estado de cobro
             </th>
           </tr>
@@ -157,6 +190,9 @@ function TablaDeCobros({ filas }: { filas: readonly FilaDeCobro[] }) {
                     Sale el {dia(f.fechaSalida)}
                   </span>
                 </Link>
+              </td>
+              <td className="px-3 py-3">
+                <Pasajeros fila={f} alineado="derecha" />
               </td>
               <td className="px-3 py-3 text-right tabular-nums">{formatearDinero(f.total)}</td>
               <td className="px-3 py-3 text-right tabular-nums">{formatearDinero(f.pagado)}</td>
