@@ -30,8 +30,8 @@ sigue siendo falsa.**
 
 **CORREGIDO el 2026-11-21 a las 23:00 UTC:** este párrafo decía «no hay nada desplegado» y «ninguna
 agencia lo ha visto». **Las dos afirmaciones eran falsas, y llevaban días repitiéndose sin
-comprobarse.** Staging está vivo (verificado por HTTP el 2026-11-21 a las 22:55 UTC: la web responde 200 en `/` y en `/ingresar`, y la API de Render devuelve 200 en `/salud/listo` con `baseDeDatos: ok`, `rol: viajapro_app` y `aislamiento: forzado`) y **el propietario tiene un cliente entrando a esa URL**. Lo
-que ese cliente **no** puede hacer todavía es ingresar: ver **T-594**. Lo que sigue siendo cierto es
+comprobarse.** Staging está vivo (verificado por HTTP el 2026-11-21 a las 22:55 UTC: la web responde 200 en `/` y en `/ingresar`, y la API de Render devuelve 200 en `/salud/listo` con `baseDeDatos: ok`, `rol: viajapro_app` y `aislamiento: forzado`) y **el propietario tiene un cliente entrando a esa URL**. **Y el 2026-11-22 ese cliente consiguió entrar**, tras sembrar la demo y crear su credencial
+(T-600). Lo que falló antes no eran las credenciales: ver T-594 y T-611. Lo que sigue siendo cierto es
 que **no ha entrado un mensaje de WhatsApp real desde un celular** (T-080, punto 18 de los
 pendientes).
 
