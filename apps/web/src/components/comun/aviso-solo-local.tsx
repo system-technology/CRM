@@ -4,6 +4,7 @@ import React from 'react';
 import { HardDrive } from 'lucide-react';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { useModoDemo } from '../../lib/modo-demo';
+import { useMontado } from '../../lib/use-montado';
 
 interface AvisoSoloLocalProps {
   /** Qué se guarda solo en el navegador, en minúsculas: «las respuestas rápidas». */
@@ -21,7 +22,9 @@ interface AvisoSoloLocalProps {
  */
 export function AvisoSoloLocal({ que, visible, className = '' }: AvisoSoloLocalProps) {
   const { esDemo } = useModoDemo();
-  const mostrar = visible !== undefined ? visible : !esDemo && estaUsandoApiReal();
+  // Espera al montaje: `?demo=1` no lo ve el servidor y la hidratación fallaría (T-607).
+  const montado = useMontado();
+  const mostrar = visible !== undefined ? visible : montado && !esDemo && estaUsandoApiReal();
 
   if (!mostrar) return null;
 
