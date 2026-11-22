@@ -12,6 +12,15 @@ description: Diseño de interfaz para la web de ViajaPro (apps/web) — que cada
 > trabajo y la línea de resumen del viaje (`Cancún · dic · 2+2` es dato, no adorno de plantilla).
 > La libertad estética de `frontend-design` se gasta sobre todo en lo que ve el viajero.
 
+> **Y antes de implementar, consulta `modern-web-guidance` (R15 de `CLAUDE.md`).** Es la guía de los
+> equipos de Chrome, Edge, Firefox y MDN sobre cómo hacer con la plataforma web lo que aquí se
+> decide: diálogos, popovers, tablas, modo oscuro, transiciones, formularios, accesibilidad. No hace
+> falta instalar nada: `DISABLE_TELEMETRY=1 npx -y modern-web-guidance@latest search "<2-5 palabras
+> en inglés>"` y luego `retrieve`. **La precedencia es: `CLAUDE.md` → esta skill → esa guía.** Ella
+> decide la técnica; esta skill decide la forma. Si chocan, manda esta, y el choque se anota.
+> **Ningún hallazgo suyo se aplica sin leer el sitio**: medido el 2026-11-22, 4 de 29 eran falsos
+> positivos. Detalle en `docs/09-ia/10-guia-web-moderna.md`.
+
 La regla de fondo: **la identidad de turismo sale de la información, no de la decoración.** Una
 asesora que atiende 40 chats al día no necesita palmeras; necesita ver «Cancún · dic · 2+2 ·
 time limit mañana» sin abrir nada. Las fotos y el cuidado estético van en lo que ve el **viajero**
