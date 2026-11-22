@@ -12926,6 +12926,39 @@ tasks:
     source: trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)
     owner: datos
 
+  - id: T-622
+    title: "La agencia puede sustituir el paquete de imagenes por defecto por las suyas"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-620
+    acceptance:
+      - "DECISION DEL PROPIETARIO (2026-11-22), literal: «vamos a entregarle a cada agencia un paquete
+        estandar con nuestras fotos de Cartagena, Santa Marta, Barranquilla, Baru, Playa Blanca,
+        Islas del Rosario. Y si la agencia, cuando este configurando el CRM para su operacion, decide
+        cambiarla y colocar sus propias imagenes, es valido hacerlo»"
+      - "T-620 entrega el paquete por defecto y deja la estructura de datos preparada. ESTA tarea es
+        la otra mitad: que la agencia suba las suyas y sustituya la lista"
+      - "R12: es politica de negocio por agencia, asi que va en dato por tenant, nunca en enum ni en
+        literal. R1: tenant_id y RLS en la tabla que guarde la referencia"
+      - "Las imagenes van a S3 (MinIO en local), que ya esta en el stack para media de WhatsApp y
+        documentos. NO meter binarios en la base"
+      - "Donde se configura: el bloque de marca del onboarding y la pantalla de configuracion. Mirar
+        paso-marca.tsx, que ya recoge color institucional y ciudad base"
+      - "Validar lo que se sube: formato, peso maximo y proporcion. Una foto de 8 MB en la primera
+        pantalla arruina el LCP de todos los dias"
+      - "OJO AL LIMITE QUE ESTA TAREA NO PUEDE SALTARSE: en el INGRESO no se sabe de que agencia es
+        quien mira, porque es anterior a la sesion. Dentro de la aplicacion si. Asi que esto sirve
+        para el marco y el onboarding desde el principio, y para el ingreso SOLO cuando T-621 y su ADR
+        resuelvan como se identifica la agencia antes de entrar"
+      - "Mientras tanto, el ingreso enseña el paquete por defecto, que es exactamente lo que el
+        propietario pidio"
+    source: "decision de producto del propietario sobre el paquete estandar (2026-11-22)"
+    owner: frontend
+
   - id: T-621
     title: "Lo que ata el producto a Colombia y deberia ser configurable por agencia"
     type: refactor
