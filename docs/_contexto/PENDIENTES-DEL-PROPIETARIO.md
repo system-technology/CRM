@@ -129,3 +129,34 @@ en contexto que una sesión hija, y no sobrevive al cierre de esta sesión**, pe
 **Además, denegado por el clasificador en este turno:** `mcp__claude-code-remote__create_trigger`
 («Destructive or Unwanted Actions»), antes incluso de toparse con el límite de linaje. Si quiere que
 una madre pueda rearmar su propio despertar, hace falta una regla de permiso para esa herramienta.
+
+## 20. El clasificador deniega comprobar por HTTP el staging que ya está desplegado (2026-11-22)
+
+**Qué se intentó y quedó sin hacer.** Verificar por HTTP tres URL públicas del entorno de pruebas
+—`/salud/listo` y `/webhooks/whatsapp` en Render, y `/ingresar` en Vercel— para saber si la ruta del
+webhook de WhatsApp **existe en el servicio desplegado**. El clasificador del modo automático denegó
+`curl` y también denegó delegarlo a un agente de lectura web. **No se rodeó.**
+
+**Por qué importa.** `T-079` sigue siendo **P0** y su enunciado está desfasado: pide «servicio Redis y
+proceso consumidor activos en staging», pero `render.yaml` arranca `node dist/main-unico.js`, que es el
+**modo de un solo proceso sin Redis** (ADR-0019): el trabajador y los consumidores viven **dentro** de
+la API ya desplegada. Lo que de verdad queda por comprobar de esa tarea es si un mensaje de la app de
+prueba de Meta llega y se convierte en conversación. Y su nota de reconciliación todavía afirma «no hay
+servicio desplegado», que es **falso** desde el 2026-11-21.
+
+**Lo que se sabe sin HTTP, leyendo el código:** el controlador existe
+(`apps/api/src/modules/inbox/interface/webhook-whatsapp.controller.ts`, `@Controller('webhooks/whatsapp')`)
+y `arrancar-unico.ts` levanta primero el trabajador y luego la API. Lo que **no** se sabe es si esa ruta
+responde en el servicio real.
+
+**Qué necesito de ti, una de estas dos:**
+- Añadir a `permissions.allow` algo acotado a los hosts de ViajaPro, por ejemplo
+  `"Bash(curl -s -m 25 -o /dev/null -w * https://viajapro-api-staging.onrender.com/*)"`, o
+- Comprobarlo tú y pegarme el código HTTP de
+  `https://viajapro-api-staging.onrender.com/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=lo-que-sea&hub.challenge=1`.
+  **Un 403 o 401 es la respuesta buena**: significa que la ruta existe y rechazó un token inválido.
+  Un 404 significaría que no está desplegada.
+
+Es lo mismo que el punto de `scripts/diagnostico-ingreso.mjs` (PR #490): sin permiso para hablar por
+HTTP con lo que ya está en pie, cada comprobación del despliegue acaba siendo una suposición, y de
+suposiciones heredadas viene justo el problema que se corrigió hoy.
