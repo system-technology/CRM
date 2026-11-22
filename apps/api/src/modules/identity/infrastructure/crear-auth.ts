@@ -22,6 +22,7 @@ import type { Auth } from 'better-auth/types';
 import { emailOTP } from 'better-auth/plugins/email-otp';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import type { PrismaClient } from '@prisma/client';
+import { INTENTOS_DE_INICIO_POR_OMISION } from '../../../shared/red/limite-de-inicio-de-sesion.js';
 import { conTokenDeSesionHasheado } from './adaptador-con-token-hasheado.js';
 
 export interface OpcionesDeAuth {
@@ -33,6 +34,8 @@ export interface OpcionesDeAuth {
   baseUrl: string;
   /** Orígenes desde los que un navegador puede llamar con cookie: la web. */
   origenesDeConfianza: string[];
+  /** Intentos de inicio de sesión por minuto y por IP. Por omisión, 5. Ya validado por quien lo lee. */
+  intentosDeInicioPorMinuto?: number;
   /** Duración de la sesión, en segundos. */
   sesionDuraSegundos?: number;
   /** Cada cuánto se renueva la fecha de expiración mientras se usa, en segundos. */
@@ -53,8 +56,11 @@ export interface OpcionesDeAuth {
  */
 export const CODIGO_DE_CORREO = { longitud: 6, vigenciaSegundos: 5 * 60, intentos: 3 } as const;
 
-/** Cuántos intentos de inicio de sesión por minuto y dirección IP. */
-export const INTENTOS_DE_INICIO_POR_MINUTO = 5;
+/**
+ * Cuántos intentos de inicio de sesión por minuto y dirección IP, por omisión. Se ajusta con
+ * `LIMITE_INICIO_SESION_POR_IP` (T-612, `shared/red/limite-de-inicio-de-sesion.ts`).
+ */
+export const INTENTOS_DE_INICIO_POR_MINUTO = INTENTOS_DE_INICIO_POR_OMISION;
 
 export const RUTA_BASE_DE_AUTENTICACION = '/api/v1/auth';
 
@@ -72,6 +78,7 @@ export function leerSecretoDeAutenticacion(entorno: Record<string, string | unde
 
 export function crearAuth(opciones: OpcionesDeAuth): Auth {
   const { prisma } = opciones;
+  const intentosDeInicio = opciones.intentosDeInicioPorMinuto ?? INTENTOS_DE_INICIO_POR_MINUTO;
   const base = prismaAdapter(prisma, { provider: 'postgresql' });
 
   const auth = betterAuth({
@@ -196,14 +203,14 @@ export function crearAuth(opciones: OpcionesDeAuth): Auth {
     },
 
     // Límite de intentos (ADR-0011, consecuencias). En memoria: sirve con una réplica; con
-    // varias hay que llevarlo a Redis (cola de ESTADO.md). Ver `INTENTOS_DE_INICIO_POR_MINUTO`.
+    // varias hay que llevarlo a Redis (cola de ESTADO.md). Ver `intentosDeInicioPorMinuto`.
     rateLimit: {
       enabled: true,
       window: 60,
       max: 100,
       customRules: {
-        '/sign-in/email': { window: 60, max: INTENTOS_DE_INICIO_POR_MINUTO },
-        '/sign-in/email-otp': { window: 60, max: INTENTOS_DE_INICIO_POR_MINUTO },
+        '/sign-in/email': { window: 60, max: intentosDeInicio },
+        '/sign-in/email-otp': { window: 60, max: intentosDeInicio },
         '/email-otp/send-verification-otp': { window: 60, max: 3 },
       },
     },
