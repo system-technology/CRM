@@ -138,7 +138,7 @@ una madre pueda rearmar su propio despertar, hace falta una regla de permiso par
 
 Todo lo demás está hecho: el repositorio **revisado línea a línea** (no contiene ni un fichero
 ejecutable en el commit `64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65`, v1.0.1), el analizador **ejecutado
-sobre el código real**, y los 26 hallazgos aprovechables ya implementados (T-615 y T-616). Los 3
+sobre el código real**, y los 25 hallazgos aprovechables ya implementados (T-615 y T-616). Los 4
 descartados, con su motivo, están en `docs/09-ia/10-guia-web-moderna.md` §3.
 
 **Lo que tienes que pegar está en `docs/09-ia/10-guia-web-moderna.md` §5**, literal y listo para

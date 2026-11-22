@@ -62,6 +62,10 @@ Cubre 38 de las guías con reglas deterministas, «~20 % del corpus». No es una
   ningún tsconfig. Tareas T-615 (web) y T-616 (API).
 - **Se aplicó** `error-cause`, porque encaja con una regla propia: «nunca `catch` silencioso»
   (CLAUDE.md §6).
+- **NO se aplicó** `error-cause` en `notifications/interface/consumidor-de-correo.ts`. Ahí el error
+  **se despoja a propósito por R10**: el original puede traer la dirección o el cuerpo del correo. El
+  código ya lo decía en un comentario y con un `eslint-disable preserve-caught-error`. **Aplicado a
+  ciegas habría metido datos personales en un log.** Es el falso positivo más caro de los cuatro.
 - **NO se aplicó** `structured-clone` en los dos sitios que lo pedían
   (`confirmar-importacion.use-case.ts` y `catalogo.prisma.ts`). Ahí `JSON.parse(JSON.stringify(x))`
   **no es una copia profunda: es un normalizador a algo serializable en JSON** — uno de los dos
@@ -70,9 +74,14 @@ Cubre 38 de las guías con reglas deterministas, «~20 % del corpus». No es una
 - **NO se aplicó** `promise-with-resolvers`: `Promise.withResolvers` es ES2024 y nuestro `lib` es
   ES2023, así que no está tipado. Subir el `lib` es una decisión aparte.
 
-**La lección operativa:** de 29 hallazgos, **3 había que descartarlos tras leerlos**. La herramienta
-avisa de ello («Static analysis results are provisional — verify against the Keep/Drop criteria»),
-pero el aviso solo sirve si alguien lo cumple. **Ningún hallazgo se aplica sin leer el sitio.**
+**La lección operativa:** de 29 hallazgos, **4 había que descartarlos tras leerlos**, y uno de ellos
+—el de `error-cause`— habría sido un **defecto de privacidad**. La herramienta avisa de ello
+(«Static analysis results are provisional — verify against the Keep/Drop criteria»), pero el aviso
+solo sirve si alguien lo cumple. **Ningún hallazgo se aplica sin leer el sitio.**
+
+Dicho de otro modo: la guía acierta en el 86 % y el 14 % restante incluye cosas que ninguna regla
+estática puede saber, porque dependen de decisiones nuestras escritas en comentarios y en las reglas
+de `CLAUDE.md`. **Sirve para encontrar, no para decidir.**
 
 ## 4. Precedencia frente a nuestras skills
 
