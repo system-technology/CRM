@@ -1,0 +1,37 @@
+name: Compuerta de rutas protegidas
+
+# R11: un PR que toque una ruta protegida (`humanRequired` de ownership.json) necesita la aprobación
+# del Owner; los demás pasan sin enterarse. La protección de rama NO puede hacerlo (T-619): con
+# `required_approving_review_count: 0` ignora `require_code_owner_reviews`, y con 1 exigiría
+# aprobación en todos los PR. Por eso la compuerta es este check obligatorio: `rutas-protegidas`.
+#
+# SEGURIDAD: se dispara con `pull_request_target` para que el workflow y el script salgan de la rama
+# BASE y un PR no pueda reescribir la compuerta que lo juzga. NO añadir un checkout del código del PR
+# ni ejecutar nada suyo: este job tiene un token con acceso a la API y lee metadatos, nada más.
+#
+# Cuando llega la aprobación lo vuelve a evaluar `rutas-protegidas-reevaluar.yml` (misma ejecución,
+# mismo commit). Una aprobación caduca al empujar (`dismiss_stale_reviews`): hay que aprobar de nuevo.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  rutas-protegidas:
+    name: rutas-protegidas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Sin `ref`: pull_request_target extrae la rama base, que es lo que queremos.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Aprobación del Owner si toca rutas protegidas
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/comprobar-aprobacion-owner.mjs --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}"
