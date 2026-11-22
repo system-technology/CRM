@@ -19,14 +19,296 @@ import { sembrarCatalogoReal } from './semilla-catalogo-real.js';
 import {
   sembrarEtapas,
   sembrarEtiquetas,
+  sembrarEtiquetasDadas,
   sembrarFormatos,
   sembrarMotivosDePerdida,
   sembrarRoles,
+  type EtiquetaSembrada,
 } from './siembra-de-tenant.js';
 
 const prisma = new PrismaClient();
 
 const TENANT_DEMO = '01932000-0000-7000-8000-0000000000d0';
+
+/**
+ * Las etiquetas que SOLO recibe la agencia demo (T-614), además de las tres de toda agencia.
+ *
+ * Son las palabras con las que el cliente del piloto pidió la función: «poder organizar o
+ * categorizar los chats —los que ya reservaron, los que tienen reserva pendiente, los nuevos—».
+ * Se AÑADEN, no sustituyen: «Pagado» es cobro y «Ya reservó» es gestión del chat, son dos ejes
+ * distintos; y las tres de toda agencia las siembra también la migración 20261121110000, que
+ * falla si una agencia no queda con las tres.
+ *
+ * Van aquí y no en `ETIQUETAS_SEMBRADAS` a propósito: lo de `siembra-de-tenant.ts` es lo que
+ * recibe TODA agencia —incluidas las reales—, y qué etiquetas trae una agencia nueva es una
+ * decisión de producto que nadie ha tomado. Esto es la demo, que es dato de muestra.
+ *
+ * Colores distintos de los tres ya usados (verde, ámbar, azul) dentro de la paleta del CHECK
+ * `etiquetas_color_de_la_paleta`, y orden detrás de ellos.
+ */
+const ETIQUETAS_DE_LA_DEMO = [
+  { nombre: 'Ya reservó', color: 'turquesa', orden: 3 },
+  { nombre: 'Reserva pendiente', color: 'naranja', orden: 4 },
+  { nombre: 'Nuevo', color: 'rosa', orden: 5 },
+] as const satisfies ReadonlyArray<EtiquetaSembrada>;
+
+interface MensajeDelHilo {
+  readonly wamid: string;
+  readonly direccion: 'ENTRANTE' | 'SALIENTE';
+  readonly estado: 'ENTREGADO' | 'LEIDO';
+  /** Hace cuántas horas ocurrió. La lista va en orden cronológico: el último es el más reciente. */
+  readonly haceHoras: number;
+  readonly claveIdempotencia: string | null;
+}
+
+interface HiloDeLaDemo {
+  /** Teléfono del contacto sembrado arriba; la conversación cuelga de él y del canal demo. */
+  readonly telefono: string;
+  /** Nombres de etiquetas de la agencia, tal cual se siembran. */
+  readonly etiquetas: readonly string[];
+  readonly mensajes: readonly MensajeDelHilo[];
+  /** Plazo de PRIMERA respuesta: horas hacia atrás (vencido) o negativas (aún por vencer). */
+  readonly slaVenceHaceHoras: number | null;
+  /** Cuándo se cumplió ese plazo. Nulo deja el hilo como «sin primera respuesta». */
+  readonly primeraRespuestaHaceHoras: number | null;
+}
+
+/**
+ * La bandeja de demostración (T-614): siete hilos repartidos entre las seis etiquetas, para que
+ * cada filtro devuelva algo. Con un solo hilo no se puede enseñar «organizar los chats», que es
+ * justo lo que pidió el cliente del piloto.
+ *
+ * **Sin texto, y no es un olvido**: desde ADR-0015 el texto del mensaje y la vista previa solo
+ * existen cifrados, y la clave vive en la API y el trabajador, no aquí. Los hilos se ven con su
+ * estructura (dirección, estado, instantes, sin leer) y sin contenido. Quien quiera texto corre
+ * `apps/api/src/demo/sembrar-demo-cifrada.ts`, que rellena los TRES primeros —por eso sus wamids
+ * son los de `PLAN_DE_LA_DEMO` y sus instantes los mismos: así el script les pone el texto en vez
+ * de crear un hilo paralelo—. Los cuatro de T-614 no están en ese plan y se quedan sin texto:
+ * añadírselo es tocar `apps/api`, que es otro carril.
+ *
+ * Los instantes son RELATIVOS a la siembra, a propósito: una semilla con fechas fijas muestra una
+ * bandeja de hace meses el día que alguien la corra.
+ */
+const HILOS_DE_LA_DEMO = [
+  {
+    // San Andrés, 4 pasajeros: pidió cotización y está decidiendo. Hace 20 horas: quedan 4 de
+    // ventana. Es el estado interesante de la interfaz, el que obliga a decidir entre responder
+    // ya o gastar una plantilla. Y con el plazo de primera respuesta vencido, que es lo que
+    // alimenta el filtro SLA_VENCIDO de la bandeja.
+    telefono: '+573001234567',
+    etiquetas: ['Reserva pendiente', 'Seguimiento'],
+    mensajes: [
+      {
+        wamid: 'wamid.DEMO.0001',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 22,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.0002',
+        direccion: 'SALIENTE',
+        estado: 'LEIDO',
+        haceHoras: 21,
+        claveIdempotencia: '01932000-0000-7000-8000-00000000e001',
+      },
+      {
+        wamid: 'wamid.DEMO.0003',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 20,
+        claveIdempotencia: null,
+      },
+    ],
+    slaVenceHaceHoras: 19,
+    primeraRespuestaHaceHoras: null,
+  },
+  {
+    // Cartagena, pareja: preguntó por pagar en dos cuotas. Ventana abierta y uno sin leer.
+    telefono: '+573155551234',
+    etiquetas: ['Reserva pendiente', 'Pago pendiente'],
+    mensajes: [
+      {
+        wamid: 'wamid.DEMO.CIFRADA.1234.1',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 5,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.CIFRADA.1234.2',
+        direccion: 'SALIENTE',
+        estado: 'LEIDO',
+        haceHoras: 4,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.CIFRADA.1234.3',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 1,
+        claveIdempotencia: null,
+      },
+    ],
+    slaVenceHaceHoras: null,
+    primeraRespuestaHaceHoras: 4,
+  },
+  {
+    // Santa Marta, familia de 6: consulta nueva, ya respondida, sin contestar todavía. Ventana
+    // vencida (el cliente escribió hace 30 horas).
+    telefono: '+573109876543',
+    etiquetas: ['Nuevo'],
+    mensajes: [
+      {
+        wamid: 'wamid.DEMO.CIFRADA.6543.1',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 30,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.CIFRADA.6543.2',
+        direccion: 'SALIENTE',
+        estado: 'ENTREGADO',
+        haceHoras: 29,
+        claveIdempotencia: null,
+      },
+    ],
+    slaVenceHaceHoras: null,
+    primeraRespuestaHaceHoras: 29,
+  },
+  {
+    // Luna de miel: reservó y pagó. El caso que el cliente llama «ya reservó».
+    telefono: '+573124445566',
+    etiquetas: ['Ya reservó', 'Pagado'],
+    mensajes: [
+      {
+        wamid: 'wamid.DEMO.T614.4455.1',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 48,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.T614.4455.2',
+        direccion: 'SALIENTE',
+        estado: 'LEIDO',
+        haceHoras: 47,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.T614.4455.3',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 46,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.T614.4455.4',
+        direccion: 'SALIENTE',
+        estado: 'LEIDO',
+        haceHoras: 45,
+        claveIdempotencia: null,
+      },
+    ],
+    slaVenceHaceHoras: null,
+    primeraRespuestaHaceHoras: 47,
+  },
+  {
+    // Excursión de colegio: cupos separados, falta el saldo. Reservó pero no ha pagado del todo.
+    telefono: '+573017778899',
+    etiquetas: ['Ya reservó', 'Pago pendiente'],
+    mensajes: [
+      {
+        wamid: 'wamid.DEMO.T614.8899.1',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 10,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.T614.8899.2',
+        direccion: 'SALIENTE',
+        estado: 'LEIDO',
+        haceHoras: 9,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.T614.8899.3',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 8,
+        claveIdempotencia: null,
+      },
+    ],
+    slaVenceHaceHoras: null,
+    primeraRespuestaHaceHoras: 9,
+  },
+  {
+    // Acaba de escribir y nadie ha respondido: el plazo de primera respuesta vence dentro de una
+    // hora (horas negativas = en el futuro).
+    telefono: '+573145556677',
+    etiquetas: ['Nuevo'],
+    mensajes: [
+      {
+        wamid: 'wamid.DEMO.T614.6677.1',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 2,
+        claveIdempotencia: null,
+      },
+    ],
+    slaVenceHaceHoras: -1,
+    primeraRespuestaHaceHoras: null,
+  },
+  {
+    // Eje Cafetero: pagado, y queda pendiente que mande los documentos de los viajeros.
+    telefono: '+573186669900',
+    etiquetas: ['Ya reservó', 'Pagado', 'Seguimiento'],
+    mensajes: [
+      {
+        wamid: 'wamid.DEMO.T614.9900.1',
+        direccion: 'ENTRANTE',
+        estado: 'ENTREGADO',
+        haceHoras: 26,
+        claveIdempotencia: null,
+      },
+      {
+        wamid: 'wamid.DEMO.T614.9900.2',
+        direccion: 'SALIENTE',
+        estado: 'ENTREGADO',
+        haceHoras: 25,
+        claveIdempotencia: null,
+      },
+    ],
+    slaVenceHaceHoras: null,
+    primeraRespuestaHaceHoras: 25,
+  },
+] as const satisfies ReadonlyArray<HiloDeLaDemo>;
+
+/**
+ * Lo denormalizado de la fila de bandeja, derivado de los mensajes y no escrito a mano: el último
+ * mensaje, el último del cliente (la ventana de servicio) y cuántos quedan sin leer —los entrantes
+ * posteriores a nuestra última respuesta—. Es la misma derivación que hace `armarLaDemoCifrada` en
+ * la API, para que los tres hilos compartidos cuadren con el texto que ese script les pone.
+ */
+function resumenDelHilo(hilo: HiloDeLaDemo): {
+  ultimo: MensajeDelHilo;
+  ultimoDelCliente: MensajeDelHilo;
+  sinLeer: number;
+} {
+  const ultimo = hilo.mensajes[hilo.mensajes.length - 1];
+  const ultimoDelCliente = [...hilo.mensajes].reverse().find((m) => m.direccion === 'ENTRANTE');
+  if (!ultimo || !ultimoDelCliente) {
+    throw new Error(`El hilo de ${hilo.telefono} necesita al menos un mensaje entrante.`);
+  }
+  const ultimaSaliente = [...hilo.mensajes].reverse().find((m) => m.direccion === 'SALIENTE');
+  const sinLeer = hilo.mensajes.filter(
+    (m) =>
+      m.direccion === 'ENTRANTE' && (!ultimaSaliente || m.haceHoras < ultimaSaliente.haceHoras),
+  ).length;
+  return { ultimo, ultimoDelCliente, sinLeer };
+}
 
 /**
  * ¿La base es local? Solo un host de loopback (Docker en la máquina o el contenedor de CI) cuenta.
@@ -140,6 +422,8 @@ async function main() {
   await sembrarEtapas(prisma, tenant.id);
   await sembrarMotivosDePerdida(prisma, tenant.id);
   await sembrarEtiquetas(prisma, tenant.id);
+  // Y, solo en la demo, las tres con las palabras del cliente del piloto (T-614).
+  await sembrarEtiquetasDadas(prisma, tenant.id, ETIQUETAS_DE_LA_DEMO);
 
   // --- Campos personalizados ---------------------------------------------
   // Se siembran para que la columna jsonb y las definiciones se ejerciten desde el principio.
@@ -463,10 +747,17 @@ async function main() {
   );
 
   // --- Contactos ----------------------------------------------------------
+  // Los tres primeros son los de siempre (los hilos con texto de `apps/api/src/demo` cuelgan de
+  // ellos). Los cuatro siguientes entran con T-614: sin varios hilos no se puede enseñar
+  // «organizar los chats», que es lo que pidió el cliente del piloto. Inventados, como el resto.
   const contactos = [
     { telefonoE164: '+573001234567', nombre: 'Laura Giraldo', correo: 'laura@ejemplo.test' },
     { telefonoE164: '+573109876543', nombre: 'Familia Ramírez', correo: null },
     { telefonoE164: '+573155551234', nombre: 'Diego Morales', correo: 'diego@ejemplo.test' },
+    { telefonoE164: '+573124445566', nombre: 'Carolina Betancur', correo: 'carolina@ejemplo.test' },
+    { telefonoE164: '+573017778899', nombre: 'Colegio San José (grupo)', correo: null },
+    { telefonoE164: '+573145556677', nombre: 'Marcela Ospina', correo: null },
+    { telefonoE164: '+573186669900', nombre: 'Hernán Castaño', correo: 'hernan@ejemplo.test' },
   ];
   for (const c of contactos) {
     const contacto = await prisma.contacto.upsert({
@@ -587,80 +878,99 @@ async function main() {
 
   // --- Bandeja de demostracion ---------------------------------------------
   //
-  // Un hilo con historia, no una fila vacia: la bandeja no se puede evaluar sin ver
-  // como se ve un mensaje entrante, uno saliente y una ventana de servicio a punto de
-  // cerrarse. Los instantes son RELATIVOS a la siembra, a proposito: una semilla con
-  // fechas fijas muestra una bandeja de hace meses el dia que alguien la corra.
-  const contactoDemo = await prisma.contacto.findFirstOrThrow({
-    where: { tenantId: tenant.id, telefonoE164: '+573001234567' },
-  });
-
+  // Siete hilos con historia, no una fila vacía: el porqué de cada uno —y de que vayan sin
+  // texto— está en `HILOS_DE_LA_DEMO`, arriba.
+  //
+  // Ya NO se escribe la columna legada `conversaciones.etiquetas` (T-614): la migración
+  // 20261121110000 la copió a `etiquetas` + `conversacion_etiquetas`, la bandeja lee solo la
+  // tabla (`apps/api/.../inbox/infrastructure/mapeo.ts`) y seguir llenando el arreglo libre era
+  // sembrar un dato que nadie lee. La columna se retira en una migración posterior.
   const ahora = Date.now();
   const haceHoras = (h: number) => new Date(ahora - h * 60 * 60 * 1000);
 
-  const conversacion = await prisma.conversacion.upsert({
-    where: {
-      tenantId_canalId_contactoId: {
-        tenantId: tenant.id,
-        canalId: canal.id,
-        contactoId: contactoDemo.id,
-      },
-    },
-    update: {},
-    create: {
-      tenantId: tenant.id,
-      canalId: canal.id,
-      contactoId: contactoDemo.id,
-      estado: 'ABIERTA',
-      // Hace 20 horas: quedan 4 de ventana. Es el estado interesante de la interfaz,
-      // el que obliga a decidir entre responder ya o gastar una plantilla.
-      ultimoMensajeClienteEn: haceHoras(20),
-      // Sin vista previa ni texto en los mensajes: desde ADR-0015 esas columnas solo existen
-      // cifradas, y la clave vive en la API y el trabajador, no aqui. El hilo se ve con su
-      // estructura (direccion, estado, instantes) y sin contenido.
-      ultimoMensajeEn: haceHoras(20),
-      ultimoMensajeDireccion: 'ENTRANTE',
-      mensajesSinLeer: 1,
-      slaVenceEn: haceHoras(19),
-      etiquetas: ['San Andres'],
-    },
+  const contactosDeLaBandeja = await prisma.contacto.findMany({
+    where: { tenantId: tenant.id, telefonoE164: { in: HILOS_DE_LA_DEMO.map((h) => h.telefono) } },
+    select: { id: true, telefonoE164: true },
+  });
+  const contactoPorTelefono = new Map(contactosDeLaBandeja.map((c) => [c.telefonoE164, c.id]));
+
+  // El catálogo que se acaba de sembrar, por nombre: las asignaciones van por id.
+  const catalogoDeEtiquetas = await prisma.label.findMany({
+    where: { tenantId: tenant.id },
+    select: { id: true, nombre: true },
+  });
+  const etiquetaPorNombre = new Map(catalogoDeEtiquetas.map((e) => [e.nombre, e.id]));
+
+  // Quién las puso en la demo. La foránea hacia `usuarios` es compuesta con el tenant.
+  const duenoDeLaDemo = await prisma.usuario.findUnique({
+    where: { tenantId_correo: { tenantId: tenant.id, correo: 'dueno@agenciademo.test' } },
+    select: { id: true },
   });
 
-  // `skipDuplicates` se apoya en el indice unico de (tenant_id, wamid): volver a sembrar
-  // no duplica el hilo, que es la misma propiedad que protege de los reintentos de Meta.
-  await prisma.mensaje.createMany({
-    skipDuplicates: true,
-    data: [
-      {
+  let asignacionesDeEtiquetas = 0;
+  for (const hilo of HILOS_DE_LA_DEMO) {
+    const contactoId = contactoPorTelefono.get(hilo.telefono);
+    if (!contactoId) throw new Error(`Falta el contacto ${hilo.telefono} de la bandeja demo.`);
+    const { ultimo, ultimoDelCliente, sinLeer } = resumenDelHilo(hilo);
+
+    const conversacion = await prisma.conversacion.upsert({
+      where: {
+        tenantId_canalId_contactoId: { tenantId: tenant.id, canalId: canal.id, contactoId },
+      },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        canalId: canal.id,
+        contactoId,
+        estado: 'ABIERTA',
+        ultimoMensajeClienteEn: haceHoras(ultimoDelCliente.haceHoras),
+        ultimoMensajeEn: haceHoras(ultimo.haceHoras),
+        ultimoMensajeDireccion: ultimo.direccion,
+        mensajesSinLeer: sinLeer,
+        slaVenceEn: hilo.slaVenceHaceHoras === null ? null : haceHoras(hilo.slaVenceHaceHoras),
+        primeraRespuestaEn:
+          hilo.primeraRespuestaHaceHoras === null
+            ? null
+            : haceHoras(hilo.primeraRespuestaHaceHoras),
+      },
+    });
+
+    // `skipDuplicates` se apoya en el indice unico de (tenant_id, wamid): volver a sembrar
+    // no duplica el hilo, que es la misma propiedad que protege de los reintentos de Meta.
+    await prisma.mensaje.createMany({
+      skipDuplicates: true,
+      data: hilo.mensajes.map((m) => ({
         tenantId: tenant.id,
         conversacionId: conversacion.id,
-        direccion: 'ENTRANTE',
-        tipo: 'TEXTO',
-        estado: 'ENTREGADO',
-        wamid: 'wamid.DEMO.0001',
-        ocurridoEn: haceHoras(22),
-      },
-      {
-        tenantId: tenant.id,
-        conversacionId: conversacion.id,
-        direccion: 'SALIENTE',
-        tipo: 'TEXTO',
-        estado: 'LEIDO',
-        wamid: 'wamid.DEMO.0002',
-        claveIdempotencia: '01932000-0000-7000-8000-00000000e001',
-        ocurridoEn: haceHoras(21),
-      },
-      {
-        tenantId: tenant.id,
-        conversacionId: conversacion.id,
-        direccion: 'ENTRANTE',
-        tipo: 'TEXTO',
-        estado: 'ENTREGADO',
-        wamid: 'wamid.DEMO.0003',
-        ocurridoEn: haceHoras(20),
-      },
-    ],
-  });
+        direccion: m.direccion,
+        tipo: 'TEXTO' as const,
+        estado: m.estado,
+        wamid: m.wamid,
+        claveIdempotencia: m.claveIdempotencia,
+        ocurridoEn: haceHoras(m.haceHoras),
+      })),
+    });
+
+    // Las etiquetas PUESTAS en el hilo (T-614): sin esto el catálogo se ve lleno y cualquier
+    // filtro devuelve vacío, que es justo lo que hacía parecer que la función no existía.
+    // `tenant_id` va en la clave primaria y en las dos foráneas compuestas (R1): una asignación
+    // no cruza agencias. Repetirla no duplica (ON CONFLICT DO NOTHING sobre la terna).
+    const puestas = await prisma.conversationLabel.createMany({
+      skipDuplicates: true,
+      data: hilo.etiquetas.map((nombre) => {
+        const etiquetaId = etiquetaPorNombre.get(nombre);
+        if (!etiquetaId) throw new Error(`Falta la etiqueta sembrada «${nombre}».`);
+        return {
+          tenantId: tenant.id,
+          conversacionId: conversacion.id,
+          etiquetaId,
+          asignadaEn: haceHoras(ultimo.haceHoras),
+          asignadaPorId: duenoDeLaDemo?.id ?? null,
+        };
+      }),
+    });
+    asignacionesDeEtiquetas += puestas.count;
+  }
 
   // El espejo de Meta. APROBADA y PAUSADA a la vez, a proposito: la bandeja tiene que
   // mostrar la pausada deshabilitada CON SU MOTIVO, y sin un ejemplo nadie lo construye.
@@ -711,10 +1021,13 @@ async function main() {
     conversaciones: await prisma.conversacion.count({ where: { tenantId: tenant.id } }),
     mensajes: await prisma.mensaje.count({ where: { tenantId: tenant.id } }),
     plantillas: await prisma.plantillaWhatsapp.count({ where: { tenantId: tenant.id } }),
+    etiquetas: await prisma.label.count({ where: { tenantId: tenant.id } }),
+    asignaciones: await prisma.conversationLabel.count({ where: { tenantId: tenant.id } }),
   };
 
   console.log('\nAgencia demo lista:');
-  for (const [k, v] of Object.entries(resumen)) console.log(`  ${k.padEnd(12)} ${v}`);
+  for (const [k, v] of Object.entries(resumen)) console.log(`  ${k.padEnd(14)} ${v}`);
+  console.log(`  (${asignacionesDeEtiquetas} asignaciones de etiqueta nuevas en esta corrida)`);
   console.log(`\n  tenantId: ${tenant.id}`);
 }
 
