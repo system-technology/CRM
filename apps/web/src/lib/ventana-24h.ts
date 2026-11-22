@@ -23,6 +23,26 @@ export const DURACION_VENTANA_24H_MS = 24 * 60 * 60 * 1000;
 export const UMBRAL_AMBAR_VENTANA_MINUTOS = 120;
 export const UMBRAL_AMBAR_VENTANA_MS = UMBRAL_AMBAR_VENTANA_MINUTOS * 60 * 1000;
 
+/** 15 minutos o menos: ya casi no hay tiempo para contestar; el aviso pasa de ámbar a rojo (T-623). */
+export const UMBRAL_ROJO_VENTANA_MINUTOS = 15;
+
+/** Cómo se pinta lo que queda de la ventana: de «hay tiempo» a «ya no puedes escribirle». */
+export type NivelDeUrgenciaVentana = 'abierta' | 'ambar' | 'rojo' | 'cerrada';
+
+/**
+ * Nivel de urgencia a partir de los minutos que quedan. Una ventana cerrada NO es «todo bien»: es que
+ * ya no se puede escribir texto libre, y el color no la mezcla con la que sigue abierta.
+ */
+export function nivelDeUrgenciaVentana(
+  minutosRestantes: number,
+  cerrada: boolean,
+): NivelDeUrgenciaVentana {
+  if (cerrada || minutosRestantes <= 0) return 'cerrada';
+  if (minutosRestantes <= UMBRAL_ROJO_VENTANA_MINUTOS) return 'rojo';
+  if (minutosRestantes <= UMBRAL_AMBAR_VENTANA_MINUTOS) return 'ambar';
+  return 'abierta';
+}
+
 export type RelojInyectable = (() => number) | Date | number;
 
 export type NivelVentana24h = 'abierta' | 'ambar' | 'cerrada';

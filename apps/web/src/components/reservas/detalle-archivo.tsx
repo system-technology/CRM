@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Pencil, Users } from 'lucide-react';
 import type {
   ActualizarReserva,
@@ -197,6 +197,12 @@ export function DetalleArchivo({
   const enlaces = useEnlacesDelViaje(archivo.contactoId, null, { conArchivos: false });
   const nombreContacto = enlaces.contacto.tipo === 'listo' ? enlaces.contacto.valor?.nombre : null;
 
+  // «Cobro del viaje» (conversación, cotización, ficha) llega con `#cobro`: baja hasta el panel.
+  const cobroRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (window.location.hash === '#cobro') cobroRef.current?.scrollIntoView({ block: 'start' });
+  }, [archivo.id]);
+
   const ejecutar = async (operacion: () => Promise<void>, alTerminar: () => void) => {
     setEnviando(true);
     setError(null);
@@ -289,7 +295,9 @@ export function DetalleArchivo({
         </p>
       )}
 
-      <PanelDeCobro archivoId={archivo.id} numero={archivo.numero} zona={zona} />
+      <div id="cobro" ref={cobroRef} className="scroll-mt-20">
+        <PanelDeCobro archivoId={archivo.id} numero={archivo.numero} zona={zona} />
+      </div>
 
       <section aria-labelledby="reservas-titulo">
         <h3 id="reservas-titulo" className="mb-2 text-sm font-bold">

@@ -61,10 +61,12 @@ import { EnlacesDelViaje } from '../../../../components/comun/enlaces-del-viaje'
 import {
   archivoDeLaCotizacion,
   enlaceDeArchivo,
+  enlaceDeCobro,
   enlaceDeContacto,
   enlaceDeConversacion,
   etiquetaDelArchivo,
   hrefArchivo,
+  soloEnlaces,
 } from '../../../../lib/enlaces-viaje-logica';
 import { useEnlacesDelViaje } from '../../../../lib/use-enlaces-del-viaje';
 import { usePermisos } from '../../../../lib/permisos';
@@ -140,7 +142,7 @@ function ContenidoCotizacionGuardada({ params: paramsPromise }: PageProps) {
   }
 
   const id = idFromProps ?? idFromParams ?? '01932000-0000-7000-8000-000000000001';
-  const { puedeVerNetoYMargen, puedeEscribirCotizacion } = usePermisos();
+  const { puedeVerNetoYMargen, puedeEscribirCotizacion, tienePermiso } = usePermisos();
 
   const [cotizacion, setCotizacion] = useState<CotizacionGuardada | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -633,7 +635,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
 
                     <EnlacesDelViaje
                       className="mt-3"
-                      enlaces={[
+                      enlaces={soloEnlaces([
                         enlaceDeConversacion(
                           conversacionParam
                             ? { tipo: 'listo', valor: conversacionParam }
@@ -647,7 +649,11 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                               ? enlaces.archivos
                               : { tipo: 'listo', valor: archivoDeOrigen },
                         ),
-                      ]}
+                        enlaceDeCobro(
+                          archivoRecienAbierto ?? archivoDeOrigen,
+                          tienePermiso('cobro.ver'),
+                        ),
+                      ])}
                     />
                   </div>
 

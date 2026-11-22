@@ -6,6 +6,8 @@ import { usePermisos } from '../../../lib/permisos';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { EnlaceAConversacion } from '../../../components/comun/enlace-a-conversacion';
+import { terminoDeBusquedaDelContacto } from '../../../lib/enlaces-viaje-logica';
 import { type ContactoDeLista } from '@viajapro/contracts';
 import {
   Users,
@@ -376,14 +378,15 @@ export default function ContactosPage() {
                           {/* Acciones */}
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end space-x-2">
-                              <Link
-                                href="/bandeja"
+                              <EnlaceAConversacion
+                                contactoId={c.id}
+                                termino={terminoDeBusquedaDelContacto(c)}
                                 onClick={(e) => e.stopPropagation()}
                                 title="Abrir chat en bandeja"
                                 className="hover:text-acento-600 dark:hover:text-acento-400 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                               >
                                 <MessageSquare className="h-4 w-4" />
-                              </Link>
+                              </EnlaceAConversacion>
                               <Link
                                 href={`/contactos/${c.id}`}
                                 onClick={(e) => e.stopPropagation()}
