@@ -125,7 +125,7 @@ describe('GET /api/v1/catalogo/salidas', () => {
     const { cuerpo } = await salidas('desde=2026-10-01&hasta=2026-10-31');
     const fechas = cuerpo.salidas.map((s) => s.fecha);
     expect(fechas.every((f) => f >= '2026-10-01' && f <= '2026-10-31')).toBe(true);
-    expect([...fechas].sort()).toEqual(fechas);
+    expect(fechas.toSorted()).toEqual(fechas);
   });
 
   it('el filtro por paquete devuelve solo ese paquete', async () => {
