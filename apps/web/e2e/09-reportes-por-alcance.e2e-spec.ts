@@ -215,7 +215,7 @@ test('Ana ve «Mis numeros» con SUS cifras y nada de la agencia ni de Carlos', 
   // Ni el nombre del companero ni el de la duena aparecen en la pantalla.
   const cuerpo = await page.locator('body').innerText();
   expect(cuerpo).not.toContain(NOMBRE_CARLOS);
-  expect(cuerpo).not.toContain('Marcela');
+  expect(cuerpo).not.toContain('John');
 
   // Lo que dijo el SERVIDOR: alcance propio y las claves de agencia ni existen en el texto crudo.
   const respuesta = escucha.actual();

@@ -18,6 +18,7 @@ import {
   type Dinero,
   type EstadoDeCobro,
   type MedioDePago,
+  type PasajerosDeLaFilaDeCobro,
   type SituacionDelSaldo,
   type TipoDeMovimientoDeCobro,
 } from '@viajapro/contracts';
@@ -277,4 +278,40 @@ export function mensajeDeErrorDeCobro(error: unknown): string {
 export function esSobrepagoSinConfirmar(error: unknown): boolean {
   const e = (typeof error === 'object' && error !== null ? error : {}) as ErrorConEstado;
   return e.code === 'SOBREPAGO_SIN_CONFIRMAR';
+}
+
+/* ---------- Pasajeros de la fila de cobros (T-590) ---------- */
+
+/**
+ * Cuántos viajan, en CIFRAS. Nunca nombres ni edades: esta vista la lee quien tenga `cobro.ver`
+ * (también OPERACIONES) y se exporta a un CSV que sale de la agencia; los nombres exigen
+ * `archivo.ver` (ADR-0024 §3.7) y son dato personal (R10). Si hicieran falta nombres, no se traen
+ * aquí: se abre el archivo.
+ *
+ * `pasajeros` es opcional en el contrato. Sin dato se pinta «—», nunca `0`, que se leería como
+ * «cero pasajeros». `total` es lo que se ve grande; `detalle` solo existe si viaja alguien que no
+ * es adulto; `etiqueta` es la frase completa para lectores de pantalla.
+ */
+export function pasajerosEnPantalla(p: PasajerosDeLaFilaDeCobro | undefined): {
+  total: string;
+  detalle: string | null;
+  etiqueta: string;
+} {
+  if (!p) return { total: '—', detalle: null, etiqueta: 'Pasajeros: sin dato' };
+  const unidad = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+  const palabras = [
+    p.adultos > 0 ? unidad(p.adultos, 'adulto', 'adultos') : null,
+    p.ninos > 0 ? unidad(p.ninos, 'niño', 'niños') : null,
+    p.infantes > 0 ? unidad(p.infantes, 'infante', 'infantes') : null,
+  ].filter((x): x is string => x !== null);
+  const compacto = [
+    p.adultos > 0 ? `${p.adultos} ad` : null,
+    p.ninos > 0 ? unidad(p.ninos, 'niño', 'niños') : null,
+    p.infantes > 0 ? `${p.infantes} inf` : null,
+  ].filter((x): x is string => x !== null);
+  return {
+    total: String(p.total),
+    detalle: p.ninos > 0 || p.infantes > 0 ? compacto.join(' · ') : null,
+    etiqueta: `${unidad(p.total, 'pasajero', 'pasajeros')}: ${palabras.join(', ')}`,
+  };
 }
