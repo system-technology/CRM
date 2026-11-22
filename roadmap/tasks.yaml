@@ -13017,7 +13017,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     acceptance:
       - "SINTOMA medido por la sesion de T-583: en next dev la clase dark no aparece en <html>. Ni el script
         anti-parpadeo con localStorage ni colorScheme dark la activaron, y el medidor de contraste tuvo que
@@ -13030,6 +13030,11 @@ tasks:
       - Responder esa pregunta ANTES de arreglar nada. Es media hora y cambia el tamano de la tarea
     source: limite declarado por la sesion de T-583, sin ampliarlo (2026-11-21)
     owner: frontend
+    started_at: 2026-11-22T03:09:16.403Z
+    done_at: 2026-11-22T03:09:16.403Z
+    evidence: "Mergeado en main por el PR #496 (rama b/T-586-modo-oscuro) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 05bfc818e50357a7d39353f9b5747d49d759794f
   - id: T-587
     title: "Diseno: la familia de color aviso solo tiene tres tonos y obliga a usar amber crudo"
     type: refactor
