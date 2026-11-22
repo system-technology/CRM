@@ -12475,13 +12475,154 @@ tasks:
     evidence: "Mergeado en main por el PR #485 (rama i/T-593-diario-del-lote) con el CI en verde: format, analyze,
       tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 5f150305882db109f5e57461eabb62aaa8e2ba88
+  - id: T-595
+    title: "Staging: verificar de verdad el estado de Neon (migraciones y roles), que el hilo daba por sabido y no cuadra"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: leer el estado de Neon exige el panel o una credencial de la base, las dos fuera de la autorizacion del orquestador. El MCP de Neon rechaza su credencial (HTTP 401)."
+    acceptance:
+      - "ESTADO.md venia afirmando «Neon viajapro-staging existe con 32 de 47 migraciones aplicadas y
+        faltan 3 roles». Esa cifra es de una comprobacion anterior y se arrastraba como un hecho"
+      - "NO CUADRA con lo medido el 2026-11-21 a las 22:55 UTC: /salud/listo responde 200 con
+        baseDeDatos ok, rol viajapro_app y aislamiento forzado. Por R2 cada proceso ABORTA al arrancar
+        si no es el rol que esperaba ser, asi que una API viva con ese rol contradice que falten roles"
+      - "Las dos cosas pueden ser ciertas a la vez solo si los roles que faltan son otros distintos del
+        de la aplicacion. Eso es justo lo que hay que mirar, no suponer"
+      - "Comprobar contra Neon: cuantas migraciones estan aplicadas de verdad y que roles existen.
+        Mientras no se mire, ESTADO.md lo marca como SIN VERIFICAR, que es lo honesto"
+      - "Si faltan migraciones, el ingreso del cliente puede fallar por una tabla ausente y no solo por
+        T-594. Las dos causas se investigan juntas"
+    source: "contradiccion encontrada al revisar el hilo tras el aviso del propietario (2026-11-21)"
+    owner: propietario
+
+  - id: T-597
+    title: "API: avisar al arrancar si WEB_PUBLIC_URL o API_PUBLIC_URL faltan o apuntan a localhost"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Las dos son sync:false en render.yaml: su valor solo existe en el panel y olvidarlas es
+        facil. Sin ellas el codigo cae a localhost EN SILENCIO y el sintoma es que la web se ve pero
+        nadie entra, sin una linea que diga por que. Es lo que le pasa al cliente del piloto"
+      - "Avisar con un error en el registro al arrancar, nombrando la variable, el valor en uso y la
+        consecuencia concreta. NO abortar: tumbaria un staging que hoy atiende a alguien"
+      - "El rechazo por origen debe registrar el Origin recibido y la lista de confianza, para
+        distinguir una web mal configurada de un sitio ajeno"
+      - "MEDIDO por la sesion que lo implemento: el rechazo del ingreso lo da NUESTRO middleware, no
+        Better Auth, porque va registrado primero con forRoutes(*) y no salta POST. Better Auth solo
+        valida Origin si la peticion trae cookie, y un primer ingreso no la trae"
+      - "Lo que se ve en el navegador: 403 de POST /api/v1/auth/sign-in/email con cuerpo
+        {error:{code:ORIGEN_NO_CONFIABLE,message:Origen no permitido.}}"
+    source: "sintoma del cliente del piloto y lectura del codigo (2026-11-21)"
+    owner: backend
+
+  - id: T-600
+    title: "Demo: preparar staging por el CI para que el cliente pueda entrar (siembra mas credencial)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    acceptance:
+      - "PROBLEMA REAL: el cliente que prueba la demo no puede entrar y tiene entregas sin validar.
+        Ni el propietario ni la sesion tienen acceso a Neon; el CI si lo tiene"
+      - "CAUSA: deploy-staging.yml corre prisma migrate deploy y NINGUN paso de siembra. Y la siembra
+        crea los usuarios SIN contrasena (seed.ts:85). Existe sembrar-credenciales-dev.ts pero no
+        sirve en CI: exige APP_ENV=local, usa el rol de identidad y solo acepta @agenciademo.test"
+      - "ENTREGA: workflow manual (nunca en push) mas script que diagnostica lo que hay ANTES, siembra,
+        crea la credencial con hashPassword de better-auth (el mismo scrypt que comprueba el ingreso) y
+        verifica que se puede entrar antes de darlo por bueno"
+      - "NO se debilita el inicio de sesion: se mantiene el minimo de 12 caracteres y no hay atajos de
+        demo. Lo que faltaban eran DATOS, no menos seguridad"
+      - "El repositorio es PUBLICO: el input del dispatch y el resumen del run los ve cualquiera. Con
+        datos de demostracion es asumible, pero la contrasena se rota relanzando antes de que haya
+        nada real"
+      - "SIN EJECUTAR: el script no ha corrido nunca contra una base, ni el workflow. La primera
+        ejecucion real sera la de verdad"
+      - "Si tras prepararlo sigue sin entrar, mirar antes que el script: que la web apunte a esta API,
+        la cookie Secure entre dominios, y el tope de intentos (5 por minuto, 10 fallos diarios)"
+    source: "peticion del propietario con el cliente bloqueado (2026-11-21)"
+    owner: backend
+
+  - id: T-598
+    title: "Seguridad: los secretos del Environment de Render los genero una sesion de IA con plantillas; tratarlos como comprometidos y rotarlos"
+    type: security
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: rotar secretos exige los paneles de Render y Neon y generar valores que NO deben pasar por una sesion. Es justo lo que fallo la primera vez."
+    acceptance:
+      - "DICHO POR EL PROPIETARIO el 2026-11-21 estando en el panel: «todos los secretos del
+        environment los creaste tu con unas plantillas». Los creo una sesion de IA anterior"
+      - "El punto 1 de PENDIENTES-DEL-PROPIETARIO ya decia «Son claves; nunca pasan por una sesion».
+        La politica existia y se incumplio. Esta tarea es esa politica aplicada hacia atras"
+      - "Dos motivos para tratarlos como comprometidos, y basta cualquiera: pasaron por el contexto de
+        una conversacion, que queda en transcripciones fuera de nuestro control; y si salieron de
+        plantillas pueden ser valores de ejemplo, predecibles o repetidos"
+      - "ORDEN SUGERIDO. Primero los que dan acceso: las contrasenas de los cuatro roles en Neon
+        (DATABASE_APP_URL, DATABASE_ALTAS_URL, DATABASE_IDENTIDAD_URL, DATABASE_WEBHOOK_URL) y
+        BETTER_AUTH_SECRET, que firma las sesiones. Rotarlo cierra las sesiones abiertas, hoy casi
+        gratis porque no hay usuarios reales"
+      - "Despues los de carga util, que ya soportan rotacion por su _VERSION: WEBHOOK_PAYLOAD_KEY,
+        CORREO_PAYLOAD_KEY, WHATSAPP_DIRECTORY_PEPPER"
+      - "CAMPOS_SENSIBLES_KEY aparte y con cuidado: cifra PII en reposo (ADR-0015) y rotarla mal deja
+        ilegible lo cifrado. Existe CAMPOS_SENSIBLES_KEY_PREVIOUS y el runbook
+        docs/06-operacion/rotacion-de-claves.md. Hacerlo ANTES de que entre PII real, que es cuando
+        todavia no cuesta nada"
+      - "META_APP_SECRET y POSTMARK_SERVER_TOKEN NO son nuestros: los emite Meta y Postmark. Una
+        sesion no pudo inventarlos, asi que o son placeholders (y WhatsApp y el correo no funcionan)
+        o se pegaron de algun sitio. Comprobar cual de las dos cosas es"
+      - "Dejar anotado en el runbook que los valores se generan fuera de una sesion y no se pegan en
+        una conversacion"
+    source: "el propietario lo recordo al abrir el panel de Render (2026-11-21)"
+    owner: propietario
+
+  - id: T-594
+    title: "Staging: el cliente entra a la web pero el ingreso lo rechaza; WEB_PUBLIC_URL no incluye el dominio de Vercel"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: WEB_PUBLIC_URL es sync:false en render.yaml, o sea que su valor NO esta en el repositorio y solo se pone en el panel de Render, que esta fuera de la autorizacion del orquestador."
+    acceptance:
+      - "SINTOMA reportado por el propietario (2026-11-21, 22:5x UTC): el cliente abre la URL de
+        staging y la ve, pero al poner usuario y contrasena no le deja entrar"
+      - "MEDIDO, no supuesto, el mismo dia. La web responde 200 en / y en /ingresar con su
+        formulario. La API de Render ESTA VIVA: /salud da 200 y /salud/listo da 200 con
+        estado ok, baseDeDatos ok, rol viajapro_app y aislamiento forzado. La reescritura web
+        hacia API funciona: /api/v1/salud da el MISMO 401 desde Vercel que desde Render directo"
+      - "CAUSA MAS PROBABLE, por lectura del codigo: origen.ts linea 33 devuelve UNA SOLA entrada,
+        WEB_PUBLIC_URL, y si falta usa http://localhost:3000. origin-check.middleware.ts rechaza con
+        403 ORIGEN_NO_CONFIABLE toda MUTACION cuyo Origin no este en esa lista, y salta los metodos
+        seguros. Por eso un GET se ve bien y el POST del ingreso no: el navegador manda
+        Origin: https://viajapro-staging.vercel.app y la API no lo reconoce"
+      - "Arreglo: poner WEB_PUBLIC_URL en Render al origen EXACTO que usa el cliente, con esquema y
+        sin barra final. El comentario de render.yaml propone https://staging.<dominio>, que es un
+        dominio propio que todavia no existe"
+      - "SEGUNDA CAUSA POSIBLE, no descartada: que no exista el usuario del cliente en la base de
+        staging, o que su clave se perdiera (punto 8e de PENDIENTES-DEL-PROPIETARIO). Se distingue
+        en diez segundos: si el POST de ingreso responde 403 con ORIGEN_NO_CONFIABLE es lo primero;
+        si responde 401 con error de credenciales es lo segundo"
+      - "NO SE PUDO CONFIRMAR desde la sesion: hace falta un POST con cabecera Origin para ver el
+        codigo y el cuerpo, y el clasificador deniega curl y el navegador. Las herramientas de
+        Vercel, Render y Neon rechazan sus credenciales"
+    source: "sintoma del propietario y verificacion por HTTP de la madre septima (2026-11-21)"
+    owner: propietario
+
   - id: T-601
     title: "Demo: el admin de la agencia pasa a llamarse John, y resembrar vuelve a actualizar nombres"
     type: feature
     phase: 1
     priority: P2
     effort: S
-    status: review
+    status: done
     acceptance:
       - "Pedido por el propietario: el admin de la cuenta del CRM se llama John, no Marcela. Es
         dueno@agenciademo.test, la duena de la agencia demo (seed.ts). El usuario que usa el cliente,
