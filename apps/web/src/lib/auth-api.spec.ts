@@ -45,7 +45,7 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
 
     it('mapearErrorAcceso mapea códigos de error canónicos a mensajes legibles', () => {
       expect(mapearErrorAcceso('CREDENCIALES_INVALIDAS')).toContain('Los datos no coinciden');
-      expect(mapearErrorAcceso('DEMASIADOS_INTENTOS')).toContain('Demasiados intentos');
+      expect(mapearErrorAcceso('DEMASIADOS_INTENTOS')).toContain('Demasiados intentos seguidos');
       expect(mapearErrorAcceso('SIN_SESION')).toContain('No hay una sesión activa');
       expect(mapearErrorAcceso('SIN_AGENCIA_ACTIVA')).toContain('Debes seleccionar una agencia');
       expect(mapearErrorAcceso('ACCESO_REVOCADO')).toContain(
@@ -91,9 +91,9 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
       ).toBe('Escribe tu correo o usuario y tu contraseña para entrar.');
 
       // Escrito pero mal: ahí sí se manda revisar.
-      expect(
-        mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', { correo: 'Invalid email' }),
-      ).toBe('Revisa tu correo: no tiene el formato esperado.');
+      expect(mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', { correo: 'Invalid email' })).toBe(
+        'Revisa tu correo: no tiene el formato esperado.',
+      );
 
       // Mezcla: una cosa falta y la otra está mal.
       expect(
@@ -290,7 +290,7 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
 
       await expect(
         iniciarSesionApi({ correo: 'asesor@viajapro.com', contrasena: 'erronea' }),
-      ).rejects.toThrowError(/Demasiados intentos fallidos/);
+      ).rejects.toThrowError(/Espera un minuto/);
     });
 
     it('obtenerSesionActualApi envía GET con credentials include', async () => {
