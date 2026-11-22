@@ -74,3 +74,27 @@ export function faltanEdades(e: EntradaEdades): boolean {
     (e.infantes > 0 && completas(e.edadesInfantes, e.infantes) === null)
   );
 }
+
+export interface EntradaComposicion extends EntradaEdades {
+  adultos: number;
+  /** Solo decide si se pregunta QUIÉNES viajan (edades); cuántos viajan se manda siempre. */
+  pideComposicion: boolean;
+}
+
+/**
+ * La composición de la petición, para cotizar Y para guardar (T-321). Los números van siempre:
+ * sin `adultos` la API cotiza para 1 mientras la barra dice «2 adt». Solo las edades dependen de
+ * `pideComposicion`. Una sola función, para que los dos caminos no vuelvan a divergir.
+ */
+export function composicionDeLaPeticion(e: EntradaComposicion): {
+  adultos: number;
+  ninos: number;
+  infantes: number;
+} & EdadesAEnviar {
+  return {
+    adultos: e.adultos,
+    ninos: e.ninos,
+    infantes: e.infantes,
+    ...(e.pideComposicion ? edadesParaEnviar(e) : {}),
+  };
+}

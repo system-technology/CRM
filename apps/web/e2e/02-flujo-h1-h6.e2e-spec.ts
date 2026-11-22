@@ -1,4 +1,9 @@
-import { enviarEstadoWhatsapp, enviarWebhookWhatsapp, enviosRecibidosPorGraph } from './auxiliares';
+import {
+  URL_API,
+  enviarEstadoWhatsapp,
+  enviarWebhookWhatsapp,
+  enviosRecibidosPorGraph,
+} from './auxiliares';
 import { expect, test } from './fixtures';
 
 /**
@@ -28,6 +33,11 @@ const tituloCotizacion = `Cotizacion E2E ${marca}`;
 
 let urlConversacion = '';
 let rutaCotizacion = '';
+// El total que el cotizador mostro antes de guardar, en cifras sin formato. El mismo numero tiene
+// que aparecer en el detalle y en el texto que sale por WhatsApp (T-321, T-126).
+let totalDelCotizador = '';
+
+const soloCifras = (texto: string): string => texto.replace(/\D/g, '');
 
 test('H2: un webhook con firma invalida se rechaza con 403', async () => {
   const { estado } = await enviarWebhookWhatsapp(
@@ -106,6 +116,16 @@ test('H5: crea una oportunidad desde la conversacion y aparece en el pipeline', 
   await page.goto('/pipeline');
   await expect(page.getByRole('heading', { name: 'Oportunidades' })).toBeVisible();
   await expect(page.getByText(tituloOportunidad).first()).toBeVisible({ timeout: 20_000 });
+
+  // La tarjeta trae lo escrito, no solo el titulo: el valor sale en pesos tal cual se tecleo
+  // (R8: en COP la unidad es el peso; $ 45.000 o $ 450.000.000 serian el error de dos ordenes de
+  // magnitud).
+  const tarjeta = page.getByRole('article', {
+    name: new RegExp(`Oportunidad: ${tituloOportunidad}`),
+  });
+  await expect(tarjeta).toHaveCount(1);
+  await expect(tarjeta).toContainText(/\$\s?4\.500\.000(?![.\d])/);
+  await expect(tarjeta).toContainText('Cartagena');
 });
 
 test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ page }) => {
@@ -138,6 +158,15 @@ test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ pag
   const textoDeLaAlerta =
     (await errorDeCotizacion.count()) > 0 ? await errorDeCotizacion.first().innerText() : '';
   expect(textoDeLaAlerta, 'el cotizador mostro una alerta de error al cotizar').toBe('');
+
+  // El total que ve la asesora antes de guardar: es el que despues no puede cambiar en silencio.
+  const totalBarra = page.getByTestId('total-barra-de-accion');
+  await expect(totalBarra).toBeVisible();
+  await expect(guardar).toBeEnabled();
+  totalDelCotizador = soloCifras(await totalBarra.innerText());
+  expect(totalDelCotizador, 'el cotizador debe mostrar un total mayor que cero').toMatch(
+    /^[1-9]\d*$/,
+  );
 
   await guardar.click();
   const dialogo = page.getByRole('dialog', { name: 'Guardar Cotización Oficial' });
@@ -177,6 +206,14 @@ test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ pag
     ).slice(0, 800);
     throw new Error(`El detalle de la cotizacion no mostro su titulo. Texto visible: ${texto}`);
   }
+
+  // Lo guardado es lo que se vio: la primera version, con el MISMO total que el cotizador (T-321).
+  await expect(page.getByText('Total Venta Versión 1:')).toBeVisible();
+  const totalDelDetalle = await page.getByTestId('lineas-de-la-version-total').innerText();
+  expect(
+    soloCifras(totalDelDetalle),
+    `el detalle muestra «${totalDelDetalle}» y el cotizador mostraba ${totalDelCotizador}`,
+  ).toBe(totalDelCotizador);
 });
 
 test('H6: la cotizacion guardada aparece en el directorio', async ({ page }) => {
@@ -275,10 +312,25 @@ test('H6: enviar la cotizacion por WhatsApp desde la conversacion', async ({ pag
     texto = envio?.texto ?? '';
   }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
 
-  expect(texto).toContain('*Total:');
+  // El total que recibe el viajero es el que la asesora vio al cotizar (R8: sin ceros de mas).
+  const totalEnviado = /\*Total:([^*]*)\*/.exec(texto)?.[1] ?? '';
+  expect(
+    soloCifras(totalEnviado),
+    `el texto enviado dice «${totalEnviado.trim()}» y el cotizador mostraba ${totalDelCotizador}`,
+  ).toBe(totalDelCotizador);
   expect(texto).toContain('Fecha de salida:');
   // El viajero nunca ve el neto ni el margen (R8, T-073).
   expect(texto).not.toMatch(/\b(neto|margen|markup|comisi[oó]n)\b/i);
+
+  // Enviar por el canal cambia el estado de la cotizacion a ENVIADA. El modal lo hace con una
+  // segunda llamada que, si falla, solo deja un aviso: sin esta comprobacion nadie lo notaria
+  // (02b pasa la cotizacion a ENVIADA por la API cuando la encuentra en borrador).
+  await expect(dialogo, 'el dialogo se cierra solo tras el envio').toHaveCount(0, {
+    timeout: 20_000,
+  });
+  await page.goto(rutaCotizacion);
+  await expect(page.getByTestId('franja-cierre-de-venta')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('ENVIADA').first()).toBeVisible();
 });
 
 // T-321: la acción principal del detalle es «Enviar en esta conversación»: lleva al chat y abre el
@@ -302,4 +354,42 @@ test('H6: desde el detalle de la cotizacion se llega al envio por el canal en el
   await expect(dialogo.getByTestId('selector-cotizacion-conversacion')).toHaveValue(idCotizacion, {
     timeout: 20_000,
   });
+});
+
+// Flujo 2 «Que hay que hacer hoy», paso 3 y 4: un compromiso de hoy aparece en Hoy, se llega a su
+// chat en un clic y, al resolverlo, sale de la lista y NO vuelve al recargar. El seguimiento se
+// crea por la API (lo que se prueba es Hoy, no el formulario de seguimientos). Hoy solo pinta
+// seguimientos y cifras: los avisos de time limit, cobro vencido y SLA del flujo no existen aun.
+test('Hoy: un seguimiento de hoy lleva a su chat y al completarlo no vuelve', async ({ page }) => {
+  expect(urlConversacion, 'H4 debe haber abierto la conversacion').not.toBe('');
+  const descripcion = `Llamar al viajero ${marca}`;
+  const creado = await page.request.post(`${URL_API}/api/v1/crm/seguimientos`, {
+    data: {
+      descripcion,
+      venceEn: new Date().toISOString(),
+      conversacionId: urlConversacion.split('/').pop(),
+    },
+  });
+  expect(creado.status(), await creado.text()).toBeLessThan(300);
+  const { id } = (await creado.json()) as { id: string };
+
+  await page.goto('/');
+  const item = page.getByTestId(`item-seguimiento-${id}`);
+  await expect(item).toBeVisible({ timeout: 30_000 });
+  await expect(item).toContainText(descripcion);
+
+  // Un clic al objeto del aviso: la conversacion de la que nacio.
+  await item.getByTestId(`enlace-chat-${id}`).click();
+  await expect(page).toHaveURL(new RegExp(`${urlConversacion}$`), { timeout: 20_000 });
+
+  // De vuelta en Hoy, resolverlo lo saca de la lista...
+  await page.goto('/');
+  await expect(item).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId(`btn-completar-${id}`).click();
+  await expect(item).toHaveCount(0);
+
+  // ...y no es solo la pantalla: recargado, el bloque ya cargo y el seguimiento no esta.
+  await page.reload();
+  await expect(page.getByTestId('bloque-seguimientos-dia')).toBeVisible({ timeout: 30_000 });
+  await expect(item).toHaveCount(0);
 });
