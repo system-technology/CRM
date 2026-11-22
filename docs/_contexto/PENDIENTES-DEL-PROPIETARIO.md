@@ -209,3 +209,37 @@ misma operación, y hoy lo son.
 
 Mientras tanto, **lo que tu cliente ve sigue siendo la demo de antes**: una sola conversación y el
 desplegable de etiquetas vacío al filtrar.
+
+## 23. BLOQUEANTE: la compuerta de rutas protegidas no existe (2026-11-22)
+
+**Lo descubrí pasando por ella, no auditándola.** El PR **#511** se integró en `main` **sin una sola
+revisión**, tocando `CLAUDE.md` y cuatro ficheros de `.claude/`. Y horas antes yo te había dicho que
+ese PR «esperaba tu aprobación». **Era falso.**
+
+Medido contra la API:
+
+```
+require_code_owner_reviews: true
+required_approving_review_count: 0
+```
+
+**Con el contador en 0, GitHub no exige la revisión del code owner.** El `.github/CODEOWNERS` está
+bien escrito y es espejo fiel de `humanRequired` en `ownership.json`. Lo que falla es que la
+protección de rama **no lo hace cumplir**.
+
+Así que **R11 miente hoy**: «Las rutas protegidas esperan la aprobación del propietario» no es cierto.
+Por §3.1 eso es bloqueante, no cola: *una compuerta que no corre no es una compuerta*.
+
+**Lo que hice al descubrirlo:** desactivar el auto-merge de **#490** y **#503**, los otros dos con
+rutas protegidas. No entran hasta que decidas.
+
+**El arreglo es tuyo y es configuración del servidor** (Settings → Branches → `main`): subir
+**`required_approving_review_count` a 1**. Ninguna sesión puede tocar la protección de rama.
+
+**Decide esto antes, porque tiene coste:** con el contador en 1, **todo PR pasa a necesitar tu
+aprobación**, no solo los de rutas protegidas. Hoy integro decenas al día sin molestarte; con ese
+cambio, cada uno te espera. La alternativa —exigir la revisión **solo** en las rutas del `CODEOWNERS`
+mediante una *ruleset*— **no la he investigado**. Dímelo y la miro antes de que toques nada.
+
+Conecta con el punto **13 (T-083)**, que ya decía que el JSON de ramas protegidas difiere del
+servidor en tres campos. Resulta que la diferencia no era cosmética.
