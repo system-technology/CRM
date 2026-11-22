@@ -976,3 +976,113 @@ mismo**.
 **Pendiente del propietario**: aprobar #521 y #490/#503; marcar `rutas-protegidas` **después** de
 integrar #517; `.claude/settings.json` con el fragmento de `docs/09-ia/10-guia-web-moderna.md` §5;
 rotar los secretos (T-598, **P0**); y **abrir la próxima sesión madre**, que esta no puede: linaje 8 de 8.
+
+## 2026-11-22 (madrugada) · La noche en que las pruebas se pagaron solas
+
+El propietario se fue a dormir y dejó el turno a cargo, con este orden: navegabilidad, veracidad de
+la documentación, campaña de pruebas, Ley 1581 y los dos contextos que faltan. **«Que lo último sea
+lo mío.»**
+
+### Lo que hay que recordar de esta noche
+
+**La campaña de pruebas encontró un error de dinero en su primera ejecución.** La prueba nueva
+comparó, por primera vez en la vida del proyecto, el total que muestra el cotizador con el que
+muestra el detalle de la cotización guardada:
+
+> el detalle muestra «$ 550.000» y el cotizador mostraba 275000
+
+**Exactamente el doble.** El cotizador **enseñaba el precio de una persona mientras su propia barra
+decía «2 adt»**.
+
+La causa no era la que parecía. No había suma doble: **eran dos caminos que mandaban distinta
+composición**, en el mismo fichero y a cien líneas de distancia. Al cotizar mandaba `undefined` y la
+API aplicaba su contrato (`?? 1`); al guardar mandaba `2` a pelo. **La API no tenía ningún error.** La
+web usaba `pideComposicion` —que solo decide si se pregunta **quiénes** viajan— para decidir si
+mandaba **cuántos**.
+
+**Y lo que no se hizo importa tanto como lo que se hizo: no se tocó la prueba.** Ajustar la aserción
+para que pasara habría sido fabricar la cobertura falsa que ese mismo PR venía a eliminar. El PR se
+dejó en rojo, sin auto-merge, hasta que el defecto estuviera arreglado (#527, #529).
+
+### Nueve pruebas que no probaban nada
+
+El mapa de cobertura (T-126, #527) contrastó los flujos críticos con las once pruebas e2e. La peor:
+**seis de siete comprobaciones de título buscaban un texto que es también la etiqueta del menú
+lateral**, siempre visible a 1440 px. **Pasaban con la pantalla completamente vacía.** Es el mismo
+patrón de T-604: un texto compartido que convierte la aserción en decorado.
+
+Y otras ocho del mismo corte: el total enviado por WhatsApp comprobado con `toContain('*Total:')`
+—bastaba la etiqueta, **aunque el importe estuviera mal**—; un `toHaveCount(0)` que se cumplía con la
+lista aún vacía; dos saldos comprobados como «distinto del anterior»; y un `02b` que **enmascaraba**
+un fallo real transicionando por API lo que la pantalla no había hecho.
+
+**T-126 no se cierra.** El recorrido manual sigue sin hacerse: aquí no se puede levantar Postgres, y
+el CI no lo sustituye.
+
+### Quince afirmaciones falsas en la documentación
+
+El propietario lo pidió así: «todo debe estar integral, todo debe estar correcto… si no, vamos a
+tener problemas». T-625 (#525) verificó `CLAUDE.md` y `ESTADO.md` **afirmación por afirmación, con un
+comando cada una**. Lo que no se pudo comprobar quedó marcado **SIN VERIFICAR**, no arreglado a ojo.
+
+Lo más llamativo: **el stack declaraba «shadcn/ui + TanStack Query» y ninguno de los dos está
+instalado** — están en un ADR, no en el `package.json`. Decía «CI de 10 checks» cuando son 15. Daba
+por pendientes el despliegue, el cifrado de PII y la prueba de la web contra la API: **las tres
+falsas**. Y **R11 citaba un «ADR-0016 §6» que no existe**.
+
+### La compuerta que no existía, y el bucle que habría creado
+
+**#511 se integró en `main` sin una sola revisión**, tocando `CLAUDE.md` y cuatro ficheros de
+`.claude/`. Causa: `require_code_owner_reviews: true` **con el contador de aprobaciones en 0**, que no
+exige nada. **R11 mentía.** Se descubrió pasando por ella, no auditándola.
+
+Al construir el arreglo apareció algo peor: **GitHub no deja que el autor de un PR lo apruebe**, y
+**todos los PR de la sesión salen a nombre del propietario**. Con la compuerta activada **se
+bloquearía a sí mismo**. De ahí el modelo nuevo que él decidió: **los PR los abre la app
+Integradora** (#521), y **el orden no se puede alterar** — enrutado, luego el check, y solo entonces
+marcarlo obligatorio.
+
+**Verificado en la documentación de GitHub**: sí existe una vía nativa, la regla *Required reviewers*
+de una ruleset, que exige revisión **solo en ciertas rutas**. Necesita un equipo y solo funciona en
+repositorios de organización.
+
+### Y yo envenené la cola
+
+`scripts/cerrar-tarea.mjs` llevaba fallando varios PR con un mensaje clarísimo que nadie leyó:
+**«T-622: depende de T-620 que no existe»**. Encolé T-622 con esa dependencia y **nunca registré
+T-620**. Una sola tarea inválida **aborta el cierre de todas las demás**. Es la trampa que yo mismo
+había documentado esa misma mañana.
+
+### Decisiones
+
+- **Las fotos del ingreso entregan cuatro destinos de seis** (#526). De Islas del Rosario no hay foto
+  con licencia limpia y de Playa Blanca la única encontrada era de otro lugar: **no se sustituyó por
+  otro destino**. Se descartó además una de Cartagena con **una mujer identificable**: la licencia
+  cubre la foto, no su imagen.
+- **La legibilidad se puso en un velo de marca, no en las fotos.** Así seguirá funcionando con las
+  imágenes que suba una agencia (T-622). Primera pasada: subtítulo a **1,6:1**. Tras el velo, peor
+  caso de **544 mediciones**: 4,62:1.
+- **El ADR-0037 se escribió para decidir, no decidiendo** (#528). Once decisiones numeradas con sus
+  opciones, marcando cuáles no las decide un arquitecto sino un abogado. **No cita ni un plazo legal
+  concreto**: un plazo equivocado en un ADR es peor que una casilla vacía.
+- **El Cotizador no se toca todavía** pese a ser lo de más impacto del diagnóstico de navegabilidad.
+  Lo que le falta es producto, no diseño.
+
+### Lo que el ADR encontró leyendo el código
+
+- **El obstáculo para suprimir los datos de una persona no es el cifrado: son las claves foráneas.**
+  `cotizaciones` es `RESTRICT`, y `travel_files` y `pagos.pagador_id` son `NO ACTION`. **Borrar un
+  contacto funciona con quien escribió una vez y falla con quien compró.** Justo al revés.
+- **`purgar_payloads` existe desde octubre y nadie la invoca.**
+- **`registros_auditoria` no tiene purga ninguna**, así que su «retención de 5 años» no es cierta hoy.
+- **Todavía no guardamos pasaporte ni fecha de nacimiento**: hay menos que proteger de lo que la
+  documentación sugiere.
+
+### Trampas nuevas
+
+- **Al encolar una tarea con `depends_on`, comprobar que el id existe.** Una dependencia rota apaga
+  el cierre automático del repositorio entero.
+- **El agente `arquitecto` no tiene `Bash`.** Encargarle que empuje una rama es un error de reparto:
+  escribe, y la sesión madre lleva el resultado al repositorio.
+- **`rutas-protegidas` funciona**: sale en rojo exactamente en los PR que tocan rutas protegidas, y
+  en ninguno más. No bloquea porque todavía no es obligatorio.

@@ -41,7 +41,7 @@ import { EdadesDePasajeros } from '../../../components/cotizador/edades-de-pasaj
 import { TablaDeLineas } from '../../../components/cotizador/tabla-de-lineas';
 import { BandaDeContexto } from '../../../components/cotizador/banda-de-contexto';
 import { BarraDeAccionCotizador } from '../../../components/cotizador/barra-de-accion';
-import { edadesParaEnviar } from '../../../lib/cotizador-edades';
+import { composicionDeLaPeticion } from '../../../lib/cotizador-edades';
 import { enteroDeUrl, paquetePorDestino } from '../../../lib/viaje-solicitado-logica';
 
 const ModalGuardarCotizacion = dynamic(() =>
@@ -254,17 +254,27 @@ function ContenidoCotizador() {
     };
   }, [usarReal, paqueteId]);
 
-  const edades = useMemo(
-    () => edadesParaEnviar({ ninos, infantes, edadesNinos, edadesInfantes, infantesConSilla }),
-    [ninos, infantes, edadesNinos, edadesInfantes, infantesConSilla],
-  );
-
   // Eje 3 de ADR-0009: pideComposicion gobernado por el tarifario
   const pideComposicion = useMemo(() => {
     if (!usarReal) return true;
     if (cotizacionReal) return cotizacionReal.pideComposicion;
     return true;
   }, [usarReal, cotizacionReal]);
+
+  // T-321: una sola composición para cotizar y para guardar.
+  const composicion = useMemo(
+    () =>
+      composicionDeLaPeticion({
+        adultos,
+        ninos,
+        infantes,
+        edadesNinos,
+        edadesInfantes,
+        infantesConSilla,
+        pideComposicion,
+      }),
+    [adultos, ninos, infantes, edadesNinos, edadesInfantes, infantesConSilla, pideComposicion],
+  );
 
   // Cargar contactos disponibles para asociar cotización
   useEffect(() => {
@@ -409,10 +419,7 @@ function ContenidoCotizador() {
         paqueteId,
         fecha,
         ...(opcionAEnviar ? { opcionDeSalidaId: opcionAEnviar } : {}),
-        adultos: pideComposicion ? adultos : undefined,
-        ninos: pideComposicion ? ninos : undefined,
-        infantes: pideComposicion ? infantes : undefined,
-        ...(pideComposicion ? edades : {}),
+        ...composicion,
         ...(acomodacionReal ? { acomodacion: acomodacionReal } : {}),
       })
         .then((res) => {
@@ -463,7 +470,7 @@ function ContenidoCotizador() {
     adultos,
     ninos,
     infantes,
-    edades,
+    composicion,
     pideComposicion,
     acomodacionReal,
     acomodacionMock,
@@ -509,10 +516,7 @@ function ContenidoCotizador() {
         composicion: {
           paqueteId,
           fecha,
-          adultos: pideComposicion ? adultos : 2,
-          ninos: pideComposicion ? ninos : 0,
-          infantes: pideComposicion ? infantes : 0,
-          ...(pideComposicion ? edades : {}),
+          ...composicion,
           // Con la API real la acomodación elegida vive en `acomodacionReal` (T-188/T-219): guardar
           // con la de maqueta daba 422 o guardaba otra distinta de la mostrada.
           acomodacion: (usarReal ? acomodacionReal : acomodacionMock) || undefined,

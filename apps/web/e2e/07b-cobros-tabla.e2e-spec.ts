@@ -94,17 +94,20 @@ test('registrar un pago cambia el saldo y cambia el filtro', async ({ page }) =>
   await dialogo.getByRole('button', { name: 'Registrar pago', exact: true }).click();
   await expect(dialogo).toHaveCount(0, { timeout: 20_000 });
 
-  // Después: ya no está en el filtro con saldo, y sí en «Al día», con saldo cero.
+  // Después: primero «Al día», donde el archivo SÍ aparece (eso prueba que la lista ya cargó)...
   await page.goto('/cobros');
+  await grupo.getByRole('button', { name: 'Al día', exact: true }).click();
+  const f = fila(page, numero);
+  await expect(f).toBeVisible({ timeout: 30_000 });
+  await expect(f).toContainText('Al día');
+
+  // ...y solo entonces se comprueba que ya no está en el filtro con saldo. Antes esto se miraba
+  // recién cargada la pantalla: con la lista aún vacía, «0 filas» se cumplía aunque el pago no
+  // hubiera cambiado nada.
   await grupo.getByRole('button', { name: ETIQUETA[estadoAntes]!, exact: true }).click();
   await expect(page.getByTestId('fila-de-cobro').filter({ hasText: `File ${numero}` })).toHaveCount(
     0,
   );
-
-  await grupo.getByRole('button', { name: 'Al día', exact: true }).click();
-  const f = fila(page, numero);
-  await expect(f).toBeVisible({ timeout: 30_000 });
-  await expect(f).toContainText('Pagado');
 });
 
 test('el CSV trae lo que se ve y neutraliza las fórmulas', async ({ page }) => {

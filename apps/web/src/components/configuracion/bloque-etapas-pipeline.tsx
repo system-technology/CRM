@@ -41,7 +41,7 @@ export function BloqueEtapasPipeline() {
     setErrorCarga(null);
     return listarEtapasPipelineApi()
       .then((datos) => {
-        const ordenadas = [...datos].sort((a, b) => a.orden - b.orden);
+        const ordenadas = datos.toSorted((a, b) => a.orden - b.orden);
         setEtapas(ordenadas);
         setOriginales(ordenadas);
       })
@@ -87,7 +87,7 @@ export function BloqueEtapasPipeline() {
 
     try {
       const actualizadas = await actualizarEtapasPipelineApi(originales, etapas);
-      const ordenadas = [...actualizadas].sort((a, b) => a.orden - b.orden);
+      const ordenadas = actualizadas.toSorted((a, b) => a.orden - b.orden);
       setEtapas(ordenadas);
       setOriginales(ordenadas);
       setMensajeExito('Etapas del pipeline guardadas correctamente.');

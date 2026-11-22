@@ -246,6 +246,9 @@ export interface VistaReporteResumen {
       etapaId: string;
       nombre: string;
       orden: number;
+      /** Para que el color diga qué es cada etapa: lo ganado y lo perdido no se pintan igual. */
+      esGanada: boolean;
+      esPerdida: boolean;
       cantidad: number;
     }>;
   };
@@ -357,6 +360,8 @@ export function transformarResumenReporte(
         etapaId: e.etapaId,
         nombre: e.nombre,
         orden: e.orden,
+        esGanada: e.esGanada,
+        esPerdida: e.esPerdida,
         cantidad: e.cantidad,
       })),
     },
