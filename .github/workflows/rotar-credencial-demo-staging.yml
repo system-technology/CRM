@@ -1,0 +1,110 @@
+# Crea o ROTA la credencial del usuario de la demo de staging (T-646). SOLO MANUAL.
+#
+# Es la mitad del antiguo `preparar-demo-staging.yml` que tocaba la contrasena; sembrar datos esta en
+# `sembrar-demo-staging.yml`. Esta NO siembra: si la agencia demo no existe, se niega (siembrala antes).
+#
+# La contrasena es un `input` OBLIGATORIO y sin valor por defecto (un defecto en este YAML seria la
+# contrasena, publica). Lanzarlo con otra contrasena ROTA la que hay y cierra las sesiones abiertas.
+#
+# La contrasena NO se imprime: ni en el resumen de la ejecucion (quien lo lanza ya la sabe) ni en el
+# registro (se enmascara con `::add-mask::` antes de usarla y no pasa por un `env:`, que GitHub
+# imprime en la cabecera del paso). LIMITE QUE NO SE PUEDE ARREGLAR AQUI: GitHub muestra los valores
+# de un `workflow_dispatch` en la pagina de la ejecucion y en el evento. Usar una contrasena nueva para
+# la demo y rotarla cuando deje de serlo. Si eso no basta, el paso siguiente es leerla de un secreto
+# del Environment en vez de un `input`.
+#
+# Usa el Environment `staging` (limitado a `main`) y su secreto DIRECT_URL.
+
+name: Rotar credencial de la demo de staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      correo:
+        description: 'Correo con el que se entra (usuario dueno de la agencia demo)'
+        required: true
+        default: 'demo@viajapro.app'
+        type: string
+      contrasena:
+        description: 'Contrasena con la que se entra (12 a 128 caracteres). Sin valor por defecto a proposito.'
+        required: true
+        type: string
+
+concurrency:
+  group: preparar-demo-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '9.12.0'
+
+jobs:
+  rotar:
+    name: rotar
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      # Lo fija el workflow, no quien lo lanza. El script se niega si no vale `staging`.
+      PREPARAR_DEMO_ENTORNO: staging
+      DATABASE_URL: ${{ secrets.DIRECT_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      # Solo el correo va por `env:`; la contrasena se lee del evento en el ultimo paso.
+      DEMO_CORREO: ${{ inputs.correo }}
+    steps:
+      # Guardia explicita: solo staging, solo desde main, y con la conexion presente.
+      - name: Negarse si no es staging
+        run: |
+          if [ "$PREPARAR_DEMO_ENTORNO" != "staging" ]; then
+            echo "::error::Este workflow solo prepara staging."
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Solo se lanza sobre main (es lo que el Environment staging permite): $GITHUB_REF."
+            echo "## Demo de staging: NO se hizo nada (rama $GITHUB_REF, debe ser main)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Faltan los secretos del Environment 'staging' (DIRECT_URL). No se hizo nada."
+            echo "## Demo de staging: NO se hizo nada (falta el secreto DIRECT_URL del Environment staging)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Instalar
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Generar el cliente y compilar el dominio
+        run: pnpm --filter @viajapro/database run generate && pnpm --filter @viajapro/domain build
+
+      # Aplica las guardias y guarda el conteo de antes. Si se niega, no se toca ninguna credencial.
+      # No lee la contrasena.
+      - name: Diagnosticar
+        run: pnpm --filter @viajapro/api exec tsx src/modules/identity/scripts/preparar-demo-staging.ts diagnosticar
+
+      - name: Crear o rotar la credencial
+        run: |
+          # Se lee del archivo del evento y se enmascara ANTES de cualquier otra cosa. Sin `set -x`.
+          DEMO_CONTRASENA="$(jq -r '.inputs.contrasena // empty' "$GITHUB_EVENT_PATH")"
+          if [ -z "$DEMO_CONTRASENA" ]; then
+            echo "::error::Falta la contrasena."
+            exit 1
+          fi
+          case "$DEMO_CONTRASENA" in
+            *$'\n'*|*$'\r'*) echo "::error::La contrasena no puede tener saltos de linea."; exit 1 ;;
+          esac
+          echo "::add-mask::$DEMO_CONTRASENA"
+          export DEMO_CONTRASENA
+          pnpm --filter @viajapro/api exec tsx src/modules/identity/scripts/preparar-demo-staging.ts credencial

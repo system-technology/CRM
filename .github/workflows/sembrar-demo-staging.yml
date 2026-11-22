@@ -1,36 +1,21 @@
-# Prepara la DEMO de staging para que alguien pueda entrar (T-600). SOLO MANUAL.
+# Siembra la agencia DEMO de staging (T-646). SOLO MANUAL. No pide ni toca ninguna credencial.
 #
-# Por que existe: `deploy-staging.yml` migra pero no siembra, y ningun script del repositorio ponia
-# contrasena a nadie. Resultado: esquema completo, y nadie podia iniciar sesion. Este workflow
-# diagnostica lo que hay, siembra la agencia demo si falta, y crea un usuario dueno con el correo y
-# la contrasena que escriba quien lo lanza. Es idempotente: se puede lanzar otra vez, y con otra
-# contrasena sirve para rotarla.
+# Antes (T-600) un solo workflow sembraba Y ponia la contrasena del usuario de la demo: no se podia
+# sembrar sin pasar una contrasena, y relanzarlo para refrescar datos le cambiaba la clave al cliente
+# que ya habia conseguido entrar. Ahora son dos: este solo siembra; `rotar-credencial-demo-staging.yml`
+# es el unico que toca una contrasena.
 #
-# Lo que NO hace, a proposito:
-#   - No corre en push ni dentro de `deploy-staging.yml`: sembrar en cada despliegue seria un desastre.
-#   - No tiene ninguna contrasena en el repositorio: es un `input` OBLIGATORIO y sin valor por defecto
-#     (un defecto en este YAML seria la contrasena, publica).
-#   - No toca el inicio de sesion: solo anade datos. La contrasena se hashea con Better Auth.
-#   - No corre contra una base con agencias ajenas a la demo (puede haber datos reales): el script se niega.
+# Es seguro lanzarlo tantas veces como haga falta: la semilla es idempotente (upserts) y aqui no hay
+# `inputs`, asi que no hay nada que escribir ni que filtrar. Corre el diagnostico (que se niega si
+# hay agencias ajenas a la demo) y despues la semilla. No crea usuarios ni credenciales.
 #
-# Usa el Environment `staging` (limitado a `main`: el workflow solo funciona lanzado sobre `main`) y
-# su secreto DIRECT_URL, como `deploy-staging.yml`. El resumen de la ejecucion muestra el correo y la
-# contrasena EN CLARO: en un repositorio publico lo ve cualquiera que vea la ejecucion. Rotarla.
+# No corre en push ni dentro de `deploy-staging.yml`. Usa el Environment `staging` (limitado a `main`)
+# y su secreto DIRECT_URL, como `deploy-staging.yml`.
 
-name: Preparar demo de staging
+name: Sembrar demo de staging
 
 on:
   workflow_dispatch:
-    inputs:
-      correo:
-        description: 'Correo con el que se entra (usuario dueno de la agencia demo)'
-        required: true
-        default: 'demo@viajapro.app'
-        type: string
-      contrasena:
-        description: 'Contrasena con la que se entra (12 a 128 caracteres). Sin valor por defecto a proposito.'
-        required: true
-        type: string
 
 concurrency:
   group: preparar-demo-staging
@@ -44,8 +29,8 @@ env:
   PNPM_VERSION: '9.12.0'
 
 jobs:
-  preparar:
-    name: preparar
+  sembrar:
+    name: sembrar
     runs-on: ubuntu-latest
     environment: staging
     env:
@@ -53,8 +38,6 @@ jobs:
       PREPARAR_DEMO_ENTORNO: staging
       DATABASE_URL: ${{ secrets.DIRECT_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      DEMO_CORREO: ${{ inputs.correo }}
-      DEMO_CONTRASENA: ${{ inputs.contrasena }}
     steps:
       # Guardia explicita: solo staging, solo desde main, y con la conexion presente.
       - name: Negarse si no es staging
@@ -65,12 +48,12 @@ jobs:
           fi
           if [ "$GITHUB_REF" != "refs/heads/main" ]; then
             echo "::error::Solo se lanza sobre main (es lo que el Environment staging permite): $GITHUB_REF."
-            echo "## Demo de staging: NO se preparo (rama $GITHUB_REF, debe ser main)" >> "$GITHUB_STEP_SUMMARY"
+            echo "## Demo de staging: NO se hizo nada (rama $GITHUB_REF, debe ser main)" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::Faltan los secretos del Environment 'staging' (DIRECT_URL). No se hizo nada."
-            echo "## Demo de staging: NO se preparo (falta el secreto DIRECT_URL del Environment staging)" >> "$GITHUB_STEP_SUMMARY"
+            echo "## Demo de staging: NO se hizo nada (falta el secreto DIRECT_URL del Environment staging)" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
@@ -92,6 +75,7 @@ jobs:
         run: pnpm --filter @viajapro/database run generate && pnpm --filter @viajapro/domain build
 
       # Cuenta lo que hay ANTES de tocar nada y aplica las guardias. Si se niega, no se siembra.
+      # No lee credenciales.
       - name: Diagnosticar
         run: pnpm --filter @viajapro/api exec tsx src/modules/identity/scripts/preparar-demo-staging.ts diagnosticar
 
@@ -99,5 +83,10 @@ jobs:
       - name: Sembrar la agencia demo
         run: pnpm --filter @viajapro/database exec tsx prisma/seed.ts
 
-      - name: Crear la credencial
-        run: pnpm --filter @viajapro/api exec tsx src/modules/identity/scripts/preparar-demo-staging.ts credencial
+      - name: Resumen
+        run: |
+          {
+            echo "## Demo de staging sembrada"
+            echo
+            echo "Datos de demostracion al dia. No se creo ni se toco ninguna credencial."
+          } >> "$GITHUB_STEP_SUMMARY"
