@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('../../../lib/modo-demo', () => ({
   esModoDemo: () => false,
+  esModoDemoDelEntorno: () => false,
   useModoDemo: () => ({
     esDemo: false,
     alternarDemo: vi.fn(),

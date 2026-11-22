@@ -3,6 +3,7 @@
 import React from 'react';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { useModoDemo } from '../../lib/modo-demo';
+import { useMontado } from '../../lib/use-montado';
 import { herramientasDevActivas } from '../../lib/herramientas-dev';
 
 interface DistintivoDatosDemoProps {
@@ -24,7 +25,10 @@ export function DistintivoDatosDemo({
   permitirDesactivar = true,
 }: DistintivoDatosDemoProps) {
   const { desactivarDemo } = useModoDemo();
-  const mostrar = visible !== undefined ? visible : !estaUsandoApiReal();
+  // `estaUsandoApiReal()` lee `?demo=1` y `localStorage`, que el servidor no ve: sin esperar al
+  // montaje, el primer render del cliente difiere del HTML y la hidratación falla (T-607).
+  const montado = useMontado();
+  const mostrar = visible !== undefined ? visible : montado && !estaUsandoApiReal();
 
   if (!mostrar) return null;
 

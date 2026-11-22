@@ -17,7 +17,7 @@ import {
 import { ContadoresBandeja, PaginaDeCotizaciones, PaginaSeguimientos } from '@viajapro/contracts';
 import { obtenerBaseApi } from '../../../lib/api-base';
 import { cabecerasDeTenantDev } from '../../../lib/cabeceras-tenant';
-import { esModoDemo } from '../../../lib/modo-demo';
+import { esModoDemo, esModoDemoDelEntorno } from '../../../lib/modo-demo';
 import {
   calcularEstadoEnsayoJornada,
   contarCotizacionesEnviadas,
@@ -42,7 +42,8 @@ async function consultarJsonReal(ruta: string): Promise<unknown> {
 }
 
 export default function EnsayoJornadaPage(): React.JSX.Element {
-  const modoDemoActivo = esModoDemo();
+  // Valor inicial sin `?demo=`: el servidor no lo ve y la hidratación fallaría (T-607); `cargarContadoresReales` lo relee.
+  const modoDemoActivo = esModoDemoDelEntorno();
   const [cargando, setCargando] = useState<boolean>(true);
   const [avisoRed, setAvisoRed] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ResultadoEnsayoJornada>(() =>

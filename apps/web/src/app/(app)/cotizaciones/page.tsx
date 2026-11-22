@@ -1,6 +1,7 @@
 'use client';
 
 import { useModoDemo } from '../../../lib/modo-demo';
+import { useMontado } from '../../../lib/use-montado';
 
 /**
  * Pantalla de Listado de Cotizaciones Guardadas (0c.28 & 0c.24).
@@ -61,6 +62,8 @@ import { herramientasDevActivas } from '../../../lib/herramientas-dev';
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 export default function CotizacionesPage() {
   const { esDemo } = useModoDemo();
+  // El servidor no ve `?demo=1`: el distintivo espera al montaje para que la hidratación no falle (T-607).
+  const montado = useMontado();
   const usandoApiReal = !esDemo && estaUsandoApiReal();
   const { puedeVerNetoYMargen } = usePermisos();
 
@@ -273,7 +276,7 @@ export default function CotizacionesPage() {
                     Historial de cotizaciones emitidas, versiones inmutables y reenvío comercial
                   </p>
                 </div>
-                <DistintivoDatosDemo visible={!usandoApiReal || modoEstres500} />
+                <DistintivoDatosDemo visible={montado && (!usandoApiReal || modoEstres500)} />
               </div>
             </div>
 
