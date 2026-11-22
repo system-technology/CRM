@@ -894,12 +894,17 @@ async function main() {
   });
   const contactoPorTelefono = new Map(contactosDeLaBandeja.map((c) => [c.telefonoE164, c.id]));
 
-  // El catálogo que se acaba de sembrar, por nombre: las asignaciones van por id.
+  // El catálogo que se acaba de sembrar, por nombre: las asignaciones van por id. La clave es
+  // `lower(btrim(nombre))`, la misma de la unicidad de la base: si la agencia demo renombró
+  // «Pagado» a «pagado», la siembra no crea otra y aquí se encuentra igual.
   const catalogoDeEtiquetas = await prisma.label.findMany({
     where: { tenantId: tenant.id },
     select: { id: true, nombre: true },
   });
-  const etiquetaPorNombre = new Map(catalogoDeEtiquetas.map((e) => [e.nombre, e.id]));
+  const claveDeEtiqueta = (nombre: string) => nombre.trim().toLowerCase();
+  const etiquetaPorNombre = new Map(
+    catalogoDeEtiquetas.map((e) => [claveDeEtiqueta(e.nombre), e.id]),
+  );
 
   // Quién las puso en la demo. La foránea hacia `usuarios` es compuesta con el tenant.
   const duenoDeLaDemo = await prisma.usuario.findUnique({
@@ -958,7 +963,7 @@ async function main() {
     const puestas = await prisma.conversationLabel.createMany({
       skipDuplicates: true,
       data: hilo.etiquetas.map((nombre) => {
-        const etiquetaId = etiquetaPorNombre.get(nombre);
+        const etiquetaId = etiquetaPorNombre.get(claveDeEtiqueta(nombre));
         if (!etiquetaId) throw new Error(`Falta la etiqueta sembrada «${nombre}».`);
         return {
           tenantId: tenant.id,
