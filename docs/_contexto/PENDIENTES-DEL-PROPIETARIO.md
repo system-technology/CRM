@@ -153,3 +153,28 @@ lo aprovecha es tu Claude Code local, y aun así hay que correr una vez por clon
 
 Lo que **sí** funciona aquí y en el CI sin instalar nada es la CLI por `npx`. Por eso las entradas de
 `permissions.allow` son lo más útil de todo el bloque: sin ellas, cada análisis me pide permiso.
+
+## 22. Las etiquetas nuevas de la demo NO llegan a staging sin que tú lances el workflow (2026-11-22)
+
+**T-614 está integrado (#509): la demo ya trae siete hilos con sus etiquetas puestas, incluidas «Ya
+reservó», «Reserva pendiente» y «Nuevo», las palabras exactas de tu cliente. Pero eso está en el
+código, no en la base de staging.** `deploy-staging.yml` **migra pero no siembra**. La siembra solo
+corre dentro de `preparar-demo-staging.yml`, que es manual.
+
+**No lo he lanzado, y no es por falta de permiso técnico. Es que lanzarlo haría daño:**
+
+1. El workflow exige una contraseña como **input obligatorio y sin valor por defecto**, y **con otra
+   contraseña rotas la que hay**. Si lo lanzo, **le cambio la contraseña a tu cliente justo después
+   de que consiguiera entrar.**
+2. **El resumen de la ejecución muestra el correo y la contraseña EN CLARO**, y este repositorio es
+   **público**. Lo advierte su propia cabecera. Ya pasó una vez: por eso `DemoViaja2026` está en el
+   punto de rotación.
+
+Así que o lo lanzas tú con la contraseña que quieras (y la rotas después), o arreglamos primero el
+workflow. **Lo segundo es lo que recomiendo**, y lo dejo encolado: partirlo en dos caminos, uno
+**«solo sembrar»** que no toque credenciales ni pida contraseña, y otro **«rotar credencial»** que
+siga exigiéndola. Sembrar datos de demostración y tocar una contraseña no tienen por qué ser la
+misma operación, y hoy lo son.
+
+Mientras tanto, **lo que tu cliente ve sigue siendo la demo de antes**: una sola conversación y el
+desplegable de etiquetas vacío al filtrar.
