@@ -1077,7 +1077,7 @@ describe('cifras por asesor en una sola respuesta (T-531)', () => {
 
   it('va ordenada por asesor, sin depender del plan de la base', async () => {
     const ids = (deAgencia(await reporte('duenoA')).porAsesor ?? []).map((f) => f.asesorId);
-    expect(ids).toEqual([...ids].sort());
+    expect(ids).toEqual(ids.toSorted());
   });
 
   it('sin cotizacion.ver_neto_y_margen ninguna fila trae neto ni margen', async () => {
