@@ -11737,7 +11737,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     acceptance:
       - "T-520 unifico formato.ts y cobros-logica.ts, pero siguen vivas: apps/web/src/lib/dinero-entrada.ts
         (DECIMALES_POR_MONEDA = { COP: 0 }, con 2 por defecto) y la tabla en linea de cotizaciones-diff.ts"
@@ -11746,6 +11746,9 @@ tasks:
     source: aviso de la sesion de T-520/T-521, 2026-11-21
     created_at: 2026-11-21T13:20:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #433: el commit dice literalmente «cae la ultima tabla de decimales (T-543, T-544)». Se cerro a mano el 2026-11-22 al encontrarla abierta con su trabajo hecho."
+    commit: ad6e706a
+
   - id: T-545
     title: "Cobros: los archivos CANCELADOS con penalidad pendiente no entran en porCobrar"
     type: bug
@@ -12505,7 +12508,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     acceptance:
       - "Las dos son sync:false en render.yaml: su valor solo existe en el panel y olvidarlas es facil. Sin
         ellas el codigo cae a localhost EN SILENCIO y el sintoma es que la web se ve pero nadie entra, sin una
@@ -12521,6 +12524,9 @@ tasks:
         {error:{code:ORIGEN_NO_CONFIABLE,message:Origen no permitido.}}"
     source: sintoma del cliente del piloto y lectura del codigo (2026-11-21)
     owner: backend
+    evidence: "Integrado en main por el PR #489. apps/api/src/shared/red/urls-publicas.ts avisa al arrancar si las URL publicas faltan o apuntan a loopback. Se cerro a mano el 2026-11-22: el cierre automatico no disparo."
+    commit: 04201820
+
   - id: T-600
     title: "Demo: preparar staging por el CI para que el cliente pueda entrar (siembra mas credencial)"
     type: feature
@@ -12909,7 +12915,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
     acceptance:
       - "Es el trabajo real de T-608, que el cierre automatico dio por hecho por el nombre de la rama. El PR
         #499 solo encolo la peticion"
@@ -12925,6 +12931,8 @@ tasks:
         vamos a hacer» y «ya esta, mira»"
     source: trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)
     owner: datos
+    evidence: "Integrado en main por el PR #509: siete hilos con sus etiquetas, incluidas «Ya reservo», «Reserva pendiente» y «Nuevo». OJO: esta en el CODIGO, no en staging. La siembra corre dentro de preparar-demo-staging.yml y NO se ha relanzado, a proposito, porque ese workflow rota la contrasena y la imprime en claro en un repositorio publico. Ver punto 22 de PENDIENTES-DEL-PROPIETARIO.md."
+    commit: 6a666763
 
   - id: T-622
     title: "La agencia puede sustituir el paquete de imagenes por defecto por las suyas"
@@ -13084,7 +13092,8 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: review
+    status: blocked
+    blocked_reason: "human_required: falta .claude/settings.json, y el clasificador deniega que una sesion escriba ahi. El fragmento exacto esta en docs/09-ia/10-guia-web-moderna.md section 5."
     acceptance:
       - "Lo pidio el propietario: evaluarla, instalarla y DEJARLA ESTABLECIDA COMO REGLA para que otras
         sesiones lo sepan y lo implementen"
@@ -13105,6 +13114,350 @@ tasks:
     source: "peticion del propietario tras encontrar el repositorio (2026-11-22)"
     owner: documentador
 
+  - id: T-620
+    title: "Ingreso: el panel del degradado lleva fotos de vacaciones, como paquete por defecto"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: in_progress
+    acceptance:
+      - "Lo pidio el propietario viendo la pantalla: «me gusta mucho, pero siento que le daria un
+        toque... quiero que en ese fondo azul gradiente tengamos imagenes de vacaciones»"
+      - "NO es un redisenno: le gusta como esta. Es anadir fotografia sin romper lo que funciona"
+      - "Paquete por defecto con SEIS destinos que decidio el propietario: Cartagena, Santa Marta,
+        Barranquilla, Baru, Playa Blanca e Islas del Rosario"
+      - "R12: las fotos y los textos son DATOS con valor por omision, no JSX. Una agencia peruana no
+        puede ver playas colombianas incrustadas en el codigo"
+      - "El pie dice hoy «San Andres, Cartagena, Santa Marta» y San Andres ya no esta en la lista: ese
+        pie y la insignia «Operacion Colombia» salen tambien de la estructura de datos"
+      - "Licencia impecable y escrita: el repositorio es PUBLICO. Si para un destino no hay foto
+        limpia, se deja fuera y se dice; no se sustituye por otro por cuenta propia"
+      - "Peso cuidado: es la primera pantalla que carga cualquiera. Solo la primera foto es
+        prioritaria"
+      - "Contraste MEDIDO con numeros sobre la foto: el texto es blanco y cian, y con una imagen
+        debajo se va al suelo. No se retrocede de AA (T-583)"
+      - "La otra mitad -que la agencia suba las suyas- es T-622"
+    source: "peticion del propietario sobre la pantalla de ingreso (2026-11-22)"
+    owner: frontend
+
+  - id: T-623
+    title: "Navegabilidad: enlaces rotos, cadena hacia delante, Configuracion y colores que mienten"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: review
+    acceptance:
+      - "Filas 1, 2 y 4 del diagnostico T-618, que su recomendacion pide hacer juntas en un solo lote"
+      - "Las 9 tarjetas del pipeline y el icono de chat de Contactos apuntan a /bandeja/<id>, no a /bandeja"
+      - "La fila de enlaces que ya existe en Archivo de viaje se lleva a conversacion, cotizacion y ficha, con archivo y cobro"
+      - "Configuracion vuelve al menu, a la hoja «Mas» y a la paleta de comandos"
+      - "«Ventana cerrada» y «Perdida» dejan de ser verdes; el contador de 24 h gana umbral ambar y rojo"
+      - "EXIGENCIA: medirlo como se midio el problema, con la aplicacion levantada y capturas antes y despues"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-624
+    title: "Los PR de las ramas de trabajo los abre la app Integradora"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: review
+    acceptance:
+      - "GitHub no deja que el autor apruebe su propio PR y todos los de la sesion salen a nombre del propietario"
+      - "Sin esto, activar la compuerta de T-619 lo bloquea a el mismo"
+      - "PR #521. Se dispara con push a a/, b/ o i/ y solo si el commit lleva la linea «Abrir-PR: si»"
+      - "NO se ha ejecutado nunca: no hay act ni actionlint. Probarlo con workflow_dispatch al integrarlo"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: devops
+  - id: T-625
+    title: "Verificar afirmacion por afirmacion CLAUDE.md y ESTADO.md"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: in_progress
+    acceptance:
+      - "Lo pidio el propietario: «todo debe estar integral, todo debe estar correcto... si no, vamos a tener problemas»"
+      - "Hoy aparecieron CINCO afirmaciones falsas en los documentos, cada una con coste real"
+      - "Cada cifra se comprueba con un comando. Lo que no se pueda comprobar se marca SIN VERIFICAR, no se arregla a ojo"
+      - "Sabido ya: section 5 dice que booking y payments no tienen codigo, y tienen 30 y 18 ficheros"
+      - "OJO: el check rutas-protegidas esta en main pero NO es obligatorio todavia, asi que siguen siendo 8, no 9, y R11 sigue siendo falsa"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: documentador
+  - id: T-642
+    title: "Decision de producto: el cotizador asume 2 adultos sin que la asesora pueda elegirlo"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: es una decision de producto del propietario y del dueno-de-producto, no del arquitecto ni de frontend."
+    acceptance:
+      - "SALE del diagnostico de T-321. Cuando ninguna tarifa filtra por acomodacion, tipo de pasajero,
+        edad o silla, `pideComposicion` es false y el selector de pasajeros se OCULTA"
+      - "Pero el estado arranca en 2 adultos y eso es lo que se guarda y se cobra. En una excursion
+        POR_PERSONA el precio depende del numero de personas, asi que se esta cobrando un supuesto que
+        la asesora no eligio"
+      - "`seleccion-de-tarifas.ts` dice que `pideComposicion` solo decide si se pregunta QUIENES viajan:
+        «para saber cuantos van basta un numero». Ocultar el CUANTOS no era su proposito"
+      - "PROPUESTA del agente que lo diagnostico, a decidir: que el selector de adultos, ninos e
+        infantes se muestre SIEMPRE, y que `pideComposicion` solo oculte acomodacion y edades"
+      - "T-321 arregla la incoherencia entre cotizar y guardar. ESTA tarea es distinta: decide si el
+        numero de pasajeros debe poder elegirse siempre"
+    source: "decision de producto que destapo el arreglo de T-321 (2026-11-22)"
+    owner: dueno-de-producto
+
+  - id: T-643
+    title: "Comprobar si mensajes.wamid lleva dentro el telefono del interlocutor"
+    type: test
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "HALLAZGO del ADR-0037 (T-090), SIN CONFIRMAR y senalado por el propio arquitecto como «el
+        unico punto que podria ser bloqueante en vez de cola»"
+      - "Si el wamid de Meta codifica el telefono del interlocutor, entonces cifrar `texto` y dejar el
+        `wamid` DEJA EL TELEFONO EN CLARO en la tabla mas grande del sistema"
+      - "Y no se puede borrar sin mas: `wamid` sostiene la unicidad que da la idempotencia de R5"
+      - "No se pudo comprobar sin un wamid real: hace falta mirar uno de verdad, o la documentacion de
+        Meta sobre el formato del identificador"
+      - "Si se confirma: decidir si se cifra, se trunca o se sustituye por un hash con sal, SIN perder
+        la idempotencia. Eso seria un ADR o una enmienda al ADR-0037"
+    source: "hallazgo sin confirmar del borrador de ADR-0037 (2026-11-22)"
+    owner: whatsapp
+
+  - id: T-639
+    title: "Bandeja: marcarLeida existe y nadie la llama, asi que el contador de sin leer no se limpia"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "HALLAZGO de T-126, SIN CONFIRMAR: inboxApi.marcarLeida esta definido en
+        apps/web/src/lib/inbox-api.ts:381 y un grep no encuentra a NADIE que lo llame desde la web.
+        La busqueda excluyo specs y mocks"
+      - "Si se confirma, abrir una conversacion NUNCA limpia su contador de sin leer, y el primer paso
+        del flujo critico («ver el chat nuevo con contador de sin leer y abrirlo») queda a medias"
+      - "PRIMERO CONFIRMARLO, mirando el codigo. Si resulta que si se llama por otra via, cerrar la
+        tarea diciendo por donde"
+      - "Si es cierto: llamarla al abrir la conversacion, y anadir la prueba e2e que hoy no se pudo
+        escribir porque habria fallado. Para esa prueba la fila necesita un data-testid"
+    source: "hallazgo de la sesion de T-126 (2026-11-22)"
+    owner: frontend
+
+  - id: T-640
+    title: "Los flujos criticos no definen H1 a H6, pero media cola los nombra"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "MEDIDO en T-126: docs/01-producto/04-flujos-criticos.md NO define H1 a H6. Define dos flujos:
+        contacto a cobro (10 pasos) y «Hoy» (4 pasos)"
+      - "«H1 a H6» solo existe como rotulo en la cabecera de apps/web/e2e/02-flujo-h1-h6.e2e-spec.ts:
+        ingreso, webhook, bandeja, abrir conversacion, oportunidad y cotizar"
+      - "T-126, que es P0, se escribio hablando de H1 a H6, asi que su criterio apunta a algo que el
+        documento no define. Lo mismo varias tareas mas"
+      - "Decidir: o el documento define H1 a H6 de verdad, o la cola deja de nombrarlos y habla de los
+        dos flujos. Lo que no vale es que media cola cite una numeracion que no existe"
+    source: "desajuste encontrado al mapear la cobertura en T-126 (2026-11-22)"
+    owner: documentador
+
+  - id: T-641
+    title: "Sin cobertura: reservas con time limit dentro del archivo de viaje"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    acceptance:
+      - "Paso 8 del flujo de contacto a cobro: CERO cobertura, medido en T-126"
+      - "SI se puede cubrir en CI, sin WhatsApp: el FormularioReserva ya existe"
+      - "No se hizo en T-126 porque no habia navegador para comprobar los selectores y no se quisieron
+        inventar. Quien la tome, que los verifique contra la pantalla"
+    source: "hueco declarado por la sesion de T-126 (2026-11-22)"
+    owner: qa
+
+  - id: T-626
+    title: "Contactos no se puede usar en el telefono: 0 de 8 enlaces alcanzables"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "Fila 3 del diagnostico. MEDIDO: tabla de 877 px dentro de una caja de 340 con overflow hidden, y los 8 enlaces de ficha viven en x entre 850 y 886"
+      - "Es una de las once pantallas inservible en el dispositivo principal del asesor"
+      - "El arreglo ya existe en el producto: tabla con @container que apila en tarjetas, como hace Cobros. Copiar ese patron"
+      - "La guia web moderna lo cubre en responsive-table, que el diagnostico ya verifico que aplica"
+      - "Medir a 390 px con la aplicacion levantada y demostrar que los 8 enlaces son alcanzables"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-627
+    title: "Modo oscuro de «Hoy»: contraste 1,1 a 1 sobre un importe en pesos"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Fila 5. MEDIDO: dark:bg-neutral-850 NO emite CSS porque neutral-850 no existe en @theme, asi que la tarjeta se queda blanca"
+      - "El contraste cae a 1,1:1 justo en la linea que lleva «$2.500.000»"
+      - "Definir el token en @theme o usar uno existente. Es una linea"
+      - "Comprobar que no haya mas clases que apunten a tokens inexistentes: la prueba de T-569 deberia haberlo cazado y no lo hizo. Mirar por que"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-628
+    title: "El aviso de cookies tapa el ingreso en movil"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Fila 6. MEDIDO: el aviso empieza en y=501 y el boton ocupa de 470 a 514, asi que el enlace «Ingresar con codigo de 6 digitos» queda INALCANZABLE"
+      - "Es la primera pantalla, y viene de la semana en que un cliente real no conseguia entrar (T-594, T-600)"
+      - "Comprobar a 390 px que los dos caminos de ingreso son alcanzables con el aviso visible"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-629
+    title: "Una pasada de lenguaje: que las once pantallas hablen igual"
+    type: refactor
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "Fila 7, y segun el diagnostico es «lo que el propietario ve como que el diseno cambio»"
+      - "La misma pantalla se llama «Conversaciones» en el menu y «Bandeja» en las migas; la misma lista es «Contactos», «Directorio comercial» y «Directorio de Contactos»"
+      - "Fechas ISO del catalogo a «15 jun 2027», que es como escriben las demas pantallas"
+      - "Fuera de la interfaz: WABA, SLA, CSV, Opt-In, CRM, leads. Son nuestra jerga, no la del asesor"
+      - "Fuera MAYUSCULAS en etiquetas y Title Case. Plurales coherentes"
+      - "R3 y el lenguaje ubicuo mandan: docs/01-producto/02-lenguaje-ubicuo.md es el diccionario"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: diseno-ux
+  - id: T-630
+    title: "Murallas de cabecera en movil: 380 px de controles antes del primer dato"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 8. Cuatro pantallas ponen «Exportar CSV» e «Importar archivo» antes del contenido"
+      - "Bajarlos a un menu y dejar el dato arriba"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-631
+    title: "Pestañas que no caben y que el usuario no sabe que existen"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 9, en Configuracion y Catalogo"
+      - "Scroll horizontal con desvanecido y scrollIntoView sobre la activa"
+      - "La guia lo cubre en tabs, que el diagnostico verifico que aplica"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-632
+    title: "Botones de solo icono sin nombre accesible"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 10. Mas de 6 controles sin nombre"
+      - "No solo afecta a lectores de pantalla: dos iconos iguales tampoco se distinguen mirandolos"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-633
+    title: "Titulos de documento y migas, segun ADR-0032"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 11. MEDIDO: NINGUN detalle sobrescribe su document.title, asi que seis pestanas dicen «Conversaciones»"
+      - "/bandeja/<id> deberia decir «Juan Perez», /contactos/<id> igual, /cotizaciones/<id> el titulo de la cotizacion"
+      - "Las migas de /seguimientos se escriben a mano y meten un nivel «CRM» que no es una pantalla"
+      - "El mecanismo ya existe en la tabla unica de navegacion: usarlo, no inventar otro"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-634
+    title: "La paleta de comandos no encuentra la mitad de lo que hay"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Hallazgos N10 y N11 del diagnostico"
+      - "«Laura» devuelve 0 resultados aunque Laura Restrepo esta escrita en «Hoy» y en Seguimientos: la paleta NO busca seguimientos"
+      - "Las pestanas de categoria no coinciden con lo que devuelve: sale un grupo «Pipeline / Oportunidades» que no tiene pestana, y ademas se llama distinto que en el menu"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-635
+    title: "Reportes con menos texto y acciones en la fila de Cobros"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 12, y el diagnostico la marca como carril PRODUCTO, no diseno"
+      - "Reportes es la pantalla que decide si el dueno de la agencia paga"
+      - "Cobros sin una accion en la fila es un informe, no una herramienta"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: dueno-de-producto
+  - id: T-636
+    title: "Cotizador: neto, markup, margen, items y enviar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    acceptance:
+      - "Fila 13. El diagnostico es explicito: «es la promesa central del producto y no esta», y «NO lo arregla un redisenno»"
+      - "Lo que falta es PRODUCTO, no diseno: decidir su alcance es del dueno-de-producto"
+      - "EL DIAGNOSTICO RECOMIENDA NO TOCAR LA PANTALLA ANTES de esa decision: redisenarla ahora seria dibujar dos veces"
+      - "R8 manda en todo lo que toque dinero: enteros, unidad minima de la moneda, y en COP la unidad minima es el peso"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: dueno-de-producto
+  - id: T-637
+    title: "Datos de demostracion que no mienten"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 14. MEDIDO: tareas a las 2 de la madrugada, salida por defecto en el pasado, «270 conversaciones» que no existen, 2 archivos de viaje en su lista frente a 9 en Cobros, y tres asesores con «7 min» identicos"
+      - "Una demo con datos que mienten resta mas que un diseno sobrio"
+      - "Relacionada con T-614: la siembra buena ya esta en el codigo pero no en staging"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: datos
+  - id: T-638
+    title: "El ADR-0032 y el codigo no coinciden en la barra movil"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "Hallazgo del diagnostico: el ADR section 4 dice que la barra movil lleva «Buscar» y el codigo lleva la accion «Cotizar»"
+      - "Un ADR no se edita, se supersede (R7). O se cambia el codigo para que cumpla el ADR, o se escribe un ADR nuevo que explique por que gano «Cotizar»"
+      - "Decidir cual de las dos, y hacerlo. Lo que no vale es dejar los dos textos contradiciendose"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: arquitecto
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
@@ -13303,13 +13656,19 @@ tasks:
     notes: "Esta en blocked y no en ready a proposito: ninguna sesion de codigo puede resolverla. Ademas,
       create_trigger quedo denegado por el clasificador del modo automatico («Destructive or Unwanted
       Actions») antes incluso de toparse con el limite de linaje."
+    reconciled_note: "REVISADA el 2026-11-22: sigue siendo cierto que no se pueden crear sesiones hijas
+      ni una sucesora (linaje 8 de 8), pero YA NO BLOQUEA el trabajo. El compactado automatico mantiene
+      viva la sesion indefinidamente (umbral 784k de 1M, verificado), y los subagentes en proceso
+      sustituyen a las sesiones hijas sin perder capacidad. Lo unico que sigue sin poder hacerse es
+      programar un despertar propio."
+
   - id: T-592
     title: "QA: la e2e 09-reportes-por-alcance rompe el job navegador al azar y bloquea integraciones ajenas"
     type: test
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     acceptance:
       - "MEDIDO, no supuesto (2026-11-21, 20:30 UTC): el job navegador salio rojo a la vez en #480 y #481, dos
         PR sin nada en comun (uno toca clases de color, el otro anade tres enteros al contrato de cobros). Se
@@ -13325,6 +13684,9 @@ tasks:
         el ingreso de la siembra es lo fragil, se arregla el ingreso"
     source: dos relanzamientos limpios medidos por la madre del lote (2026-11-21)
     owner: qa
+    evidence: "Integrado en main por el PR #498. ingresarPorPantalla espera el cupo del limitador y reintenta solo ante «Demasiados intentos». Se cerro a mano el 2026-11-22: el cierre automatico no disparo."
+    commit: 57deaa27
+
   - id: T-585
     title: "Reportes: el dashboard de administracion esta duplicado (ReportesListo repite reportes-reales)"
     type: refactor

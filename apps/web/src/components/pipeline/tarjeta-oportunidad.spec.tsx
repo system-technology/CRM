@@ -1,7 +1,9 @@
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { EtapaDefinida, Oportunidad } from '@viajapro/contracts';
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 import { TarjetaOportunidad } from './tarjeta-oportunidad';
 import { ViajesBandejaProvider } from '../../lib/viajes-bandeja';
 import { INDICE_VACIO } from '../../lib/viajes-de-contactos-logica';

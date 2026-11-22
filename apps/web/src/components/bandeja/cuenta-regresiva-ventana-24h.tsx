@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Clock, Lock, PlusCircle, ShieldCheck } from 'lucide-react';
 import {
+  UMBRAL_ROJO_VENTANA_MINUTOS,
   evaluarReaperturaConPlantilla,
   type EstadoCuentaRegresiva24h,
   type PlantillaResumenReapertura,
@@ -29,6 +30,21 @@ export function InsigniaCuentaRegresiva24h({ estado }: InsigniaCuentaRegresiva24
         <Lock className="h-3 w-3 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
         <span className="hidden sm:inline">24h </span>
         <span>Cerrada</span>
+      </span>
+    );
+  }
+
+  if (estado.esAmbar && estado.minutosTotalesRestantes <= UMBRAL_ROJO_VENTANA_MINUTOS) {
+    return (
+      <span
+        data-testid="insignia-ventana-24h"
+        data-nivel="rojo"
+        title={estado.explicacion}
+        className="border-alerta-300 bg-alerta-50 text-alerta-800 dark:border-alerta-800 dark:bg-alerta-950/60 dark:text-alerta-300 flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-1 text-sm font-bold sm:text-sm"
+      >
+        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+        <span className="hidden sm:inline">Cierra ya · </span>
+        <span>{estado.etiquetaTiempo}</span>
       </span>
     );
   }

@@ -164,7 +164,7 @@ export interface BarraDeEtapa {
  * embudo acumulado: no se calcula «paso de una etapa a la siguiente», porque no se puede.
  */
 export function barrasDelEmbudo(porEtapa: ResumenDeReportes['oportunidades']['porEtapa']) {
-  const ordenadas = [...porEtapa].sort((a, b) => a.orden - b.orden);
+  const ordenadas = porEtapa.toSorted((a, b) => a.orden - b.orden);
   const maximo = Math.max(1, ...ordenadas.map((e) => e.cantidad));
   return ordenadas.map((e): BarraDeEtapa => ({
     etapaId: e.etapaId,
@@ -230,8 +230,8 @@ export function filasDeAsesores(
       sinActividad:
         c.creadas === 0 && c.enviadas === 0 && o.creadas === 0 && r.conversacionesNuevas === 0,
       ventasCerradas: c.aceptadas,
-      ventas: [...resumen.ventasPorMoneda]
-        .sort((x, y) => x.moneda.localeCompare(y.moneda))
+      ventas: resumen.ventasPorMoneda
+        .toSorted((x, y) => x.moneda.localeCompare(y.moneda))
         .map((v) => v.ventas),
       hayMargen: resumen.ventasPorMoneda.some((v) => 'margen' in v),
       margenes: resumen.ventasPorMoneda.flatMap((v) => (v.margen ? [v.margen] : [])),
@@ -417,7 +417,7 @@ export function destinosVendidos(filas: readonly VentasDeUnDestino[]): DestinoVe
   return [...por.values()]
     .map((d) => ({
       ...d,
-      monedas: [...d.monedas].sort((x, y) => x.moneda.localeCompare(y.moneda)),
+      monedas: d.monedas.toSorted((x, y) => x.moneda.localeCompare(y.moneda)),
     }))
     .sort((a, b) => b.aceptadas - a.aceptadas || a.destino.localeCompare(b.destino, 'es'));
 }
