@@ -15,14 +15,11 @@ import {
   Lock,
   Mail,
   Plane,
-  Compass,
-  Sparkles,
-  ShieldCheck,
-  MessageSquare,
 } from 'lucide-react';
 import * as authApi from '../../lib/auth-api';
 import type { SesionActual, AgenciaDeAcceso } from '@viajapro/contracts';
 import { BotonTurismo } from '../comun/boton-turismo';
+import { PanelIngreso } from './panel-ingreso';
 import { sanitizarRutaRedireccion } from '../../lib/errores-sistema';
 
 type PasoIngreso = 'credenciales' | 'selector-agencia' | 'codigo';
@@ -124,95 +121,8 @@ export function FormularioIngreso() {
 
   return (
     <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-neutral-50 font-sans lg:flex-row dark:bg-neutral-950">
-      {/* 1. Panel Hero Oceánico y de Viaje (Izquierda en desktop, >= lg) */}
-      <section
-        className="degradado-caribe relative hidden flex-col justify-between overflow-hidden p-10 text-white select-none lg:flex lg:w-1/2 xl:w-7/12 xl:p-14"
-        aria-label="Identidad turística de ViajaPro"
-      >
-        {/* Decoración Náutica y Olas Marinas SVG */}
-        <div className="pointer-events-none absolute inset-0 opacity-20">
-          <svg
-            className="anim-olas h-full w-full object-cover"
-            viewBox="0 0 800 600"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <path
-              d="M-50,320 C150,260 300,380 500,310 C700,240 850,340 950,290 L950,650 L-50,650 Z"
-              fill="url(#ola-grad)"
-              opacity="0.4"
-            />
-            <path
-              d="M-20,400 C180,340 380,440 580,380 C780,320 880,410 980,370 L980,650 L-20,650 Z"
-              fill="url(#ola-grad)"
-              opacity="0.6"
-            />
-            <defs>
-              <linearGradient id="ola-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#0B1F3A" stopOpacity="0.2" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-
-        {/* Top: Logo y Versión */}
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-md backdrop-blur-md">
-              <Plane className="anim-flotar h-6 w-6 text-white" aria-hidden="true" />
-            </div>
-            <div>
-              <span className="text-xl font-black tracking-tight text-white">ViajaPro</span>
-              <span className="block text-[11px] font-medium text-cyan-200/80">CRM Turístico</span>
-            </div>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full border border-[#C9A24B]/70 bg-black/25 px-3 py-1 text-[11px] font-semibold text-[#FDE68A] shadow-xs backdrop-blur-md">
-            <Sparkles className="h-3 w-3 text-[#FACC15]" aria-hidden="true" />
-            Operación Colombia
-          </span>
-        </div>
-
-        {/* Centro: Titular y Promesa Central */}
-        <div className="relative z-10 my-auto max-w-xl py-12">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-950/60 px-3.5 py-1 text-xs font-semibold text-cyan-200 backdrop-blur-sm">
-            <Compass className="h-3.5 w-3.5 animate-spin text-cyan-400 motion-reduce:animate-none" />
-            Especializado en Turismo & Excursiones
-          </div>
-
-          <h2 className="text-3xl leading-tight font-extrabold tracking-tight text-white xl:text-4xl 2xl:text-5xl">
-            Convierte conversaciones en{' '}
-            <span className="text-[#FACC15] drop-shadow-[0_2px_12px_rgba(250,204,21,0.35)]">
-              viajes reales
-            </span>
-          </h2>
-
-          <p className="mt-4 text-base leading-relaxed font-normal text-cyan-100/90 xl:text-lg">
-            El CRM omnicanal para agencias de viajes. WhatsApp Cloud API nativo, cotizador express
-            en COP, control de cupos y seguimiento comercial sin salir de la conversación.
-          </p>
-
-          {/* Insignias de confianza con aro dorado */}
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-white/10 px-3.5 py-2 text-xs font-medium text-white shadow-xs backdrop-blur-md">
-              <MessageSquare className="h-3.5 w-3.5 text-cyan-300" aria-hidden="true" />
-              <span>WhatsApp Cloud API</span>
-            </div>
-
-            <div className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-white/10 px-3.5 py-2 text-xs font-medium text-white shadow-xs backdrop-blur-md">
-              <ShieldCheck className="h-3.5 w-3.5 text-[#FDE68A]" aria-hidden="true" />
-              <span>Datos de tu agencia, separados de las demás</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom: Cita / Garantía */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-4 text-xs text-cyan-200/80">
-          <span>Diseñado para la agencia minorista que revende paquetes en Colombia</span>
-          <span className="font-semibold text-white/90">San Andrés · Cartagena · Santa Marta</span>
-        </div>
-      </section>
+      {/* 1. Panel de bienvenida con fotografía (izquierda en escritorio, >= lg). Contenido: lib/panel-ingreso.ts */}
+      <PanelIngreso />
 
       {/* 2. Panel Derecho: Formulario de Acceso Profesional */}
       <main className="flex w-full flex-1 flex-col justify-center px-4 py-8 sm:px-6 lg:px-12 xl:px-16">
