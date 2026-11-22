@@ -219,7 +219,7 @@ export function armarResumen(entrada: {
 }): ResumenDeReportesPorAlcance {
   const { alcance, rango, cotizaciones: c, etapas, respuesta, abiertas, cobros, agencia } = entrada;
 
-  const porEtapa = etapas.slice().sort((a, b) => a.orden - b.orden);
+  const porEtapa = etapas.toSorted((a, b) => a.orden - b.orden);
   const suma = (f: (e: EtapaConOportunidades) => boolean): number =>
     porEtapa.filter(f).reduce((s, e) => s + e.cantidad, 0);
   const ganadas = suma((e) => e.esGanada);

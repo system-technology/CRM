@@ -282,7 +282,7 @@ describe('historial de etapas de la oportunidad (T-131)', () => {
     ]);
     // Instantes no decrecientes (en el orden de lectura, que es el de la línea de vida).
     const instantes = filas.map((f) => f.ocurrido_en.getTime());
-    expect([...instantes].sort((x, y) => x - y)).toEqual(instantes);
+    expect(instantes.toSorted((x, y) => x - y)).toEqual(instantes);
   });
 
   it('ganar fija cerrada_en con las banderas de la etapa ganada', async () => {
