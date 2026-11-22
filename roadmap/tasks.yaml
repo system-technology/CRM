@@ -12948,6 +12948,76 @@ tasks:
     source: trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)
     owner: datos
 
+  - id: T-622
+    title: "La agencia puede sustituir el paquete de imagenes por defecto por las suyas"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-620
+    acceptance:
+      - "DECISION DEL PROPIETARIO (2026-11-22), literal: «vamos a entregarle a cada agencia un paquete
+        estandar con nuestras fotos de Cartagena, Santa Marta, Barranquilla, Baru, Playa Blanca,
+        Islas del Rosario. Y si la agencia, cuando este configurando el CRM para su operacion, decide
+        cambiarla y colocar sus propias imagenes, es valido hacerlo»"
+      - "T-620 entrega el paquete por defecto y deja la estructura de datos preparada. ESTA tarea es
+        la otra mitad: que la agencia suba las suyas y sustituya la lista"
+      - "R12: es politica de negocio por agencia, asi que va en dato por tenant, nunca en enum ni en
+        literal. R1: tenant_id y RLS en la tabla que guarde la referencia"
+      - "Las imagenes van a S3 (MinIO en local), que ya esta en el stack para media de WhatsApp y
+        documentos. NO meter binarios en la base"
+      - "Donde se configura: el bloque de marca del onboarding y la pantalla de configuracion. Mirar
+        paso-marca.tsx, que ya recoge color institucional y ciudad base"
+      - "Validar lo que se sube: formato, peso maximo y proporcion. Una foto de 8 MB en la primera
+        pantalla arruina el LCP de todos los dias"
+      - "OJO AL LIMITE QUE ESTA TAREA NO PUEDE SALTARSE: en el INGRESO no se sabe de que agencia es
+        quien mira, porque es anterior a la sesion. Dentro de la aplicacion si. Asi que esto sirve
+        para el marco y el onboarding desde el principio, y para el ingreso SOLO cuando T-621 y su ADR
+        resuelvan como se identifica la agencia antes de entrar"
+      - "Mientras tanto, el ingreso enseña el paquete por defecto, que es exactamente lo que el
+        propietario pidio"
+    source: "decision de producto del propietario sobre el paquete estandar (2026-11-22)"
+    owner: frontend
+
+  - id: T-621
+    title: "Lo que ata el producto a Colombia y deberia ser configurable por agencia"
+    type: refactor
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "Lo pidio el propietario (2026-11-22): «nuestro CRM debe ser configurable para cualquier
+        agencia... todo lo que podamos darle a una agencia que se integra nuestro CRM y que pueda ser
+        configurable y adaptable a ellos es un plus gigante»"
+      - "Es R12 aplicada: lo que cada agencia define distinto es dato por tenant, no literal en el
+        codigo"
+      - "MEDIDO con grep el 2026-11-22, fuera de pruebas, mocks y demo. Lo que de verdad ata, por
+        orden de gravedad"
+      - "GRAVE, es un defecto latente: dashboard-admin.tsx usa ZONA_HORARIA_COLOMBIA como valor por
+        omision. Ya existe tenants.zona_horaria y la funcion actualizar_zona_horaria_de_la_agencia,
+        asi que una agencia fuera de Colombia veria sus cifras con el dia cambiado. Contradice R9"
+      - "GRAVE: onboarding/paso-marca.tsx pide «NIT (Colombia)» y paso-whatsapp.tsx habla de «RUT en
+        Colombia». El identificador fiscal es de cada pais: una agencia mexicana tiene RFC y una
+        peruana RUC"
+      - "MEDIO: onboarding/paso-marca.tsx ofrece «una paleta colombiana representativa», y
+        paso-catalogo.tsx siembra EXCURSIONES_MUESTRA_COLOMBIA como catalogo de ejemplo"
+      - "MEDIO: el panel del ingreso dice «Operacion Colombia», «agencia minorista que revende
+        paquetes en Colombia» y «San Andres, Cartagena, Santa Marta». T-620 ya lo convierte en datos
+        con valor por omision, pero NO resuelve de donde vienen esos datos"
+      - "LEVE pero suma: una docena de placeholders del tipo «Ej. Cartagena de Indias» o
+        «Ej. San Andres, Colombia» en modales de oportunidad, catalogo y equipo. Ninguno rompe nada;
+        todos dicen «esto es un producto colombiano»"
+      - "NO TOCAR por esto: el formato de fecha de campo-fecha.tsx (evita el mm/dd ambiguo y es una
+        decision de interfaz), ni lo que ya es multi-moneda por R8"
+      - "LO QUE ESTA TAREA NO PUEDE RESOLVER SOLA, y hay que decidir antes con el arquitecto: el
+        ingreso es ANTERIOR a la sesion, asi que no se sabe de que agencia es quien mira. Marcar el
+        ingreso por agencia exige subdominio, ruta o algun otro identificador previo. Eso es ADR (R7)"
+    source: "peticion del propietario sobre configurabilidad, con el grep que la respalda (2026-11-22)"
+    owner: arquitecto
+
   - id: T-619
     title: "BLOQUEANTE: la compuerta de rutas protegidas NO existe en el servidor, pese a R11"
     type: infra
