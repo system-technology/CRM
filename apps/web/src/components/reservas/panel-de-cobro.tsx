@@ -294,7 +294,7 @@ export function PanelDeCobro({ archivoId, numero, zona }: PanelDeCobroProps) {
               data-testid="historial-de-pagos"
               className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-700"
             >
-              {[...estado.cobro.movimientos].reverse().map((m) => (
+              {estado.cobro.movimientos.toReversed().map((m) => (
                 <li
                   key={m.id}
                   className="flex flex-wrap items-baseline justify-between gap-x-3 px-3 py-2"
