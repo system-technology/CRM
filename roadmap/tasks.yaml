@@ -12884,18 +12884,22 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: review
+    status: done
     acceptance:
       - "HECHO (2026-11-22): el cliente del piloto consiguio iniciar sesion desde su equipo"
-      - "IRONIA QUE CONVIENE RECORDAR: horas antes se habia integrado en CLAUDE.md que «todavia no
-        puede ingresar». Se quedo falso el mismo dia. El hilo envejece en las DOS direcciones"
-      - "Corregidos CLAUDE.md y ESTADO.md. T-594 pasa a done"
-      - "NO SE SABE cual de las causas era: se dieron tres comprobaciones al propietario (URL exacta
-        escrita a mano, movil en la red de la oficina, otro navegador en el PC) y no consta cual
-        resolvio. T-611 sigue valiendo igual: un usuario bloqueado por intentos no puede distinguirlo
-        de una clave mala"
-    source: "aviso del propietario (2026-11-22)"
+      - "IRONIA QUE CONVIENE RECORDAR: horas antes se habia integrado en CLAUDE.md que «todavia no puede
+        ingresar». Se quedo falso el mismo dia. El hilo envejece en las DOS direcciones"
+      - Corregidos CLAUDE.md y ESTADO.md. T-594 pasa a done
+      - "NO SE SABE cual de las causas era: se dieron tres comprobaciones al propietario (URL exacta escrita a
+        mano, movil en la red de la oficina, otro navegador en el PC) y no consta cual resolvio. T-611 sigue
+        valiendo igual: un usuario bloqueado por intentos no puede distinguirlo de una clave mala"
+    source: aviso del propietario (2026-11-22)
     owner: documentador
+    started_at: 2026-11-22T02:57:37.181Z
+    done_at: 2026-11-22T02:57:37.182Z
+    evidence: "Mergeado en main por el PR #504 (rama i/T-613-cliente-entra) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 4dc6bd1ef2a6a85a00859c1359619d423ce365a7
 
   - id: T-614
     title: "Demo: sembrar las etiquetas de conversacion que el cliente pidio, porque la funcion existe y no se ve"
