@@ -8,6 +8,8 @@ import type { ComponentType } from 'react';
 import { CalendarCheck, FilePlus, ListChecks, Wallet } from 'lucide-react';
 import type { Permiso } from '@viajapro/contracts';
 import { CONFIGURACION_MODULOS } from '../components/comun/iconos-modulos';
+import { esModoDemo } from './modo-demo';
+import { vistaDemo } from './vista-demo';
 
 export type IdDeModulo =
   | 'hoy'
@@ -312,6 +314,11 @@ export function entradasDelMenu(): readonly EntradaDeNavegacion[] {
 /**
  * ¿Se muestra la entrada? Sin `permiso`, siempre. Con lista, basta cualquiera. Solo oculta: la
  * autorización real es del servidor.
+ *
+ * En la demostración con la vista del dueño se muestra todo (T-566: «arranca con la vista del
+ * DUEÑO, todo visible»). La sesión de muestra es la de un asesor, y sin esta salida Configuración
+ * quedaba fuera del menú, de la hoja «Más» y de la paleta (T-623). No autoriza nada: la API sigue
+ * decidiendo, y la vista de asesor sigue filtrando por permiso.
  */
 export function esVisiblePara(
   entrada: EntradaDeNavegacion,
@@ -319,6 +326,7 @@ export function esVisiblePara(
 ): boolean {
   const { permiso } = entrada;
   if (permiso === undefined) return true;
+  if (esModoDemo() && vistaDemo() === 'dueno') return true;
   const lista: readonly Permiso[] = typeof permiso === 'string' ? [permiso] : permiso;
   return lista.some(tiene);
 }

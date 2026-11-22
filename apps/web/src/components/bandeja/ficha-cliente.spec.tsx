@@ -155,7 +155,23 @@ describe('FichaCliente (T-076)', () => {
       '/cotizaciones/cot-9',
     );
     expect(screen.getByTestId('enlace-archivo').getAttribute('href')).toBe('/viajes?id=file-1');
-    expect(screen.getByTestId('enlace-archivo').textContent).toContain('Archivo de viaje 1043');
+    expect(screen.getByTestId('enlace-archivo').textContent).toContain('File 1043');
+  });
+
+  it('con archivo de viaje enlaza también su cobro, al panel del archivo (T-623)', async () => {
+    const viaje = {
+      destino: 'Cancún',
+      fechaSalida: null,
+      pasajeros: null,
+      plazo: null,
+      cotizacion: null,
+      archivo: { id: 'file-1', numero: 1043 },
+      oportunidadId: null,
+      paqueteId: null,
+    };
+    render(<FichaCliente ficha={fichaCompleta} viaje={viaje} />);
+    const cobro = await screen.findByTestId('enlace-cobro');
+    expect(cobro.getAttribute('href')).toBe('/viajes?id=file-1#cobro');
   });
 
   it('los campos personalizados bajan y van plegados', () => {

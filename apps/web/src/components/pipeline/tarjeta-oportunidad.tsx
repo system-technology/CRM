@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { EtapaDefinida, Oportunidad } from '@viajapro/contracts';
 import {
   MapPin,
@@ -23,6 +22,8 @@ import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
 import { InsigniaDePlazo, CLASES_POR_NIVEL } from '../comun/viaje-insignias';
 import { useViajesBandeja } from '../../lib/viajes-bandeja';
+import { terminoDeBusquedaDelContacto } from '../../lib/enlaces-viaje-logica';
+import { EnlaceAConversacion } from '../comun/enlace-a-conversacion';
 import { describirSalida, lineaDeViaje, plazoMasProximo } from '../../lib/viaje-solicitado-logica';
 
 interface TarjetaOportunidadProps {
@@ -213,14 +214,15 @@ export function TarjetaOportunidad({
 
         <div className="flex items-center space-x-1">
           {/* Enlace rápido a chat con touch target >= 44px */}
-          <Link
-            href="/bandeja"
+          <EnlaceAConversacion
+            contactoId={contactoId}
+            termino={terminoDeBusquedaDelContacto({ nombre: contactoNombre })}
             title="Abrir conversación en bandeja"
             aria-label={`Abrir conversación de WhatsApp con ${contactoNombre || 'cliente'}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             <MessageSquare className="h-4 w-4" />
-          </Link>
+          </EnlaceAConversacion>
 
           {/* Menú de accesibilidad por teclado para mover etapa con touch target >= 44px */}
           <div className="relative">
