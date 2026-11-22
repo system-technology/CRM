@@ -782,3 +782,69 @@ Se retira el conmutador Vista Dueño/Asesor; la vista la decide la respuesta de 
 - **2026-11-21 · T-569**: 41 clases de la familia `primary`, que no existe en ninguna paleta, mapeadas a `acento-*`. Con prueba que exige que toda familia de color usada exista en Tailwind o en el tema.
 - **Dos cosas que se daban por ciertas y no lo eran**: `Carril y tarea` **sí** acepta una bitácora de `docs/` en un PR de carril `a` o `b` (verificado en verde en #471, #472 y #473; T-576 decía lo contrario y se corrigió), y **el cierre automático de tareas no cerró nada** en este lote pese a que las ramas nombraban su tarea. **Comprobar el `status` en `main` después de cada integración.**
 - **Un comentario que justifica una decisión con una medición que nadie tomó congela esa decisión durante meses.** Es lo que mantenía al arnés con filtro de rutas y fuera de los checks obligatorios.
+
+## 2026-11-22 · El lote del cliente que no podía entrar
+
+`main` de **`e5b670e0`** a **`57deaa27`**. Trece PR integrados (#483, #486, #487, #489, #491, #492,
+#495, #497, #498, #499, #500, #501, #502) y el resto en la cola. El lote no lo decidió la hoja de
+ruta: lo decidió que **el propietario tenía un cliente delante de la pantalla de ingreso sin poder
+entrar**.
+
+**Lo que resolvió el caso (verificado).** El flujo `preparar-demo-staging.yml` (T-600) midió la base
+antes de tocarla: `{agencias:1, agenciaDemo:true, identidades:3, usuarios:3, credenciales:1}`. La
+base **no estaba vacía**: dos de los tres usuarios no tenían contraseña porque `seed.ts` crea
+identidades **sin credencial** a propósito y el despliegue **migra pero no siembra**. Tras sembrar:
+4 identidades, 4 usuarios, 2 credenciales. El cliente entró. **Cuál de las tres comprobaciones lo
+desbloqueó no consta** — se le pidieron tres cosas a la vez (URL escrita a mano, otra red, otro
+navegador) y no se aisló ninguna. Queda escrito como lo que es: causa **no confirmada**.
+
+**Nueve afirmaciones falsas en el hilo, todas en la misma dirección.** El propietario lo dijo con
+estas palabras: «Veo muchas contradicciones tuyas y me preocupa.» `ESTADO.md` afirmaba «no hay nada
+desplegado» y «ninguna agencia lo ha visto» mientras staging respondía 200 y un cliente real estaba
+entrando. Corregido en `ESTADO.md` (×5, T-594), en el tablero, en el diario (marcado, no borrado) y
+en `CLAUDE.md` (#500). **Todas eran afirmaciones heredadas que nadie volvió a comprobar.**
+
+**Decisiones**
+- **T-598 (P0): rotar los secretos del Environment.** El propietario recordó que **los cargó una
+  sesión de IA anterior con plantillas**, contra su propia regla («son claves; nunca pasan por una
+  sesión»). Orden escrito: contraseñas de los cuatro roles de Neon y `BETTER_AUTH_SECRET` primero.
+- **El limitador de ingreso pasa a ser configurable** (T-612, `LIMITE_INICIO_SESION_POR_IP`) en vez
+  de subirlo a mano en producción. El tope por identidad (10 fallos / 15 min, ventana deslizante,
+  respuesta idéntica a clave mala) **no se toca**: su opacidad es deliberada (ADR-0031 §4). Lo que
+  se arregla es que un usuario legítimo hoy no puede saber que solo tiene que esperar (T-611).
+- **El audio del cliente se encoló tal cual** (T-608, T-609, T-610). La primera petición
+  —organizar los chats por estado— **ya estaba construida** (T-323..T-326, `done`): lo que falta es
+  sembrarla en la demo y enseñársela. Dos de las tres peticiones no eran código nuevo.
+
+**Trampas nuevas**
+- **Integrar un PR despliega.** `deploy-staging.yml` lleva 50+ ejecuciones desde el 2026-11-21:
+  dispara el hook de Render, redespliega Vercel y corre `prisma migrate deploy` contra Neon. Nadie
+  en el hilo lo sabía mientras se discutía «qué falta por desplegar».
+- **La cadena de sesiones madre se agota**: `create_session` responde «lineage depth 8 (limit 8)» y
+  **ninguna configuración lo cambia** (T-584). Desde aquí solo hay subagentes en proceso, que no
+  abren PR y mueren con la sesión. **La próxima madre la abre el propietario desde la raíz.**
+- **El carril sí importa para las bitácoras**: el check «Carril y tarea» rechaza `docs/` en una rama
+  `a/` o `b/`. La nota de T-576 que lo negaba era engañosa — aquellos PR tenían ramas sin prefijo de
+  carril. Las bitácoras van al PR de cierre del lote.
+- **Resolver un conflicto de `tasks.yaml` con expresiones regulares rompe el archivo** y el YAML
+  sigue parseando. Pasó aquí: partió una tarea y dejó sus criterios sin cabecera, y llegó a
+  commitearse en local porque la salida se había silenciado con `2>/dev/null`. **Validar antes de
+  commitear, no antes de empujar, y no silenciar `git commit`.** El procedimiento bueno es
+  reconstruir desde `origin/main` y reaplicar **solo** las diferencias reales de la rama, comprobadas
+  tarea por tarea con `yaml.safe_load`.
+- **Antes de relanzar un check en rojo, mirar qué job es.** Solo `navegador` es inestable; dos veces
+  se relanzó en vano un `convencion-de-commits` que iba a fallar siempre.
+- **Commitlint rechaza un asunto que empieza por `CLAUDE.md`** (`subject-case`) y los scopes
+  inexistentes (`e2e`). Dos PR hubo que recrearlos por esto (#488→#500, #494→#498).
+- **Buscar por el concepto en español.** Se afirmó «no hay ninguna pieza que cree contraseñas»
+  buscando `signUp` y `hashPassword`; existía `sembrar-credenciales-dev.ts`.
+- **`navegador` cae por el limitador, no por azar**: 5 intentos/minuto por IP y la suite hace 7
+  ingresos. Medido. T-592 hace que la prueba espere el cupo; T-603 lo sube solo en el job de CI.
+
+**Pendiente del propietario (solo él puede)**
+- Rotar los secretos (T-598) y la contraseña de la demo, que quedó en texto plano en el log de un
+  run de un repositorio **público**.
+- Aprobar #503 y poner `LIMITE_INICIO_SESION_POR_IP=20` en Render.
+- Añadir `"Bash(node scripts/diagnostico-ingreso.mjs:*)"` a `permissions.allow` (#490).
+- **Abrir la próxima sesión madre desde la raíz** (T-584).
+- Renovar las credenciales de los conectores de Neon, Render y Vercel: los tres rechazan su token.
