@@ -5,9 +5,11 @@ import {
   conversacionDelContacto,
   cotizacionVigenteDelContacto,
   enlaceDeArchivo,
+  enlaceDeCobro,
   enlaceDeContacto,
   enlaceDeConversacion,
   enlaceDeCotizacion,
+  soloEnlaces,
   terminoDeBusquedaDelContacto,
 } from './enlaces-viaje-logica';
 
@@ -90,5 +92,25 @@ describe('enlaces entre chat, cotización y file', () => {
     expect(enlaceDeArchivo({ tipo: 'listo', valor: null }).sinDestino).toBe(
       'Sin archivo de viaje todavía',
     );
+  });
+});
+
+describe('enlaceDeCobro (T-623)', () => {
+  it('lleva al panel de cobro del archivo', () => {
+    expect(enlaceDeCobro({ id: 'file-1' }, true)).toEqual({
+      clave: 'cobro',
+      texto: 'Cobro del viaje',
+      href: '/viajes?id=file-1#cobro',
+    });
+  });
+
+  it('no existe sin archivo ni sin permiso de ver cobros', () => {
+    expect(enlaceDeCobro(null, true)).toBeNull();
+    expect(enlaceDeCobro({ id: 'file-1' }, false)).toBeNull();
+  });
+
+  it('soloEnlaces quita los huecos', () => {
+    const a = enlaceDeCobro({ id: 'f' }, true);
+    expect(soloEnlaces([null, a, null])).toEqual([a]);
   });
 });
