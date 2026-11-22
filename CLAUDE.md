@@ -13,7 +13,7 @@ mueve a `docs/` y aquí queda solo el enlace.
 WhatsApp: el dominio del turismo (pasajeros, tarifas netas, itinerarios, archivos de viaje,
 proveedores) está en el núcleo del modelo.
 
-Estado actual: **en construcción y sin agencia real todavía. Hay staging desplegado y en pie** (verificado por HTTP el 2026-11-21: la web responde y la API de Render devuelve `baseDeDatos: ok`, `rol: viajapro_app`, `aislamiento: forzado`), **con un cliente del propietario entrando a esa URL, que todavía no puede ingresar** (T-594). Este párrafo decía «sin servicio desplegado» y era falso. Hay catálogo,
+Estado actual: **en construcción y sin agencia real todavía. Hay staging desplegado y en pie** (verificado por HTTP el 2026-11-21: la web responde y la API de Render devuelve `baseDeDatos: ok`, `rol: viajapro_app`, `aislamiento: forzado`), **y un cliente del propietario probándolo: el 2026-11-22 consiguió iniciar sesión** (T-594, T-600). Este párrafo decía «sin servicio desplegado» y era falso. Hay catálogo,
 cotizador, autenticación, CRM, bandeja, reportes, recepción y envío de WhatsApp (probados con el número
 de prueba de Meta y con una Graph API falsa) y un modo de un solo proceso sin Redis, con el CI de
 10 checks (8 obligatorios: `.github/proteccion-main.json`). Faltan el despliegue, el cifrado de PII (ADR-0015), la prueba de la web

@@ -12692,6 +12692,10 @@ tasks:
       - "Decirselo al cliente con una captura o un recorrido corto: es la diferencia entre «lo vamos a hacer»
         y «ya esta, mira»"
       - "OJO: la siembra corre dentro de preparar-demo-staging.yml, asi que hay que relanzarlo despues"
+      - "AVISO (2026-11-22): esta tarea la cerro el cierre automatico por el NOMBRE DE LA RAMA
+        (i/T-608-feedback-del-cliente) cuando el PR #499 solo ENCOLABA la peticion del cliente. El
+        trabajo que describen los criterios de arriba -sembrar las etiquetas y asignarlas- NO se hizo.
+        Se mueve a T-614. Se deja done como registro del encolado, no del trabajo"
     source: audio del cliente del piloto, transcrito por el propietario (2026-11-22)
     owner: frontend
     started_at: 2026-11-22T01:08:06.139Z
@@ -12873,6 +12877,48 @@ tasks:
         no habia API ni base en la sesion"
     source: "causa de fondo declarada por la sesion de T-586, no silenciada (2026-11-22)"
     owner: frontend
+
+  - id: T-613
+    title: "Hilo: el cliente del piloto ya entra; el estado decia lo contrario"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: review
+    acceptance:
+      - "HECHO (2026-11-22): el cliente del piloto consiguio iniciar sesion desde su equipo"
+      - "IRONIA QUE CONVIENE RECORDAR: horas antes se habia integrado en CLAUDE.md que «todavia no
+        puede ingresar». Se quedo falso el mismo dia. El hilo envejece en las DOS direcciones"
+      - "Corregidos CLAUDE.md y ESTADO.md. T-594 pasa a done"
+      - "NO SE SABE cual de las causas era: se dieron tres comprobaciones al propietario (URL exacta
+        escrita a mano, movil en la red de la oficina, otro navegador en el PC) y no consta cual
+        resolvio. T-611 sigue valiendo igual: un usuario bloqueado por intentos no puede distinguirlo
+        de una clave mala"
+    source: "aviso del propietario (2026-11-22)"
+    owner: documentador
+
+  - id: T-614
+    title: "Demo: sembrar las etiquetas de conversacion que el cliente pidio, porque la funcion existe y no se ve"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: in_progress
+    acceptance:
+      - "Es el trabajo real de T-608, que el cierre automatico dio por hecho por el nombre de la rama. El PR
+        #499 solo encolo la peticion"
+      - "VERIFICADO EN EL CODIGO: etiquetar conversaciones YA ESTA CONSTRUIDO (T-323..T-326 done): modulo en la
+        API y filtro por etiqueta en la bandeja. NO hay que construirlo"
+      - "HIPOTESIS SIN CONFIRMAR, y lo primero que hay que comprobar: la agencia demo no tiene etiquetas
+        sembradas, asi que al entrar no se ve nada y parece que no existe"
+      - "Si se confirma: sembrar en la agencia demo «Ya reservo», «Reserva pendiente» y «Nuevo», con color, y
+        asignarlas a conversaciones de ejemplo para que se vean funcionando y no vacias"
+      - "R1: tenant_id y RLS en todo. Es siembra, NO esquema: si hiciera falta una migracion, parar y decirlo"
+      - "La siembra corre dentro de preparar-demo-staging.yml, asi que hay que relanzarlo despues de integrar"
+      - "Cuando este, ensenarselo al cliente con una captura o un recorrido corto: es la diferencia entre «lo
+        vamos a hacer» y «ya esta, mira»"
+    source: "trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)"
+    owner: datos
 
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
