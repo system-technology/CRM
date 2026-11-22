@@ -22,7 +22,7 @@ function mensajeDeError(err: unknown, fallback: string): string {
   return formatearErrorAmigable(err, fallback);
 }
 
-const ordenar = (lista: MotivoDePerdida[]) => [...lista].sort((a, b) => a.orden - b.orden);
+const ordenar = (lista: MotivoDePerdida[]) => lista.toSorted((a, b) => a.orden - b.orden);
 
 /**
  * Bloque de Configuración: Motivos de pérdida de la agencia (T-229, R12). Los de sistema
