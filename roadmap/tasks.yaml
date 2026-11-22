@@ -13105,6 +13105,226 @@ tasks:
     source: "peticion del propietario tras encontrar el repositorio (2026-11-22)"
     owner: documentador
 
+  - id: T-623
+    title: "Navegabilidad: enlaces rotos, cadena hacia delante, Configuracion y colores que mienten"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: review
+    acceptance:
+      - "Filas 1, 2 y 4 del diagnostico T-618, que su recomendacion pide hacer juntas en un solo lote"
+      - "Las 9 tarjetas del pipeline y el icono de chat de Contactos apuntan a /bandeja/<id>, no a /bandeja"
+      - "La fila de enlaces que ya existe en Archivo de viaje se lleva a conversacion, cotizacion y ficha, con archivo y cobro"
+      - "Configuracion vuelve al menu, a la hoja «Mas» y a la paleta de comandos"
+      - "«Ventana cerrada» y «Perdida» dejan de ser verdes; el contador de 24 h gana umbral ambar y rojo"
+      - "EXIGENCIA: medirlo como se midio el problema, con la aplicacion levantada y capturas antes y despues"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-624
+    title: "Los PR de las ramas de trabajo los abre la app Integradora"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: review
+    acceptance:
+      - "GitHub no deja que el autor apruebe su propio PR y todos los de la sesion salen a nombre del propietario"
+      - "Sin esto, activar la compuerta de T-619 lo bloquea a el mismo"
+      - "PR #521. Se dispara con push a a/, b/ o i/ y solo si el commit lleva la linea «Abrir-PR: si»"
+      - "NO se ha ejecutado nunca: no hay act ni actionlint. Probarlo con workflow_dispatch al integrarlo"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: devops
+  - id: T-625
+    title: "Verificar afirmacion por afirmacion CLAUDE.md y ESTADO.md"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: in_progress
+    acceptance:
+      - "Lo pidio el propietario: «todo debe estar integral, todo debe estar correcto... si no, vamos a tener problemas»"
+      - "Hoy aparecieron CINCO afirmaciones falsas en los documentos, cada una con coste real"
+      - "Cada cifra se comprueba con un comando. Lo que no se pueda comprobar se marca SIN VERIFICAR, no se arregla a ojo"
+      - "Sabido ya: section 5 dice que booking y payments no tienen codigo, y tienen 30 y 18 ficheros"
+      - "OJO: el check rutas-protegidas esta en main pero NO es obligatorio todavia, asi que siguen siendo 8, no 9, y R11 sigue siendo falsa"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: documentador
+  - id: T-626
+    title: "Contactos no se puede usar en el telefono: 0 de 8 enlaces alcanzables"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "Fila 3 del diagnostico. MEDIDO: tabla de 877 px dentro de una caja de 340 con overflow hidden, y los 8 enlaces de ficha viven en x entre 850 y 886"
+      - "Es una de las once pantallas inservible en el dispositivo principal del asesor"
+      - "El arreglo ya existe en el producto: tabla con @container que apila en tarjetas, como hace Cobros. Copiar ese patron"
+      - "La guia web moderna lo cubre en responsive-table, que el diagnostico ya verifico que aplica"
+      - "Medir a 390 px con la aplicacion levantada y demostrar que los 8 enlaces son alcanzables"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-627
+    title: "Modo oscuro de «Hoy»: contraste 1,1 a 1 sobre un importe en pesos"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Fila 5. MEDIDO: dark:bg-neutral-850 NO emite CSS porque neutral-850 no existe en @theme, asi que la tarjeta se queda blanca"
+      - "El contraste cae a 1,1:1 justo en la linea que lleva «$2.500.000»"
+      - "Definir el token en @theme o usar uno existente. Es una linea"
+      - "Comprobar que no haya mas clases que apunten a tokens inexistentes: la prueba de T-569 deberia haberlo cazado y no lo hizo. Mirar por que"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-628
+    title: "El aviso de cookies tapa el ingreso en movil"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Fila 6. MEDIDO: el aviso empieza en y=501 y el boton ocupa de 470 a 514, asi que el enlace «Ingresar con codigo de 6 digitos» queda INALCANZABLE"
+      - "Es la primera pantalla, y viene de la semana en que un cliente real no conseguia entrar (T-594, T-600)"
+      - "Comprobar a 390 px que los dos caminos de ingreso son alcanzables con el aviso visible"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-629
+    title: "Una pasada de lenguaje: que las once pantallas hablen igual"
+    type: refactor
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "Fila 7, y segun el diagnostico es «lo que el propietario ve como que el diseno cambio»"
+      - "La misma pantalla se llama «Conversaciones» en el menu y «Bandeja» en las migas; la misma lista es «Contactos», «Directorio comercial» y «Directorio de Contactos»"
+      - "Fechas ISO del catalogo a «15 jun 2027», que es como escriben las demas pantallas"
+      - "Fuera de la interfaz: WABA, SLA, CSV, Opt-In, CRM, leads. Son nuestra jerga, no la del asesor"
+      - "Fuera MAYUSCULAS en etiquetas y Title Case. Plurales coherentes"
+      - "R3 y el lenguaje ubicuo mandan: docs/01-producto/02-lenguaje-ubicuo.md es el diccionario"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: diseno-ux
+  - id: T-630
+    title: "Murallas de cabecera en movil: 380 px de controles antes del primer dato"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 8. Cuatro pantallas ponen «Exportar CSV» e «Importar archivo» antes del contenido"
+      - "Bajarlos a un menu y dejar el dato arriba"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-631
+    title: "Pestañas que no caben y que el usuario no sabe que existen"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 9, en Configuracion y Catalogo"
+      - "Scroll horizontal con desvanecido y scrollIntoView sobre la activa"
+      - "La guia lo cubre en tabs, que el diagnostico verifico que aplica"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-632
+    title: "Botones de solo icono sin nombre accesible"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 10. Mas de 6 controles sin nombre"
+      - "No solo afecta a lectores de pantalla: dos iconos iguales tampoco se distinguen mirandolos"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-633
+    title: "Titulos de documento y migas, segun ADR-0032"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 11. MEDIDO: NINGUN detalle sobrescribe su document.title, asi que seis pestanas dicen «Conversaciones»"
+      - "/bandeja/<id> deberia decir «Juan Perez», /contactos/<id> igual, /cotizaciones/<id> el titulo de la cotizacion"
+      - "Las migas de /seguimientos se escriben a mano y meten un nivel «CRM» que no es una pantalla"
+      - "El mecanismo ya existe en la tabla unica de navegacion: usarlo, no inventar otro"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-634
+    title: "La paleta de comandos no encuentra la mitad de lo que hay"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Hallazgos N10 y N11 del diagnostico"
+      - "«Laura» devuelve 0 resultados aunque Laura Restrepo esta escrita en «Hoy» y en Seguimientos: la paleta NO busca seguimientos"
+      - "Las pestanas de categoria no coinciden con lo que devuelve: sale un grupo «Pipeline / Oportunidades» que no tiene pestana, y ademas se llama distinto que en el menu"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-635
+    title: "Reportes con menos texto y acciones en la fila de Cobros"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 12, y el diagnostico la marca como carril PRODUCTO, no diseno"
+      - "Reportes es la pantalla que decide si el dueno de la agencia paga"
+      - "Cobros sin una accion en la fila es un informe, no una herramienta"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: dueno-de-producto
+  - id: T-636
+    title: "Cotizador: neto, markup, margen, items y enviar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    acceptance:
+      - "Fila 13. El diagnostico es explicito: «es la promesa central del producto y no esta», y «NO lo arregla un redisenno»"
+      - "Lo que falta es PRODUCTO, no diseno: decidir su alcance es del dueno-de-producto"
+      - "EL DIAGNOSTICO RECOMIENDA NO TOCAR LA PANTALLA ANTES de esa decision: redisenarla ahora seria dibujar dos veces"
+      - "R8 manda en todo lo que toque dinero: enteros, unidad minima de la moneda, y en COP la unidad minima es el peso"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: dueno-de-producto
+  - id: T-637
+    title: "Datos de demostracion que no mienten"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 14. MEDIDO: tareas a las 2 de la madrugada, salida por defecto en el pasado, «270 conversaciones» que no existen, 2 archivos de viaje en su lista frente a 9 en Cobros, y tres asesores con «7 min» identicos"
+      - "Una demo con datos que mienten resta mas que un diseno sobrio"
+      - "Relacionada con T-614: la siembra buena ya esta en el codigo pero no en staging"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: datos
+  - id: T-638
+    title: "El ADR-0032 y el codigo no coinciden en la barra movil"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "Hallazgo del diagnostico: el ADR section 4 dice que la barra movil lleva «Buscar» y el codigo lleva la accion «Cotizar»"
+      - "Un ADR no se edita, se supersede (R7). O se cambia el codigo para que cumpla el ADR, o se escribe un ADR nuevo que explique por que gano «Cotizar»"
+      - "Decidir cual de las dos, y hacerlo. Lo que no vale es dejar los dos textos contradiciendose"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: arquitecto
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
