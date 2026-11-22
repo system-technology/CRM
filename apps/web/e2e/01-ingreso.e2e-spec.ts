@@ -31,6 +31,31 @@ test.describe('sin sesion', () => {
     await expect(page.getByText('Error de autenticación')).toBeVisible();
     await expect(page).toHaveURL(/\/ingresar/);
   });
+
+  test('el limitador por IP (429) dice que basta esperar y no se hace pasar por clave mala', async ({
+    page,
+  }) => {
+    // Respuesta fabricada en el navegador: no gasta cupo del limitador real (5 por minuto por IP),
+    // que comparten las demás pruebas del job.
+    await page.route('**/api/v1/auth/sign-in/email', (ruta) =>
+      ruta.fulfill({ status: 429, contentType: 'application/json', body: '{}' }),
+    );
+    const { correo } = credenciales();
+    await page.goto('/ingresar');
+    await page.locator('#campo-identificador').fill(correo);
+    await page.locator('#campo-contrasena').fill('cualquier-clave-0000');
+    await page.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
+
+    const aviso = page.getByTestId('aviso-limite-de-intentos');
+    await expect(aviso).toBeVisible();
+    await expect(aviso).toHaveAttribute('role', 'alert');
+    await expect(aviso).toContainText('Demasiados intentos seguidos');
+    await expect(aviso).toContainText('Espera un minuto');
+    // Ni el título ni el texto del rechazo de credenciales: ese dice otra cosa.
+    await expect(page.getByText('Error de autenticación')).toHaveCount(0);
+    await expect(page.getByText('Los datos no coinciden')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/ingresar/);
+  });
 });
 
 test('ingresa con el usuario sembrado y cae en Hoy', async ({ page }) => {

@@ -112,6 +112,29 @@ describe('FormularioIngreso (0c.29)', () => {
       const alerta = screen.getByRole('alert');
       expect(alerta.getAttribute('aria-live')).toBe('assertive');
       expect(alerta.textContent).toContain('Los datos no coinciden');
+      expect(alerta.textContent).toContain('Error de autenticación');
+    });
+  });
+
+  it('distingue el 429 del rechazo de credenciales: otro título y dice que basta esperar (T-611)', async () => {
+    vi.spyOn(authApi, 'iniciarSesionApi').mockRejectedValueOnce(
+      new authApi.AuthApiError(
+        'DEMASIADOS_INTENTOS',
+        authApi.mapearErrorAcceso('DEMASIADOS_INTENTOS'),
+        429,
+      ),
+    );
+
+    render(<FormularioIngreso />);
+    fireEvent.click(screen.getByRole('button', { name: /ingresar a viajapro/i }));
+
+    await waitFor(() => {
+      const alerta = screen.getByRole('alert');
+      expect(alerta.getAttribute('data-testid')).toBe('aviso-limite-de-intentos');
+      expect(alerta.textContent).toContain('Demasiados intentos seguidos');
+      expect(alerta.textContent).toContain('Espera un minuto');
+      expect(alerta.textContent).not.toContain('Error de autenticación');
+      expect(alerta.textContent).not.toContain('Los datos no coinciden');
     });
   });
 
