@@ -6,6 +6,7 @@ import { BannerConsentimientoCookies } from '../components/privacidad/banner-con
 import { PieDePaginaPrivacidad } from '../components/privacidad/pie-de-pagina-privacidad';
 import { GuardaSesion } from '../components/auth/guarda-sesion';
 import { AvisoSinConexion } from '../components/comun/aviso-sin-conexion';
+import { SincronizarTema } from '../components/comun/sincronizar-tema';
 import { SCRIPT_ANTI_FOUC } from '../lib/tema-y-densidad';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="flex min-h-dvh flex-col">
+        <SincronizarTema />
         <AvisoSinConexion />
         <div className="flex-1">
           <GuardaSesion>{children}</GuardaSesion>
