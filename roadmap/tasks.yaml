@@ -13105,6 +13105,33 @@ tasks:
     source: "peticion del propietario tras encontrar el repositorio (2026-11-22)"
     owner: documentador
 
+  - id: T-620
+    title: "Ingreso: el panel del degradado lleva fotos de vacaciones, como paquete por defecto"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: in_progress
+    acceptance:
+      - "Lo pidio el propietario viendo la pantalla: «me gusta mucho, pero siento que le daria un
+        toque... quiero que en ese fondo azul gradiente tengamos imagenes de vacaciones»"
+      - "NO es un redisenno: le gusta como esta. Es anadir fotografia sin romper lo que funciona"
+      - "Paquete por defecto con SEIS destinos que decidio el propietario: Cartagena, Santa Marta,
+        Barranquilla, Baru, Playa Blanca e Islas del Rosario"
+      - "R12: las fotos y los textos son DATOS con valor por omision, no JSX. Una agencia peruana no
+        puede ver playas colombianas incrustadas en el codigo"
+      - "El pie dice hoy «San Andres, Cartagena, Santa Marta» y San Andres ya no esta en la lista: ese
+        pie y la insignia «Operacion Colombia» salen tambien de la estructura de datos"
+      - "Licencia impecable y escrita: el repositorio es PUBLICO. Si para un destino no hay foto
+        limpia, se deja fuera y se dice; no se sustituye por otro por cuenta propia"
+      - "Peso cuidado: es la primera pantalla que carga cualquiera. Solo la primera foto es
+        prioritaria"
+      - "Contraste MEDIDO con numeros sobre la foto: el texto es blanco y cian, y con una imagen
+        debajo se va al suelo. No se retrocede de AA (T-583)"
+      - "La otra mitad -que la agencia suba las suyas- es T-622"
+    source: "peticion del propietario sobre la pantalla de ingreso (2026-11-22)"
+    owner: frontend
+
   - id: T-623
     title: "Navegabilidad: enlaces rotos, cadena hacia delante, Configuracion y colores que mienten"
     type: bug
