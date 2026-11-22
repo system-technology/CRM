@@ -557,3 +557,51 @@ body {
     background-color: var(--color-neutral-800);
   }
 }
+
+/**
+ * Velo del panel de ingreso (T-620): va entre la fotografía y el texto. Lo que garantiza la
+ * legibilidad es ESTE degradado, no la foto: por eso sirve con cualquiera que ponga una agencia.
+ * Tres capas, del azul de marca (el de `.degradado-caribe`):
+ *   1. un tinte general suave, para que todas las fotos casen con la marca;
+ *   2. un refuerzo sobre la franja donde está el texto (titular, subtítulo, insignias);
+ *   3. refuerzos arriba (logo) y abajo (pie).
+ * Así la foto se ve entera en los bordes y el texto se mide contra un fondo oscuro. En oscuro el
+ * tinte es mayor: la foto queda junto a un formulario casi negro. Los números, en el PR de T-620.
+ */
+.velo-panel-ingreso {
+  --velo: 11, 31, 58;
+  background:
+    linear-gradient(to bottom, rgba(var(--velo), 0.72) 0%, rgba(var(--velo), 0) 24%),
+    linear-gradient(to top, rgba(var(--velo), 0.8) 0%, rgba(var(--velo), 0) 28%),
+    radial-gradient(
+      ellipse 66% 40% at 38% 53%,
+      rgba(var(--velo), 0.82) 0%,
+      rgba(var(--velo), 0.74) 60%,
+      rgba(var(--velo), 0) 100%
+    ),
+    linear-gradient(
+      115deg,
+      rgba(var(--velo), 0.5) 0%,
+      rgba(2, 100, 150, 0.34) 60%,
+      rgba(var(--velo), 0.24) 100%
+    );
+}
+
+.dark .velo-panel-ingreso {
+  --velo: 7, 20, 38;
+  background:
+    linear-gradient(to bottom, rgba(var(--velo), 0.76) 0%, rgba(var(--velo), 0) 24%),
+    linear-gradient(to top, rgba(var(--velo), 0.84) 0%, rgba(var(--velo), 0) 28%),
+    radial-gradient(
+      ellipse 66% 40% at 38% 53%,
+      rgba(var(--velo), 0.86) 0%,
+      rgba(var(--velo), 0.78) 60%,
+      rgba(var(--velo), 0) 100%
+    ),
+    linear-gradient(
+      115deg,
+      rgba(var(--velo), 0.6) 0%,
+      rgba(2, 80, 120, 0.44) 60%,
+      rgba(var(--velo), 0.36) 100%
+    );
+}
