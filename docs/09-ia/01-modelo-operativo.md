@@ -75,6 +75,11 @@ hallazgo sea **explicable a otro**, y eso filtra los hallazgos falsos.
    Backend y frontend van en paralelo **solo después** de que el contrato esté cerrado.
 5. **Lo que un agente concluye y no queda escrito, no existe.** El resultado de un subagente se
    pierde con su contexto: lo que importe va a `docs/` o a `ESTADO.md`.
+6. **Antes de escribir interfaz web se consulta `modern-web-guidance`** (R15 de `CLAUDE.md`), la
+   guía de los equipos de Chrome, Edge, Firefox y MDN. Está escrita en los agentes `frontend`,
+   `diseno-ux` y `auditor-codigo`, y en la skill `diseno-web`, con la precedencia
+   `CLAUDE.md` → `diseno-web` → guía. **Ningún hallazgo suyo se aplica sin leer el sitio.** Cómo se
+   usa, qué encontró y por qué 4 de 29 hallazgos se descartaron: `10-guia-web-moderna.md`.
 
 ---
 
