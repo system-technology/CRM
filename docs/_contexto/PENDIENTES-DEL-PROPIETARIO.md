@@ -160,3 +160,52 @@ responde en el servicio real.
 Es lo mismo que el punto de `scripts/diagnostico-ingreso.mjs` (PR #490): sin permiso para hablar por
 HTTP con lo que ya está en pie, cada comprobación del despliegue acaba siendo una suposición, y de
 suposiciones heredadas viene justo el problema que se corrigió hoy.
+
+## 21. Instalar el plugin `modern-web-guidance` (autorizado el 2026-11-22, no lo puede hacer un agente)
+
+**Lo autorizaste y lo intenté. El clasificador del modo automático deniega que una sesión escriba en
+`.claude/settings.json`** — es la barrera que impide que un agente se conceda permisos a sí mismo.
+**No la rodeé**, ni con el editor ni delegándolo.
+
+Todo lo demás está hecho: el repositorio **revisado línea a línea** (no contiene ni un fichero
+ejecutable en el commit `64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65`, v1.0.1), el analizador **ejecutado
+sobre el código real**, y los 25 hallazgos aprovechables ya implementados (T-615 y T-616). Los 4
+descartados, con su motivo, están en `docs/09-ia/10-guia-web-moderna.md` §3.
+
+**Lo que tienes que pegar está en `docs/09-ia/10-guia-web-moderna.md` §5**, literal y listo para
+fusionar con lo que ya hay. Son tres bloques: `env` con `DISABLE_TELEMETRY`, `extraKnownMarketplaces`
+fijado al commit revisado, y `enabledPlugins`. Más dos entradas en `permissions.allow`.
+
+**Y un aviso que cambia el valor de todo esto:** una **sesión en la nube no carga
+`extraKnownMarketplaces`**, porque requiere el diálogo de confianza de la carpeta, que en la nube
+nunca aparece. O sea: aunque lo commitees, **las sesiones como esta seguirán sin el plugin**. Quien
+lo aprovecha es tu Claude Code local, y aun así hay que correr una vez por clon
+`claude plugin install modern-web-guidance@googlechrome --scope project`.
+
+Lo que **sí** funciona aquí y en el CI sin instalar nada es la CLI por `npx`. Por eso las entradas de
+`permissions.allow` son lo más útil de todo el bloque: sin ellas, cada análisis me pide permiso.
+
+## 22. Las etiquetas nuevas de la demo NO llegan a staging sin que tú lances el workflow (2026-11-22)
+
+**T-614 está integrado (#509): la demo ya trae siete hilos con sus etiquetas puestas, incluidas «Ya
+reservó», «Reserva pendiente» y «Nuevo», las palabras exactas de tu cliente. Pero eso está en el
+código, no en la base de staging.** `deploy-staging.yml` **migra pero no siembra**. La siembra solo
+corre dentro de `preparar-demo-staging.yml`, que es manual.
+
+**No lo he lanzado, y no es por falta de permiso técnico. Es que lanzarlo haría daño:**
+
+1. El workflow exige una contraseña como **input obligatorio y sin valor por defecto**, y **con otra
+   contraseña rotas la que hay**. Si lo lanzo, **le cambio la contraseña a tu cliente justo después
+   de que consiguiera entrar.**
+2. **El resumen de la ejecución muestra el correo y la contraseña EN CLARO**, y este repositorio es
+   **público**. Lo advierte su propia cabecera. Ya pasó una vez: por eso `DemoViaja2026` está en el
+   punto de rotación.
+
+Así que o lo lanzas tú con la contraseña que quieras (y la rotas después), o arreglamos primero el
+workflow. **Lo segundo es lo que recomiendo**, y lo dejo encolado: partirlo en dos caminos, uno
+**«solo sembrar»** que no toque credenciales ni pida contraseña, y otro **«rotar credencial»** que
+siga exigiéndola. Sembrar datos de demostración y tocar una contraseña no tienen por qué ser la
+misma operación, y hoy lo son.
+
+Mientras tanto, **lo que tu cliente ve sigue siendo la demo de antes**: una sola conversación y el
+desplegable de etiquetas vacío al filtrar.
