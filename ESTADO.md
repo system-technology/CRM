@@ -25,9 +25,15 @@ Fuente de la corrección de rumbo: [auditoría integral 2026-11-15](docs/_audito
 y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada del día:
 [bitácora](docs/_bitacora/2026-11-15-mvp-en-navegador-y-cierre-de-auditoria.md).
 
-**Veredicto: el flujo H1–H6 ya se recorre en un navegador, en CI, contra la API real. Pero la Graph
-API es falsa y no hay nada desplegado.** Ninguna agencia lo ha visto ni un mensaje de celular real ha
-entrado. Seguimos en local.
+**Veredicto: el flujo H1–H6 ya se recorre en un navegador, en CI, contra la API real, y la Graph API
+sigue siendo falsa.**
+
+**CORREGIDO el 2026-11-21 a las 23:00 UTC:** este párrafo decía «no hay nada desplegado» y «ninguna
+agencia lo ha visto». **Las dos afirmaciones eran falsas, y llevaban días repitiéndose sin
+comprobarse.** Staging está vivo (verificado por HTTP el 2026-11-21 a las 22:55 UTC: la web responde 200 en `/` y en `/ingresar`, y la API de Render devuelve 200 en `/salud/listo` con `baseDeDatos: ok`, `rol: viajapro_app` y `aislamiento: forzado`) y **el propietario tiene un cliente entrando a esa URL**. Lo
+que ese cliente **no** puede hacer todavía es ingresar: ver **T-594**. Lo que sigue siendo cierto es
+que **no ha entrado un mensaje de WhatsApp real desde un celular** (T-080, punto 18 de los
+pendientes).
 
 ### Cierre del lote nocturno de cobros y permisos (2026-11-21)
 
@@ -114,8 +120,8 @@ Un PR de T-510 retira la ejecución en serie de la api (apuesta: el job pasó de
 solo los ~50 s de #408 están justificados) y se revierte si algún rojo es 40P01/FK/colisión entre archivos
 de la api; ver `docs/_bitacora/2026-11-21-t510-cierre-de-deadlocks-y-peaje.md`. **Ninguna sesión puede levantar Postgres en local** (lo deniega el clasificador), así
 que todo lo que se diga «contra la API real» lo validó el CI, y lo visual salió de modo
-demostración. Sigue sin desplegarse nada. El ingreso por apodo a 390 px contra la API real sigue
-pendiente (T-511).
+demostración. El ingreso por apodo a 390 px contra la API real sigue pendiente (T-511). (La frase «sigue sin
+desplegarse nada» que había aquí era falsa: ver el veredicto de §1, corregido el 2026-11-21.)
 
 ### Cierre del segundo lote (2026-11-21)
 
@@ -144,7 +150,8 @@ propietario lo añada a la lista de checks obligatorios del servidor (**T-577**)
 nocturno **no avisa a nadie** (**T-578**); y en el CI el dueño de `perfiles_de_agencia` ya pertenece
 al rol de la aplicación, así que M22 no se ejecuta allí — con la pregunta de fondo de **si la
 topología de roles del CI es la de producción**, que afecta a las 23 mutaciones (**T-579**).
-Sigue sin haber nada desplegado y ninguna agencia ha visto nada.
+(Aquí decía «sigue sin haber nada desplegado y ninguna agencia ha visto nada». **Falso**: ver el
+veredicto de §1, corregido el 2026-11-21 contra los servicios reales.)
 Detalle: [bitácora](docs/_bitacora/2026-11-21-arnes-de-aislamiento-y-las-p0.md).
 
 ### Es real (en `main`)
@@ -251,7 +258,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | Bloqueo | Qué impide | Dueño |
 |---|---|---|
 | `CAMPOS_SENSIBLES_KEY` y `_VERSION=1` sin cargar en Render, y sin copia guardada de la clave | Sin ella el cifrado no puede usarse desplegado; perder la clave pierde los datos | Propietario |
-| `STAGING_DESPLIEGUE=desactivado`. Neon `viajapro-staging` existe con 32 de 47 migraciones aplicadas y faltan 3 roles; **el proyecto de Vercel `viajapro-staging` ya existe** (dominio `viajapro-staging.vercel.app`, un despliegue en producción `READY` hecho desde `main` en el PR #321, del 2026-11-20, es decir, sin nada de lo posterior; verificado el 2026-11-21 con la herramienta de Vercel: la página responde 200 y muestra «Verificando tu sesión»). **Render: sin verificar** (la herramienta pide elegir el espacio de trabajo y eso lo decide el propietario). La sesión de despliegue espera tus decisiones: qué contraseñas de rol carga quién, `API_TRUST_PROXY` y los secretos que solo cargas tú | No hay nada que enseñar fuera de local | Propietario |
+| **CORREGIDO el 2026-11-21 a las 23:40 UTC con los registros del CI: ESTO YA NO ES ASÍ Y ERA LO MÁS PELIGROSO DEL HILO.** `STAGING_DESPLIEGUE` **no** está desactivado: el workflow `deploy-staging.yml` **despliega de verdad en cada merge a `main`**, y lleva **50 ejecuciones exitosas desde las 11:33 UTC de hoy**, la última con `58d78392`. Sus jobs `migrar` y `desplegar` tienen los secretos puestos (`DIRECT_URL`, `RENDER_DEPLOY_HOOK_API`, `VERCEL_DEPLOY_HOOK_WEB`, `STAGING_API_URL`), disparan el hook de Render y sondean `/salud/listo` hasta ver `"estado":"ok"`. **Integrar un PR = desplegar staging y migrar Neon.** Y sobre Neon: el log del job `migrar` dice **«56 migrations found» y «No pending migrations to apply»**, así que lo de «32 de 47 migraciones y faltan 3 roles» era **falso**; la base está **al día**, y la API responde con `rol: viajapro_app`, coherente con R2; **el proyecto de Vercel `viajapro-staging` ya existe** (dominio `viajapro-staging.vercel.app`, un despliegue en producción `READY` hecho desde `main` en el PR #321, del 2026-11-20, es decir, sin nada de lo posterior; lo de «muestra Verificando tu sesión» ya no es cierto: el 2026-11-21 a las 22:55 UTC `/` devuelve 200 con la página pública y `/ingresar` sirve el formulario completo). **Render: VERIFICADO Y VIVO el 2026-11-21 a las 22:55 UTC, contra el servicio real por HTTP.** `viajapro-api-staging.onrender.com/salud` responde 200, y `/salud/listo` responde 200 con `{"estado":"ok","baseDeDatos":"ok","rol":"viajapro_app","aislamiento":"forzado"}`: la API está desplegada, habla con Neon, usa un rol de aplicación y RLS está forzado. **La reescritura de la web hacia la API también funciona** (`/api/v1/salud` da el mismo 401 desde Vercel que desde Render). **Lo que NO funciona es el ingreso del cliente**: ver T-594 — `WEB_PUBLIC_URL` es `sync: false` y, si no incluye el origen exacto de Vercel, `origin-check` rechaza con 403 toda mutación, y el ingreso es una. Un GET se ve bien y el POST no pasa. La sesión de despliegue espera tus decisiones: qué contraseñas de rol carga quién, `API_TRUST_PROXY` y los secretos que solo cargas tú | **Esta celda decía «No hay nada que enseñar fuera de local» y es FALSO:** hay staging en pie y un cliente entrando. Lo que falta para que sirva es que pueda **ingresar** (T-594) | Propietario |
 | Etiqueta `override-lane` y check «Carril y tarea» en #402 (sustituto de #362; se cierra #362 al integrarlo) | La web del ingreso por apodo no entra | Propietario |
 | `navegador` como check obligatorio en la protección de `main` (contenido en el commit `27412e7`) | Hoy un PR puede integrarse con `navegador` rojo si cumple los 8 obligatorios | Propietario |
 | Confirmación escrita para que la sesión de cobros trabaje sin supervisión | Hoy trabaja con un PR por tarea | Propietario |
