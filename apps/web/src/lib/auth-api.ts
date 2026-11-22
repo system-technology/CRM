@@ -117,7 +117,9 @@ function nombreDeCampo(clave: string): string {
  * Zod, en inglés: de ahí la heurística, que si no acierta degrada al «revisa» de siempre.
  */
 function pareceCampoVacio(detalle: unknown): boolean {
-  return typeof detalle === 'string' && /at least 1 character|too_small|required|vacío/i.test(detalle);
+  return (
+    typeof detalle === 'string' && /at least 1 character|too_small|required|vacío/i.test(detalle)
+  );
 }
 
 /** El mensaje que ve quien rellena el formulario, separando lo que falta de lo que está mal. */
@@ -157,7 +159,7 @@ export function mapearErrorAcceso(
     case 'CREDENCIALES_INVALIDAS':
       return 'Los datos no coinciden. Revisa tu correo o usuario y tu contraseña, o pide ayuda al administrador de tu agencia.';
     case 'DEMASIADOS_INTENTOS':
-      return 'Demasiados intentos fallidos. Por seguridad, espera un momento antes de volver a intentar.';
+      return 'Demasiados intentos seguidos desde esta conexión. Espera un minuto y vuelve a intentarlo.';
     case 'SIN_SESION':
       return 'No hay una sesión activa. Por favor ingresa nuevamente.';
     case 'SIN_AGENCIA_ACTIVA':
@@ -186,6 +188,16 @@ export function mapearErrorAcceso(
 }
 
 /**
+ * `true` si el rechazo es el limitador por IP (429). A diferencia de una clave mala, ese aviso no
+ * dice nada sobre si la identidad existe, así que la pantalla puede distinguirlo con otro título
+ * y decir que basta esperar (T-611). El tope por identidad NO pasa por aquí: responde igual que
+ * una clave mala a propósito (ADR-0031 §4).
+ */
+export function esLimiteDeIntentos(error: unknown): boolean {
+  return error instanceof AuthApiError && error.code === 'DEMASIADOS_INTENTOS';
+}
+
+/**
  * El texto que una pantalla puede enseñar ante CUALQUIER error, venga de donde venga.
  *
  * Defensa en profundidad: `auth-api` ya solo lanza `AuthApiError` con frases, pero un fallo de red
@@ -193,7 +205,8 @@ export function mapearErrorAcceso(
  * es lo que puso un volcado de Zod delante del usuario.
  */
 export function mensajeDeErrorDeAcceso(error: unknown, generico?: string): string {
-  const respaldo = generico ?? 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.';
+  const respaldo =
+    generico ?? 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.';
   if (error instanceof AuthApiError) {
     return esFraseHumana(error.message) ? error.message : respaldo;
   }

@@ -434,6 +434,29 @@ Lo que esté en vuelo manda. **Siguiente id libre: T-594** (`git fetch` antes de
 **Reparte contra el criterio de salida de JD Tours**
 (`docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md` §3), no contra la lista de P1.
 
+## 1.19 Cierre del lote del 2026-11-22 (madre «…a6TL»)
+
+`main` de **`e5b670e0`** a **`57deaa27`**. Integrados: #483, #486, #487, #489, #491, #492, #495, #497,
+#498, #499, #500, #501, #502. Detalle en [`DIARIO.md`](DIARIO.md), entrada «El lote del cliente que no
+podía entrar». Traspaso largo en [`TRASPASO-PROXIMA-MADRE.md`](TRASPASO-PROXIMA-MADRE.md).
+
+**Lo que esta madre hizo mal, escrito para que no se repita:**
+- Repitió **tres veces** «ninguna agencia ha visto nada» sin comprobarlo **ni una vez**, mientras exigía
+  en este mismo tablero «verificar antes de afirmar». Nueve afirmaciones falsas en el hilo, **todas** en
+  la dirección de dar por no desplegado algo que estaba en pie.
+- Afirmó «no hay ninguna pieza que cree contraseñas» tras buscar `signUp` y `hashPassword`. Existía
+  `sembrar-credenciales-dev.ts`. **Buscar por el concepto en español.**
+- Nombró «PR #497» antes de abrirlo; el real fue #499.
+- Relanzó dos veces un check en rojo suponiendo que era `navegador`; era `convencion-de-commits`, que iba
+  a fallar siempre. **Mirar QUÉ job está en rojo antes de relanzar.**
+- Resolvió un conflicto de `tasks.yaml` con expresiones regulares, rompió el archivo (una tarea partida,
+  criterios sin cabecera) y **lo commiteó en local** porque había silenciado la salida con `2>/dev/null`.
+
+**Estado de la cola de integración al cierre del turno** (verificado con `gh`):
+#490 (script de diagnóstico, espera permiso del propietario), #493 (este tablero + diario + traspaso),
+#496 (modo oscuro, T-586), #503 (límite de ingreso configurable, **ruta protegida: espera al propietario**),
+#504 (el cliente entra, T-613).
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
@@ -675,7 +698,14 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 
 ## 6. Hechos que cuesta recuperar
 
-- **Despliegue:** proyecto Vercel `viajapro-staging`, un despliegue `READY` desde `main` en #321; Render sin verificar. Nada de lo nuevo está desplegado. Staging tiene migraciones hasta `20261120150000`; faltan `20261120140000` y `20261120160000/170000/180000`; verificar `createrole_self_grant` antes de la de registro.
+- **Despliegue (CORREGIDO el 2026-11-22; lo anterior era falso):** **integrar un PR despliega.**
+  `deploy-staging.yml` lleva 50+ ejecuciones correctas desde el 2026-11-21 a las 11:33 UTC: dispara el hook de
+  Render, redespliega Vercel y corre `prisma migrate deploy` contra Neon («56 migrations found», «No pending
+  migrations to apply»). Medido el 2026-11-21 a las 22:55 UTC: la web responde 200 en `/` y `/ingresar`, y
+  `/salud/listo` de Render devuelve 200 con `baseDeDatos: ok`, `rol: viajapro_app`, `aislamiento: forzado`.
+  Lo que decía este punto —«Render sin verificar», «nada de lo nuevo está desplegado», «faltan migraciones»—
+  era una afirmación heredada que nadie volvió a comprobar. **El pipeline migra pero NO siembra**: por eso el
+  cliente no tenía credencial, no porque faltaran migraciones (T-600).
 - **ADR-0034 (pagos):** `cobro.corregir` solo para el dueño; el asesor solo registra el pago.
 - **ADR-0035 (reportes, en #397):** dos niveles, propio y agencia; un permiso `reportes.ver_agencia`; el servidor impone el alcance con `alcanceDeReporte`; 403 en vez de recorte silencioso; la venta se atribuye a quien cotizó y el trabajo vivo al asignado actual.
 - **El CRM se usa desde celular, tablet y navegador de escritorio.**

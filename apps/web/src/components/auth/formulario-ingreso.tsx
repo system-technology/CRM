@@ -41,7 +41,13 @@ export function FormularioIngreso() {
   const [mostrarClave, setMostrarClave] = useState(false);
   const [codigoOtp, setCodigoOtp] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setTextoDeError] = useState<string | null>(null);
+  // 429 del limitador por IP (T-611): otro título y otro tono, porque basta esperar.
+  const [esLimite, setEsLimite] = useState(false);
+  const setError = (texto: string | null, limite = false) => {
+    setTextoDeError(texto);
+    setEsLimite(limite);
+  };
   const [exito, setExito] = useState(false);
   const [sesion, setSesion] = useState<SesionActual | null>(null);
 
@@ -75,6 +81,7 @@ export function FormularioIngreso() {
           err,
           'Credenciales no reconocidas. Revisa tu correo o usuario y tu contraseña, o contacta al administrador.',
         ),
+        authApi.esLimiteDeIntentos(err),
       );
     } finally {
       setCargando(false);
@@ -288,11 +295,24 @@ export function FormularioIngreso() {
               <div
                 role="alert"
                 aria-live="assertive"
-                className="mb-5 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs text-rose-900 shadow-2xs dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200"
+                data-testid={esLimite ? 'aviso-limite-de-intentos' : 'aviso-error-de-ingreso'}
+                className={
+                  esLimite
+                    ? 'mb-5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/90 p-3.5 text-xs text-amber-950 shadow-2xs dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200'
+                    : 'mb-5 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs text-rose-900 shadow-2xs dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200'
+                }
               >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                <AlertCircle
+                  className={
+                    esLimite
+                      ? 'mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400'
+                      : 'mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400'
+                  }
+                />
                 <div>
-                  <p className="font-bold">Error de autenticación</p>
+                  <p className="font-bold">
+                    {esLimite ? 'Demasiados intentos seguidos' : 'Error de autenticación'}
+                  </p>
                   <p className="mt-0.5 leading-relaxed">{error}</p>
                 </div>
               </div>
