@@ -910,7 +910,7 @@ Lo que encontró, medido:
 
 ### 3. «El CRM debe ser configurable para cualquier agencia»
 
-Llegó mientras un agente iba a incrustar fotos de playas colombianas en el ingreso. Se le reconduçió
+Llegó mientras un agente iba a incrustar fotos de playas colombianas en el ingreso. Se le redirigió
 en caliente: **las imágenes y los textos pasan a ser datos con valor por omisión**, no JSX.
 
 Y se midió qué más ata el producto a Colombia (**T-621**). **Lo grave no eran los textos:**
