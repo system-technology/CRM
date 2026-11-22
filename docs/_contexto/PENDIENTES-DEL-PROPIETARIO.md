@@ -209,3 +209,46 @@ misma operación, y hoy lo son.
 
 Mientras tanto, **lo que tu cliente ve sigue siendo la demo de antes**: una sola conversación y el
 desplegable de etiquetas vacío al filtrar.
+
+## 23. T-619: la compuerta de rutas protegidas ya existe como check, falta hacerla obligatoria (2026-11-22)
+
+**Qué estaba roto (medido contra la API):** la protección de `main` tiene
+`require_code_owner_reviews: true` pero `required_approving_review_count: 0`, y con el contador en 0
+GitHub no exige la revisión del code owner. El PR #511 se integró con `CLAUDE.md` y cuatro ficheros de
+`.claude/` sin una sola revisión. **R11 era falso.** Y subir el contador a 1 «a secas» no sirve: te
+haría aprobar todos los PR, no solo los de rutas protegidas.
+
+**Qué se hizo:** un check propio, `rutas-protegidas`
+(`.github/workflows/rutas-protegidas.yml` + `scripts/comprobar-aprobacion-owner.mjs`). Mira los
+ficheros del PR contra `humanRequired` de `ownership.json` (la misma lista que usa «Carril y tarea»;
+no hay una segunda). Si ninguno cae, pasa en verde. Si alguno cae, exige una revisión **APROBADA de
+`@Alfavear` sobre el commit actual** y falla si no la hay. Cuando apruebas,
+`rutas-protegidas-reevaluar.yml` repite la ejecución sobre el mismo commit. Los PR normales no se
+enteran.
+
+**Lo único que solo puedes hacer tú, y solo DESPUÉS de que este PR esté en `main`:**
+
+1. Añadir `rutas-protegidas` a los checks obligatorios de `main`. Por línea de comandos:
+   `gh api -X POST repos/system-technology/CRM/branches/main/protection/required_status_checks/contexts --input - <<< '["rutas-protegidas"]'`,
+   o en Settings → Branches → regla de `main` → «Require status checks». **No lo hagas antes de
+   integrar el PR:** mientras el check no se haya ejecutado nunca, GitHub lo espera para siempre y
+   todos los PR quedan bloqueados.
+2. **No toques `required_approving_review_count`** (déjalo en 0): subirlo es justo lo que obligaría a
+   aprobarlo todo.
+3. Decidir con quién se abren los PR que tocan rutas protegidas. **GitHub no deja que el autor de un
+   PR lo apruebe.** El #511 lo abrió `Alfavear`: si los agentes siguen abriendo PR con tu cuenta, tú no
+   puedes aprobarlos y el check fallará con un mensaje que lo dice. Esos PR deben abrirse con la App
+   integradora (`altardiario-integradora[bot]`, autora de #514) para que la aprobación sea tuya y
+   humana. Las Apps no pueden aprobar.
+
+**Qué implica para el flujo:** `dismiss_stale_reviews: true` descarta la aprobación al empujar un
+commit, y el check además exige que la aprobación sea del commit actual. Con «rama al día» obligatoria,
+un PR protegido aprobado que se queda atrás de `main` y se actualiza **necesita una aprobación
+nueva**. Hay que aprobar al final, cuando el PR ya no va a cambiar. Mientras el punto 1 no esté hecho,
+sigue valiendo: **no activar auto-merge en un PR que toque rutas protegidas.**
+
+**No verificado todavía:** que `GITHUB_TOKEN` con `pull-requests: read` lea las revisiones, y que la
+repetición dispare el check obligatorio sobre el commit correcto, solo se pueden comprobar en
+GitHub Actions al abrirse el PR (el script sí se probó contra #511 y #514 con la API real). Además,
+`ownership.json` lista `opencode.jsonc` y `.github/CODEOWNERS` no: la compuerta protege lo primero y
+GitHub no. Relacionado con el punto 13 (T-083).
