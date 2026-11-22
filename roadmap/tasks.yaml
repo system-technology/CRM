@@ -13268,6 +13268,33 @@ tasks:
     source: "hallazgo sin confirmar del borrador de ADR-0037 (2026-11-22)"
     owner: whatsapp
 
+  - id: T-646
+    title: "Sembrar la demo deja de exigir y de publicar una contrasena"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: review
+    acceptance:
+      - "preparar-demo-staging.yml hacia dos cosas que no tienen por que ir juntas: sembrar los datos
+        de demostracion Y crear o rotar la credencial"
+      - "Consecuencia real: las etiquetas de #509 llevaban horas en el codigo SIN llegar a staging,
+        porque lanzarlo le habria cambiado la contrasena al cliente del piloto justo despues de que
+        consiguiera entrar"
+      - "PR #532. Queda sembrar-demo-staging.yml SIN NINGUN input, y rotar-credencial-demo-staging.yml
+        con la contrasena obligatoria como antes. Dos workflows y no un input de modo, para que
+        sembrar no tenga ningun campo donde meter una clave por error"
+      - "Las guardias se conservan todas: solo staging, solo desde main, negativa si falta DIRECT_URL,
+        y el script sigue negandose si hay agencias ajenas a la demo"
+      - "El resumen ya NO escribe ni la contrasena ni el correo, y hay una prueba que lo comprueba"
+      - "LIMITE QUE NO SE PUDO TAPAR, y es decision del propietario: GitHub muestra los input de un
+        workflow_dispatch en la pagina de la ejecucion, con add-mask o sin el. En un repositorio
+        PUBLICO la contrasena de rotacion sigue siendo visible ahi. O se asume usando una nueva cada
+        vez, o se lee de un secreto del Environment. Escrito en la cabecera del workflow"
+      - "DESPUES DE INTEGRAR: lanzar sembrar-demo-staging.yml para que el cliente vea sus etiquetas"
+    source: "lo bloqueaba la demo del cliente; autorizado por el propietario (2026-11-22)"
+    owner: devops
+
   - id: T-645
     title: "Los dos contextos que «faltan enteros» no son lo mismo, y ninguno se empieza a ciegas"
     type: docs

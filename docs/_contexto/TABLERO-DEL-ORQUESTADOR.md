@@ -457,6 +457,56 @@ podía entrar». Traspaso largo en [`TRASPASO-PROXIMA-MADRE.md`](TRASPASO-PROXIM
 #496 (modo oscuro, T-586), #503 (límite de ingreso configurable, **ruta protegida: espera al propietario**),
 #504 (el cliente entra, T-613).
 
+## 1.20 Cierre del turno de la madre «crm-17» (2026-11-22, madrugada)
+
+**Veinte PR integrados** desde `e5b670e0` hasta `7580325b`. El turno lo marcaron tres peticiones del
+propietario y un hallazgo que no esperaba nadie.
+
+### Lo que hay que recordar
+
+**La campaña de pruebas encontró un error de dinero en su PRIMERA ejecución.** La prueba nueva comparó
+por primera vez el total del cotizador con el de la cotización guardada: **$550.000 contra $275.000**.
+El cotizador enseñaba el precio de **una** persona mientras su propia barra decía «2 adt».
+
+La causa no era la que parecía: **dos caminos que mandaban distinta composición desde el mismo
+fichero**, uno con `undefined` y otro con un `2` literal, a cien líneas de distancia.
+
+**Y lo que NO se hizo importa igual: no se tocó la prueba.** El PR se dejó en rojo y sin auto-merge
+hasta que el defecto estuvo arreglado (#527, #529). Ajustar la aserción habría sido fabricar la
+cobertura falsa que ese mismo PR venía a eliminar.
+
+### La compuerta que no existía
+
+**#511 se integró sin una sola revisión** tocando `CLAUDE.md` y cuatro ficheros de `.claude/`:
+`require_code_owner_reviews: true` **con el contador en 0** no exige nada. **R11 mentía.**
+
+Y al arreglarlo apareció algo peor: **GitHub no deja que el autor apruebe su propio PR**, y todos los
+de la sesión salen a nombre del propietario. **Con la compuerta activada se bloquearía a sí mismo.**
+De ahí el orden que no se puede alterar: **enrutado (#521) → check (#517, ya en main) → y SOLO
+entonces marcarlo obligatorio.**
+
+### Errores propios de este turno, para que no se repitan
+
+1. **Dije que tres PR «esperaban su aprobación» sin comprobar que la compuerta corriera.** Leí el
+   `CODEOWNERS`, vi `require_code_owner_reviews: true` y di por hecho el resto. **Es el mismo error
+   que llevaba dos días corrigiendo en otros.**
+2. **Envenené la cola**: encolé T-622 con `depends_on: T-620` y **nunca registré T-620**. Una sola
+   dependencia rota **apaga el cierre automático de todo el repositorio**. La trampa estaba escrita
+   por mí esa misma mañana.
+3. **Encargué al `arquitecto` que empujara una rama, y no tiene `Bash`.** Error de reparto: él
+   escribe, la madre lleva el resultado al repositorio.
+4. **Volví a pisar `subject-case`** con un asunto que empezaba por `T-608`.
+
+### Lo que espera al propietario al cerrar el turno
+**#521** (el enrutado, desbloquea la compuerta) · **#525** (`CLAUDE.md` con ~15 afirmaciones falsas
+corregidas) · **#528** (ADR-0037, once decisiones suyas) · **#532** (sembrar la demo sin tocar
+contraseñas). Y fuera de los PR: **rotar los secretos (T-598, P0)**, el trámite de la SIC (T-098) y
+el de Meta (T-080).
+
+### Regla nueva, hasta que entre #521
+**NO activar el check `rutas-protegidas` como obligatorio.** Está en `main` y avisa en rojo, que es lo
+que queremos; marcarlo ahora dejaría el repositorio inmóvil.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
