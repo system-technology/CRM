@@ -12517,6 +12517,34 @@ tasks:
     source: "cola declarada por la sesion de T-590 (2026-11-22)"
     owner: backend
 
+  - id: T-607
+    title: "Web: el modo demo rompe la hidratacion y obliga a regenerar todo el marco en cada carga"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-586
+    acceptance:
+      - "MEDIDO en T-586 con un observador sobre html y next build + next start: en las pantallas del
+        marco (app) con ?demo=1 la hidratacion FALLA (React 418), React regenera el documento y vacia
+        los atributos de html. Eso es lo que borraba la clase dark"
+      - "T-586 repone el tema despues, que arregla lo que el usuario ve, pero NO arregla esto: cada
+        carga de la demo sigue pagando una re-renderizacion completa del marco y el error sigue en
+        consola"
+      - "El desajuste concreto es el boton selector-vista-demo de BarraModulos: esDemo lee ?demo=1 y
+        localStorage en el PRIMER render, y el servidor no puede saberlo. Esta en barra-modulos.tsx y
+        en modo-demo"
+      - "Arreglo: que esDemo se resuelva TRAS el montaje, no en el primer render, de forma que
+        servidor y cliente pinten lo mismo la primera vez"
+      - "EXIGENCIA: verlo fallar antes. Medir con el mismo observador que uso T-586 y demostrar que
+        despues la hidratacion no falla, no solo que el tema aguanta"
+      - "Comprobar de paso si fuera de demo la aplicacion hidrata limpia: T-586 no pudo medirlo porque
+        no habia API ni base en la sesion"
+    source: "causa de fondo declarada por la sesion de T-586, no silenciada (2026-11-22)"
+    owner: frontend
+
   - id: T-603
     title: "CI: el job de pruebas da 5 ingresos por minuto y la suite necesita 7"
     type: infra
@@ -12850,7 +12878,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: review
     acceptance:
       - "SINTOMA medido por la sesion de T-583: en next dev la clase dark no aparece en <html>. Ni el script
         anti-parpadeo con localStorage ni colorScheme dark la activaron, y el medidor de contraste tuvo que
