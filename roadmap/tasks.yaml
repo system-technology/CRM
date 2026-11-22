@@ -12485,6 +12485,9 @@ tasks:
     evidence: "Mergeado en main por el PR #485 (rama i/T-593-diario-del-lote) con el CI en verde: format, analyze,
       tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 5f150305882db109f5e57461eabb62aaa8e2ba88
+  - id: T-599
+    title: "Herramienta: script acotado para diagnosticar el ingreso contra un entorno desplegado"
+
   - id: T-595
     title: "Staging: verificar de verdad el estado de Neon (migraciones y roles), que el hilo daba por sabido y no
       cuadra"
@@ -12493,6 +12496,25 @@ tasks:
     priority: P1
     effort: S
     status: blocked
+    blocked_reason: "human_required: scripts/ es ruta protegida y la regla de permiso vive en .claude/settings.json, que una sesion NO puede editar (el clasificador lo deniega, y hace bien: es el candado que impide que un agente se amplie sus propios permisos). Solo el propietario anade la regla."
+    acceptance:
+      - "PROBLEMA: un intento de ingreso es un POST y la unica herramienta de red de una sesion hace
+        GET. Diagnosticar «el cliente no puede entrar» exigia que una persona mirara el navegador y
+        transcribiera lo que veia"
+      - "Bash(curl:*) esta en la lista deny de .claude/settings.json, puesto a proposito, y quitarlo
+        daria a cualquier sesion capacidad de mandar cualquier cosa a cualquier sitio. Acotar curl por
+        prefijo NO es una barrera real: el orden de los argumentos es libre"
+      - "SOLUCION: scripts/diagnostico-ingreso.mjs, que solo habla con los hosts de ViajaPro
+        declarados en el propio script y solo hace las dos peticiones del diagnostico. Permitir ese
+        script no es permitir curl"
+      - "No acepta ni imprime secretos: la clave es un valor de descarte fijo, porque lo que se mide
+        es QUE RESPUESTA DA, no si la credencial vale. Las tres causas se distinguen sin conocer
+        ninguna clave real"
+      - "Para que sirva, el propietario anade a allow: Bash(node scripts/diagnostico-ingreso.mjs:*).
+        Mientras no la anada, el script esta en el repositorio pero la sesion no puede ejecutarlo"
+    source: "peticion del propietario de que la sesion sea autonoma para diagnosticar (2026-11-21)"
+    owner: propietario
+
     blocked_reason: "human_required: leer el estado de Neon exige el panel o una credencial de la base, las dos
       fuera de la autorizacion del orquestador. El MCP de Neon rechaza su credencial (HTTP 401)."
     acceptance:
