@@ -12498,6 +12498,34 @@ tasks:
         no se tocan"
     source: peticion del propietario (2026-11-21)
     owner: backend
+  - id: T-611
+    title: "Ingreso: un usuario bloqueado por intentos ve «error de credenciales» y no puede saber que solo tiene que esperar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "CASO REAL (2026-11-22): el cliente del piloto entra desde el telefono con las MISMAS
+        credenciales y desde el PC le dice «error de credenciales». Las credenciales son correctas"
+      - "HAY DOS LIMITADORES Y SE COMPORTAN DISTINTO. Better Auth: 5 intentos por minuto POR IP, y
+        responde 429. tope-de-fallos-de-ingreso: 10 fallos en 15 minutos POR IDENTIDAD, ventana
+        DESLIZANTE, y a proposito «quien lo agota recibe lo mismo que quien falla una vez»"
+      - "Que sea por IP explica telefono si y PC no: son IPs distintas. Que el mensaje sea el mismo
+        explica que el usuario lo lea como credenciales malas"
+      - "Y la ventana deslizante tiene una trampa cruel: cada reintento la renueva, asi que un usuario
+        legitimo que insiste NO se desbloquea nunca. Cuanto mas lo intenta, peor"
+      - "La opacidad del tope por identidad es deliberada y correcta frente a un atacante (ADR-0031
+        section 4). NO se quita. Lo que hay que resolver es el usuario legitimo, que hoy no tiene
+        forma de saber que solo debe esperar"
+      - "Caminos posibles, a decidir con diseno-ux y auditor-seguridad: diferenciar solo el 429 por IP,
+        que no filtra nada sobre la identidad; o anadir una pista neutra tras varios fallos del tipo
+        «si acabas de intentarlo varias veces, espera un minuto», sin confirmar si el usuario existe"
+      - "Relacionada con T-604: el titulo de la alerta del 429 es tambien «Error de autenticacion», y
+        por eso una prueba de permisos pasa en vacio. Mismo defecto de raiz, dos sintomas"
+    source: "el cliente del piloto no puede entrar desde el PC y si desde el movil (2026-11-22)"
+    owner: diseno-ux
+
   - id: T-608
     title: "Demo: el cliente pide organizar los chats por estado y ESO YA EXISTE; sembrarlo y ensenarselo"
     type: feature
