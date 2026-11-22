@@ -252,3 +252,24 @@ repetición dispare el check obligatorio sobre el commit correcto, solo se puede
 GitHub Actions al abrirse el PR (el script sí se probó contra #511 y #514 con la API real). Además,
 `ownership.json` lista `opencode.jsonc` y `.github/CODEOWNERS` no: la compuerta protege lo primero y
 GitHub no. Relacionado con el punto 13 (T-083).
+
+### Y hay una segunda via, nativa, verificada despues de escribir lo anterior
+
+La pregunta «¿puede GitHub exigir aprobacion solo en ciertas rutas?» quedo sin responder en el
+informe de esta rama porque `docs.github.com` no se podia leer desde aquel entorno. Se leyo despues
+y **la respuesta es que si**, con la regla **Required reviewers** de una *ruleset*. Literal:
+
+> «Optionally, you can require review or approval from specific teams when a pull request changes
+> certain files or directories.»
+
+Acepta patrones de ruta, admite exclusiones con `!`, llega a 15 equipos y **solo funciona en
+repositorios de organizacion**, que es nuestro caso. Exige un **equipo**, no un usuario suelto, asi
+que habria que crear uno contigo dentro.
+
+Tambien quedo confirmado que **«Restrict file paths» es de *pushes***, no de pull requests, y que
+**el contador de aprobaciones se aplica a TODOS los PR**. Lo que NO esta documentado es que pasa con
+el contador en 0 (lo sabemos porque lo medimos aqui) ni si el autor puede aprobar su propio PR.
+
+**Las dos vias valen y no se estorban.** La *ruleset* es mas limpia; el check deja el motivo escrito
+en rojo en el CI y no depende de equipos. Decide tu.
+
