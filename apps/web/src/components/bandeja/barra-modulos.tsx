@@ -63,6 +63,7 @@ import { useContadoresDeMenu } from '../../lib/use-contadores-de-menu';
 import { nombreAccesibleConContador } from '../../lib/inicio-logica';
 import { tienePermiso, usePermisos } from '../../lib/permisos';
 import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
+import { useMontado } from '../../lib/use-montado';
 import { PERMISOS_ASESOR_DEMO, useVistaDemo } from '../../lib/vista-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
 import { inboxSocketManager } from '../../lib/inbox-socket';
@@ -125,6 +126,12 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const { sesion } = usePermisos(sesionInicial);
   const { esDemo, alternarDemo, desactivarDemo } = useModoDemo();
   const { vista: vistaDemo, alternar: alternarVistaDemo } = useVistaDemo();
+  // El servidor no sabe si hay `?demo=1` ni lo guardado en el navegador: lo que depende de eso se
+  // pinta tras el montaje. Así la primera pintura del cliente es idéntica al HTML del servidor y la
+  // hidratación no falla (React 418, T-607). Los efectos siguen leyendo `esDemo` directo.
+  const montado = useMontado();
+  const demoPintado = montado && esDemo;
+  const vistaPintada = montado ? vistaDemo : 'dueno';
 
   const [modoTema, setModoTema] = useState<ModoTema>('system');
   const [_densidadVisual, setDensidadVisual] = useState<DensidadVisual>('comoda');
@@ -134,9 +141,16 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const [masAbierta, setMasAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
   // Fuera del modo demostración la campana parte vacía: solo muestra lo que llega de la API.
-  const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>(() =>
-    esModoDemo() ? generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()) : [],
-  );
+  const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>([]);
+  // En la demostración se siembran tras el montaje (no en el primer render, que debe igualar al servidor).
+  useEffect(() => {
+    if (!esDemo) return;
+    setNotificaciones((previas) =>
+      previas.length > 0
+        ? previas
+        : generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()),
+    );
+  }, [esDemo]);
   const avisos = useAvisosDePlazo(esDemo);
   // Ids de los archivos de viaje que existen (misma fuente que /viajes). `null` = aún no se sabe.
   // `completa` = la lista trajo menos filas que el tope, así que no está truncada. `verificados` =
@@ -428,9 +442,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     };
   }, [claveDesconocidos]);
 
-  const nombreUsuario = sesion?.identidad?.nombre ?? (esDemo ? 'Asesor ViajaPro' : 'Tu cuenta');
-  const correoUsuario = sesion?.identidad?.correo ?? (esDemo ? 'asesor@viajapro.com' : '');
-  const rolUsuario = sesion?.acceso?.rol ?? (esDemo ? 'Asesor Comercial' : '');
+  const nombreUsuario =
+    sesion?.identidad?.nombre ?? (demoPintado ? 'Asesor ViajaPro' : 'Tu cuenta');
+  const correoUsuario = sesion?.identidad?.correo ?? (demoPintado ? 'asesor@viajapro.com' : '');
+  const rolUsuario = sesion?.acceso?.rol ?? (demoPintado ? 'Asesor Comercial' : '');
   const iniciales = calcularIniciales(sesion?.identidad?.nombre, sesion?.identidad?.correo);
   const agenciaActiva =
     sesion?.agencias?.find((a) => a.id === sesion.tenantActivoId) ?? sesion?.agencias?.[0];
@@ -440,7 +455,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   // En la demostración con la vista de asesor, el MENÚ se pinta con lo que tiene un asesor puro (T-566).
   // No es autorización: `tienePermiso` y la API no lo ven.
   const tieneElPermiso =
-    esDemo && vistaDemo === 'asesor'
+    demoPintado && vistaPintada === 'asesor'
       ? (permiso: Permiso) => PERMISOS_ASESOR_DEMO.includes(permiso)
       : sesion
         ? (permiso: Permiso) => tienePermiso(sesion, permiso)
@@ -553,25 +568,25 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           )}
 
           {/* Vista de la demostración (T-566): dueño o asesor puro. Solo cambia lo que se pinta. */}
-          {esDemo &&
+          {demoPintado &&
             (barraExpandida ? (
               <button
                 type="button"
                 onClick={() => alternarVistaDemo()}
                 title={
-                  vistaDemo === 'asesor'
+                  vistaPintada === 'asesor'
                     ? 'Estás viendo la demostración como un asesor. Haz clic para volver a la vista del dueño.'
                     : 'Estás viendo la demostración como el dueño. Haz clic para verla como un asesor.'
                 }
                 data-testid="selector-vista-demo"
-                data-vista={vistaDemo}
+                data-vista={vistaPintada}
                 className="flex w-full items-center justify-between rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs text-amber-800 transition hover:bg-amber-50 dark:border-amber-700/60 dark:bg-neutral-900 dark:text-amber-300"
               >
                 <span className="text-[11px] font-semibold">
-                  Vista: {vistaDemo === 'asesor' ? 'asesor' : 'dueño'}
+                  Vista: {vistaPintada === 'asesor' ? 'asesor' : 'dueño'}
                 </span>
                 <span className="text-[10px] underline">
-                  Ver como {vistaDemo === 'asesor' ? 'dueño' : 'asesor'}
+                  Ver como {vistaPintada === 'asesor' ? 'dueño' : 'asesor'}
                 </span>
               </button>
             ) : (
@@ -579,23 +594,23 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 type="button"
                 onClick={() => alternarVistaDemo()}
                 title={
-                  vistaDemo === 'asesor'
+                  vistaPintada === 'asesor'
                     ? 'Vista de asesor. Haz clic para ver la demostración como el dueño.'
                     : 'Vista de dueño. Haz clic para ver la demostración como un asesor.'
                 }
                 aria-label={
-                  'Vista de la demostración: ' + (vistaDemo === 'asesor' ? 'asesor' : 'dueño')
+                  'Vista de la demostración: ' + (vistaPintada === 'asesor' ? 'asesor' : 'dueño')
                 }
                 data-testid="selector-vista-demo"
-                data-vista={vistaDemo}
+                data-vista={vistaPintada}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-300 bg-white text-[11px] font-bold text-amber-800 transition hover:bg-amber-50 dark:border-amber-700/60 dark:bg-neutral-900 dark:text-amber-300"
               >
-                {vistaDemo === 'asesor' ? 'As' : 'Du'}
+                {vistaPintada === 'asesor' ? 'As' : 'Du'}
               </button>
             ))}
 
           {/* Indicador de Estado: Modo Real vs Modo Demo */}
-          {esDemo ? (
+          {demoPintado ? (
             barraExpandida ? (
               <button
                 type="button"
@@ -1104,7 +1119,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                     Modo Demostración
                   </span>
                   <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                    {esDemo
+                    {demoPintado
                       ? 'Mostrando datos simulados'
                       : 'Conectado a la API real (' + nombreAgenciaActiva + ')'}
                   </span>
@@ -1112,32 +1127,32 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={esDemo}
+                  aria-checked={demoPintado}
                   aria-label="Alternar modo demostración"
                   onClick={() => alternarDemo()}
                   data-testid="boton-alternar-demo"
                   className={
                     'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ' +
-                    (esDemo ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-700')
+                    (demoPintado ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-700')
                   }
                 >
                   <span
                     className={
                       'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ' +
-                      (esDemo ? 'translate-x-4' : 'translate-x-0')
+                      (demoPintado ? 'translate-x-4' : 'translate-x-0')
                     }
                   />
                 </button>
               </div>
 
-              {esDemo && (
+              {demoPintado && (
                 <div className="flex items-center justify-between border-t border-neutral-100 py-3 dark:border-neutral-800">
                   <div className="flex flex-col pr-2">
                     <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
                       Vista de la demostración
                     </span>
                     <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                      {vistaDemo === 'asesor'
+                      {vistaPintada === 'asesor'
                         ? 'Como un asesor: sin reportes de la agencia ni configuración'
                         : 'Como el dueño: todo a la vista'}
                     </span>
@@ -1148,7 +1163,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                     data-testid="selector-vista-demo-perfil"
                     className="min-h-[44px] rounded-lg border border-amber-300 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-50 dark:border-amber-700/60 dark:text-amber-300"
                   >
-                    Ver como {vistaDemo === 'asesor' ? 'dueño' : 'asesor'}
+                    Ver como {vistaPintada === 'asesor' ? 'dueño' : 'asesor'}
                   </button>
                 </div>
               )}

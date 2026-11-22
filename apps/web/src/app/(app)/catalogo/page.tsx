@@ -1,6 +1,7 @@
 'use client';
 
 import { useModoDemo } from '../../../lib/modo-demo';
+import { useMontado } from '../../../lib/use-montado';
 
 import React, { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -48,6 +49,7 @@ import {
 } from '../../../lib/catalogo-logica';
 import {
   estaUsandoCatalogoReal,
+  estaUsandoCatalogoRealSegunEntorno,
   listarSalidasApi,
   listarPaquetesGestionApi,
   crearPaqueteApi,
@@ -134,6 +136,8 @@ function paqueteDesdeSalida(sal: SalidaPublicada): PaqueteConDetalle {
 
 function CatalogoContenido() {
   const { esDemo } = useModoDemo();
+  // El servidor no ve `?demo=1`: el distintivo espera al montaje para que la hidratación no falle (T-607).
+  const montado = useMontado();
   const router = useRouter();
   const searchParams = useSearchParams();
   // `?id=` (T-318): el paquete abierto vive en la URL. Abrir es `push` (Atrás cierra la ficha);
@@ -143,7 +147,7 @@ function CatalogoContenido() {
   const abrirPaquete = (id: string) => router.push(`/catalogo?id=${id}`, { scroll: false });
   const cerrarPaquete = () => router.push('/catalogo', { scroll: false });
   const modoRealActivo = !esDemo && estaUsandoCatalogoReal();
-  const [usarReal, setUsarReal] = useState(() => modoRealActivo);
+  const [usarReal, setUsarReal] = useState(() => estaUsandoCatalogoRealSegunEntorno());
 
   useEffect(() => {
     setUsarReal(modoRealActivo);
@@ -305,7 +309,7 @@ function CatalogoContenido() {
                   className="text-base font-bold break-words text-neutral-900 sm:text-xl dark:text-white"
                 />
                 {/* 0c.14 y 0c.16: solo visible si usamos datos simulados o hay error de tenant */}
-                <DistintivoDatosDemo visible={!usarReal || !!errorTenant} />
+                <DistintivoDatosDemo visible={montado && (!usarReal || !!errorTenant)} />
               </div>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 {usarReal && !errorTenant
