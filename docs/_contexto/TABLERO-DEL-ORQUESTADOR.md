@@ -54,8 +54,11 @@ haber un dato de muestra, y la demo es **lo único que mira quien evalúa el pro
 `parsearMontoAUnidades` con monedas de tres decimales) es un «el día que…» de manual: ninguna moneda habilitada
 tiene tres decimales. Se ordena según §3.1: **lo que hoy está roto va antes que lo que podría romperse**.
 
-Detrás sigue el hecho que no cambia por mucho código que se integre: **ninguna agencia ha visto nada todavía**,
-y lo que lo desbloquea no está en este repositorio, sino en la lista de chats a excluir de JD Tours (T-533).
+**CORREGIDO el 2026-11-21 a las 23:00 UTC.** Aquí se afirmaba que «ninguna agencia ha visto nada
+todavía». **Era falso**: staging está vivo (verificado por HTTP el 2026-11-21 a las 22:55 UTC: la web responde 200 en `/` y en `/ingresar`, y la API de Render devuelve 200 en `/salud/listo` con `baseDeDatos: ok`, `rol: viajapro_app` y `aislamiento: forzado`) y el
+propietario tiene un cliente entrando a esa URL. Lo que ese cliente no puede hacer es **ingresar**
+(**T-594**, P0). Lo que sí sigue bloqueado fuera de este repositorio es la lista de chats a excluir de
+JD Tours (T-533) y la entrada de un mensaje real de WhatsApp (T-080).
 
 ## 1.2 Orden del propietario: una sola madre viva (2026-11-21, 15:30 UTC)
 

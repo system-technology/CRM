@@ -12,6 +12,41 @@
 
 ---
 
+## 2026-11-21 (noche) — Staging estaba vivo y el hilo decía que no; el ingreso cae por el origen de confianza
+
+**Verificado por HTTP contra los servicios reales, a las 22:55 UTC.** El propietario avisó de que su
+cliente abre la URL de staging y la ve, pero al poner usuario y contraseña no le deja entrar.
+
+**Lo primero que apareció fue un error nuestro, y en la dirección optimista:** `ESTADO.md` afirmaba
+«no hay servicio desplegado» y «Render: sin verificar». **Las dos cosas eran falsas.** La web responde
+200 en `/` y en `/ingresar` con su formulario, `/salud` de la API da 200, y **`/salud/listo` devuelve
+`{"estado":"ok","baseDeDatos":"ok","rol":"viajapro_app","aislamiento":"forzado"}`**: la API está
+desplegada, habla con Neon, se conecta con un rol de aplicación (R2) y **RLS está forzado**.
+
+Que la reescritura web→API funciona se dedujo **sin poder leer encabezados**: `/api/v1/salud` devuelve
+**el mismo 401** desde Vercel que desde Render directo. Si no llegara, daría 502 o 404. Ese 401 es el
+guard de sesión, no una avería.
+
+**La causa más probable del rechazo, por lectura del código.** `origen.ts:33` devuelve **una sola
+entrada**, `WEB_PUBLIC_URL`, y si falta usa `http://localhost:3000`; `origin-check.middleware.ts`
+rechaza con **403 `ORIGEN_NO_CONFIABLE`** toda **mutación** cuyo `Origin` no esté en esa lista, y
+**salta los métodos seguros**. De ahí el síntoma exacto: los GET se ven, el **POST del ingreso** no
+pasa. En `render.yaml:56` esa variable es `sync: false` —vive solo en el panel de Render— y el ejemplo
+apunta a un dominio propio que aún no existe.
+
+**Supuesto, no verificado.** No se pudo hacer el POST con `Origin` que lo zanjaría: el clasificador
+deniega `curl` y el navegador, y los MCP de Vercel, Render y Neon rechazan sus credenciales. Así que
+**sigue viva una segunda causa**: que el usuario del cliente no exista en staging o su clave se
+perdiera (punto 8e). Se distinguen en el propio POST: **403 `ORIGEN_NO_CONFIABLE`** es la variable;
+**401 de credenciales** es resembrar.
+
+**La lección, que es la de todo el día otra vez:** *el hilo se equivocó por no comprobar, y esta vez
+de menos.* Llevábamos tres turnos escribiendo «ninguna agencia ha visto nada» mientras había un
+cliente entrando a una URL viva. **Un estado heredado envejece hacia el pesimismo igual que hacia el
+optimismo, y las dos formas mienten.**
+
+---
+
 ## 2026-11-21 (lote de contraste y cobros) — Un síntoma contado cinco veces no es un diagnóstico, y la cadena de madres se agotó
 
 **Verificado.** `main` arranca en `e5b670e0` y cierra en `91f3cc19` (más #484). Seis PR integrados:
@@ -72,7 +107,12 @@ a la cadena**.
   lateral (insignia «Vista» de T-566, entrada «Cobros» de T-332).
 
 **Para una agencia, esto es media pieza nueva** (pasajeros en cobros, aún sin columna en pantalla) y
-dos que hacen presentable lo que ya existía. **Ninguna agencia ha visto todavía nada.**
+dos que hacen presentable lo que ya existía.
+
+> **Corregida esta frase el mismo día, sin borrarla** (las reglas del diario piden corregir con otra
+> entrada, no reescribir la historia): aquí decía «ninguna agencia ha visto todavía nada», y **era
+> falso**. Lo desmiente la entrada de esa misma noche, que lo midió. Se deja escrito **porque el error
+> importa más que la frase**: se repitió durante tres turnos sin que nadie lo comprobara.
 
 ### Otras dos cosas medidas, no supuestas
 
