@@ -12745,6 +12745,25 @@ tasks:
         que un asistente abierto"
     source: audio del cliente del piloto, transcrito por el propietario (2026-11-22)
     owner: ingeniero-ia
+  - id: T-613
+    title: "Hilo: el cliente del piloto ya entra; el estado decia lo contrario"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: review
+    acceptance:
+      - "HECHO (2026-11-22): el cliente del piloto consiguio iniciar sesion desde su equipo"
+      - "IRONIA QUE CONVIENE RECORDAR: horas antes se habia integrado en CLAUDE.md que «todavia no
+        puede ingresar». Se quedo falso el mismo dia. El hilo envejece en las DOS direcciones"
+      - "Corregidos CLAUDE.md y ESTADO.md. T-594 pasa a done"
+      - "NO SE SABE cual de las causas era: se dieron tres comprobaciones al propietario (URL exacta
+        escrita a mano, movil en la red de la oficina, otro navegador en el PC) y no consta cual
+        resolvio. T-611 sigue valiendo igual: un usuario bloqueado por intentos no puede distinguirlo
+        de una clave mala"
+    source: "aviso del propietario (2026-11-22)"
+    owner: documentador
+
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
