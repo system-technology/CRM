@@ -12650,7 +12650,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
     acceptance:
       - "CASO REAL (2026-11-22): el cliente del piloto entra desde el telefono con las MISMAS credenciales y
         desde el PC le dice «error de credenciales». Las credenciales son correctas"
@@ -12671,6 +12671,12 @@ tasks:
         una prueba de permisos pasa en vacio. Mismo defecto de raiz, dos sintomas"
     source: el cliente del piloto no puede entrar desde el PC y si desde el movil (2026-11-22)
     owner: diseno-ux
+    started_at: 2026-11-22T03:20:57.321Z
+    done_at: 2026-11-22T03:20:57.321Z
+    evidence: "Mergeado en main por el PR #506 (rama b/T-611-mensaje-de-demasiados-intentos) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: af4c7418cfdb21599c44b70ea67ea0c054eff4d8
   - id: T-608
     title: "Demo: el cliente pide organizar los chats por estado y ESO YA EXISTE; sembrarlo y ensenarselo"
     type: feature
