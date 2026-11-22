@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
-import { URL_API, credenciales } from './auxiliares';
+import { URL_API, credenciales, ingresarPorPantalla } from './auxiliares';
 import { expect, test } from './fixtures';
 
 /**
@@ -88,20 +88,7 @@ async function sesionDe(
     storageState: { cookies: [], origins: [] },
   });
   const page = await contexto.newPage();
-  await page.goto('/ingresar');
-  await page.locator('#campo-identificador').fill(correo);
-  await page.locator('#campo-contrasena').fill(credenciales().clave);
-  await page.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
-  try {
-    await expect(page).toHaveURL(/^[^?#]*\/$/, { timeout: 20_000 });
-  } catch {
-    const motivo = await page
-      .getByRole('alert')
-      .filter({ hasText: /\S/ })
-      .innerText({ timeout: 2_000 })
-      .catch(() => '(sin alerta en pantalla)');
-    throw new Error(`No se pudo ingresar con ${correo}. La pantalla dijo: ${motivo}`);
-  }
+  await ingresarPorPantalla(page, correo, credenciales().clave);
   return { contexto, page };
 }
 
@@ -152,6 +139,9 @@ let carlosId = '';
 const antes = { ana: 0, carlos: 0, agencia: 0 };
 
 test.beforeAll(async ({ browser }) => {
+  // Si el limitador de ingresos (5/min por IP, compartido con 01 y 08) esta lleno, se espera a que
+  // se libere: hasta ~80 s la primera vez. El tope por defecto de 90 s no alcanzaria para los dos.
+  test.setTimeout(180_000);
   ana = await sesionDe(browser, CORREO_ANA);
   carlos = await sesionDe(browser, CORREO_CARLOS);
 });
