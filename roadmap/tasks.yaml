@@ -13268,6 +13268,33 @@ tasks:
     source: "hallazgo sin confirmar del borrador de ADR-0037 (2026-11-22)"
     owner: whatsapp
 
+  - id: T-645
+    title: "Los dos contextos que «faltan enteros» no son lo mismo, y ninguno se empieza a ciegas"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: `automation` necesita un ADR y decisiones de producto del propietario antes de escribir una linea. `audit` necesita decidir si se consolida ahora o despues."
+    acceptance:
+      - "MEDIDO el 2026-11-22. CLAUDE.md dice que faltan `automation` y `audit`, y eso es cierto como
+        modulos, pero los dos casos son MUY distintos y conviene no tratarlos igual"
+      - "`audit`: la funcion YA EXISTE, repartida. La tabla `registros_auditoria` esta en el esquema
+        con tenant_id y RLS forzada, y se escribe (por ejemplo LECTURA_DATOS_SENSIBLES). Crear el
+        modulo seria CONSOLIDAR lo que ya hay, no anadir capacidad"
+      - "Y el hueco real de `audit` no es el modulo: es que **no tiene purga ninguna**, asi que su
+        «retencion de 5 anios» no es cierta hoy. Lo encontro el ADR-0037 (T-090)"
+      - "`automation` es otra cosa: su diseno dice «reglas e IA del producto», y ahi vive justo lo que
+        pidio el cliente del piloto (T-610, la IA que atiende la primera interaccion). **T-610 dice
+        literalmente que NO SE EMPIEZA SIN ADR (R7)**"
+      - "Su propio diseno avisa: «es el contexto con mas riesgo de convertirse en el basurero de la
+        logica que no encaja en ningun lado». Empezarlo sin alcance decidido es pedir ese basurero"
+      - "DECISION DEL PROPIETARIO: si `audit` se consolida ahora o se deja como esta; y si se abre el
+        ADR de `automation`, que arrastra coste por conversacion y responsabilidad sobre lo que la IA
+        afirme"
+    source: "revision antes de empezar los dos contextos, pedida en el orden de trabajo (2026-11-22)"
+    owner: arquitecto
+
   - id: T-644
     title: "La hidratacion sigue fallando en /configuracion con ?demo=1, por otra causa"
     type: bug
