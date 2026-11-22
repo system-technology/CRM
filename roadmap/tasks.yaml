@@ -12486,19 +12486,18 @@ tasks:
       - "Pedido por el propietario: el admin de la cuenta del CRM se llama John, no Marcela. Es
         dueno@agenciademo.test, la duena de la agencia demo (seed.ts). El usuario que usa el cliente,
         demo@viajapro.app, se llama Demo ViajaPro y NO cambia"
-      - "TRAMPA 1, encontrada al hacerlo: el upsert de identidad tenia update vacio, asi que cambiar
-        el nombre en el codigo NO llegaba a una base ya sembrada. El codigo habria dicho John y la
-        demo habria seguido ensenando Marcela. Ahora el nombre se actualiza al resembrar"
-      - "TRAMPA 2: la e2e 09-reportes-por-alcance comprobaba not.toContain('Marcela') para verificar
-        que un asesor NO ve el nombre de la duena. Renombrar sin tocarla la habria dejado pasando POR
-        VACIO: cobertura falsa en una prueba de permisos. Ahora comprueba John"
-      - "Para que el cambio llegue a staging hay que relanzar preparar-demo-staging.yml despues de
-        integrar: el seed corre dentro de el"
-      - "Las otras apariciones de Marcela son de una viajera ficticia (Diana Marcela Ramirez) en
-        mock-viajes: no se tocan"
-    source: "peticion del propietario (2026-11-21)"
+      - "TRAMPA 1, encontrada al hacerlo: el upsert de identidad tenia update vacio, asi que cambiar el nombre
+        en el codigo NO llegaba a una base ya sembrada. El codigo habria dicho John y la demo habria seguido
+        ensenando Marcela. Ahora el nombre se actualiza al resembrar"
+      - "TRAMPA 2: la e2e 09-reportes-por-alcance comprobaba not.toContain('Marcela') para verificar que un
+        asesor NO ve el nombre de la duena. Renombrar sin tocarla la habria dejado pasando POR VACIO:
+        cobertura falsa en una prueba de permisos. Ahora comprueba John"
+      - "Para que el cambio llegue a staging hay que relanzar preparar-demo-staging.yml despues de integrar:
+        el seed corre dentro de el"
+      - "Las otras apariciones de Marcela son de una viajera ficticia (Diana Marcela Ramirez) en mock-viajes:
+        no se tocan"
+    source: peticion del propietario (2026-11-21)
     owner: backend
-
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
@@ -12823,7 +12822,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: done
     depends_on:
       - T-582
     acceptance:
@@ -12839,6 +12838,11 @@ tasks:
       - "Escapado de formulas en el CSV: ya resuelto en T-335, no reinventarlo"
     source: limite declarado por la sesion de T-582, que no amplio la web desde un PR de API (2026-11-21)
     owner: frontend
+    started_at: 2026-11-22T00:24:43.010Z
+    done_at: 2026-11-22T00:24:43.010Z
+    evidence: "Mergeado en main por el PR #495 (rama b/T-590-pasajeros-en-cobros) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 39b7682c1f5e5769faa5b54361c262b39686431f
   - id: T-591
     title: "Repositorio: .gitignore no excluye los arboles de trabajo de los subagentes"
     type: infra
