@@ -322,7 +322,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       const pagina = filas.slice(0, c.limite);
       const masAntiguo = pagina[pagina.length - 1];
       const registro = new RegistroDeLectura();
-      const datos = [...pagina].reverse().map((m) => aMensaje(m, this.cifrado, tenantId, registro));
+      const datos = pagina.toReversed().map((m) => aMensaje(m, this.cifrado, tenantId, registro));
       await registro.registrar(tx, 'Conversacion', id);
       return {
         datos,

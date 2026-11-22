@@ -470,7 +470,7 @@ for (const m of MUTACIONES) {
       if (m.restaurar) await ejecutar(admin, m.restaurar);
       for (const t of TABLAS) await admin.query('SELECT aplicar_aislamiento_tenant($1)', [t]);
     } catch (e) {
-      error ??= new Error(`la restauración falló: ${e.message}`);
+      error ??= new Error(`la restauración falló: ${e.message}`, { cause: e });
     }
   }
   if (error) {

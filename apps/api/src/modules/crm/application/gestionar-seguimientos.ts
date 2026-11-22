@@ -104,9 +104,7 @@ export class GestionarSeguimientos {
       limite: LIMITE,
     });
     const inicio = dia.desde.getTime();
-    const ordenados = pendientes
-      .slice()
-      .sort((a, b) => Date.parse(a.venceEn) - Date.parse(b.venceEn));
+    const ordenados = pendientes.toSorted((a, b) => Date.parse(a.venceEn) - Date.parse(b.venceEn));
     return {
       fecha: dia.fecha,
       vencidos: ordenados.filter((s) => Date.parse(s.venceEn) < inicio),
