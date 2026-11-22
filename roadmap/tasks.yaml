@@ -12930,6 +12930,78 @@ tasks:
     source: "trabajo real de T-608, que el cierre automatico cerro sin hacerse (2026-11-22)"
     owner: datos
 
+  - id: T-615
+    title: "Web: usa toSorted y toReversed en vez de copiar el array solo para ordenarlo"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: review
+    acceptance:
+      - "Primer fruto de T-617. legacy-scan de modern-web-guidance senalo 11 sitios en apps/web con
+        la regla js/copying-array-methods"
+      - "Los 11 eran arrays de verdad y se cambiaron. Es ES2023 y apps/web/tsconfig.json ya declara
+        target ES2023 con lib DOM, DOM.Iterable y ES2023: no se toco ningun tsconfig"
+      - "Se dejaron intactos cinco spreads que NO son copia de array: dos Set, dos iteradores de Map
+        y dos concatenaciones. De esos, el analizador solo habia marcado dos"
+      - "MEDIDO: typecheck 9 de 9, lint 7 de 7, y 2096 pruebas en 211 ficheros de apps/web en verde.
+        Repetido legacy-scan: cero coincidencias"
+      - "NO se probo en un navegador real: el soporte lo da por hecho el target del tsconfig"
+    source: "hallazgo de legacy-scan al adoptar la guia web moderna (2026-11-22)"
+    owner: frontend
+
+  - id: T-616
+    title: "API: toSorted y toReversed, y propaga la causa del error donde se estaba perdiendo"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: review
+    acceptance:
+      - "Segundo fruto de T-617. legacy-scan senalo 17 hallazgos en apps/api y 1 en packages/database"
+      - "Aplicados 14: los 13 de copying-array-methods y el error-cause de
+        packages/database/scripts/mutaciones-aislamiento.mjs, que ahora pasa cause y deja de perder el
+        error original. Encaja con «nunca catch silencioso» (CLAUDE.md section 6)"
+      - "DESCARTADO error-cause en notifications/interface/consumidor-de-correo.ts: ahi el error se
+        despoja A PROPOSITO por R10, porque puede traer la direccion o el cuerpo. Aplicado a ciegas
+        habria metido datos personales en un log"
+      - "DESCARTADOS los dos structured-clone: en confirmar-importacion.use-case.ts y
+        catalogo.prisma.ts la vuelta por JSON NORMALIZA a algo serializable, no copia. structuredClone
+        conserva Date y undefined y cambiaria lo que se escribe en una columna JSON de Postgres"
+      - "DESCARTADO promise-with-resolvers: es ES2024 y nuestro lib es ES2023. Subir el lib es otra
+        decision"
+      - "MEDIDO: typecheck 9 de 9, lint 7 de 7, 475 pruebas unitarias en 36 ficheros. Las e2e NO se
+        ejecutaron: necesitan Postgres, las corre el CI"
+    source: "hallazgo de legacy-scan al adoptar la guia web moderna (2026-11-22)"
+    owner: backend
+
+  - id: T-617
+    title: "Adoptar la guia web moderna de Chrome como regla del proyecto, con su revision de seguridad"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: M
+    status: review
+    acceptance:
+      - "Lo pidio el propietario: evaluarla, instalarla y DEJARLA ESTABLECIDA COMO REGLA para que otras
+        sesiones lo sepan y lo implementen"
+      - "REVISION DE SEGURIDAD HECHA ANTES: repositorio clonado y revisado en el commit
+        64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65 (v1.0.1). No contiene ni un fichero ejecutable: ni
+        hooks, ni .mcp.json, ni bin. Solo Markdown, JSON, un TOML e imagenes. Lo que ejecuta codigo es
+        la CLI de npm, que es otra superficie"
+      - "MEDIDO sobre el codigo real: 11 hallazgos en apps/web, 17 en apps/api, 1 en packages/database,
+        0 en domain y contracts. De 29, CUATRO eran falsos positivos y uno habria metido datos
+        personales en un log"
+      - "Escrito como R15 en CLAUDE.md, que se carga en todas las sesiones, mas la seccion 6, la skill
+        diseno-web, los agentes frontend, diseno-ux y auditor-codigo, y el modelo operativo"
+      - "Precedencia fijada: CLAUDE.md -> diseno-web -> la guia. Ella decide la tecnica, diseno-web
+        decide la forma. Si chocan manda diseno-web y el choque se anota"
+      - "PENDIENTE DEL PROPIETARIO: .claude/settings.json. El clasificador deniega que una sesion
+        escriba ahi, y una sesion en la nube NO carga extraKnownMarketplaces de ninguna forma. El
+        fragmento exacto esta en docs/09-ia/10-guia-web-moderna.md section 5"
+    source: "peticion del propietario tras encontrar el repositorio (2026-11-22)"
+    owner: documentador
+
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
