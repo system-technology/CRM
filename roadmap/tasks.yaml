@@ -12498,6 +12498,78 @@ tasks:
         no se tocan"
     source: peticion del propietario (2026-11-21)
     owner: backend
+  - id: T-608
+    title: "Demo: el cliente pide organizar los chats por estado y ESO YA EXISTE; sembrarlo y ensenarselo"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "AUDIO DEL CLIENTE (2026-11-22): pide poder organizar o categorizar los chats —los que ya
+        reservaron, los que tienen reserva pendiente, los nuevos— para saber que gestion toca a cada uno"
+      - "VERIFICADO EN EL CODIGO: eso YA ESTA CONSTRUIDO. T-323 a T-326 estan done y existe el modulo
+        entero en la API (etiquetar-conversacion, gestionar-etiquetas, puerto, errores, e2e) y el
+        filtro por etiqueta en la bandeja. NO hay que construirlo"
+      - "La hipotesis de por que no lo ve, SIN CONFIRMAR: la demo no tiene etiquetas sembradas con
+        nombres que le digan algo. Comprobarlo antes de asumirlo"
+      - "Sembrar en la agencia demo las etiquetas con los nombres que el uso: «Ya reservo», «Reserva
+        pendiente», «Nuevo», con color, y asignarlas a conversaciones de ejemplo para que al entrar las
+        vea funcionando"
+      - "Decirselo al cliente con una captura o un recorrido corto: es la diferencia entre «lo vamos a
+        hacer» y «ya esta, mira»"
+      - "OJO: la siembra corre dentro de preparar-demo-staging.yml, asi que hay que relanzarlo despues"
+    source: "audio del cliente del piloto, transcrito por el propietario (2026-11-22)"
+    owner: frontend
+
+  - id: T-609
+    title: "Bandeja: enviar por el chat la ficha completa de un tour del catalogo"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "AUDIO DEL CLIENTE (2026-11-22): cuando alguien entra al chat y pregunta por un paquete, poder
+        enviarle toda la informacion que ya se tiene. Su ejemplo literal: «avistamiento con mapaches,
+        ahi esta el catalogo del tour con todo lo que incluye». Hoy lo hacen por WhatsApp empresarial"
+      - "VERIFICADO: existe modal-plantillas.tsx (plantillas de WhatsApp), propuesta-de-catalogo en
+        contracts y la propuesta al viajero, y se puede cotizar desde la bandeja. Lo que NO existe es
+        enviar la FICHA de un producto del catalogo sin cotizar"
+      - "Es distinto de una cotizacion: el viajero solo pregunta que incluye, todavia no hay precio
+        para el ni ocupacion elegida. Y distinto de una plantilla, que es texto fijo"
+      - "Decidir con el experto-turismo y el dueno-de-producto que lleva la ficha: que incluye, que no
+        incluye, duracion, salidas, foto. Mirar primero PropuestaDeCatalogo, que quiza ya lo modela"
+      - "R5: el envio pasa por la cola y es idempotente, como todo efecto externo de WhatsApp"
+      - "Ojo con la ventana de 24 horas de Meta: fuera de ella solo entran plantillas aprobadas, asi
+        que la ficha libre solo sirve dentro de la conversacion abierta"
+    source: "audio del cliente del piloto, transcrito por el propietario (2026-11-22)"
+    owner: analista-producto
+
+  - id: T-610
+    title: "IA que atiende la primera interaccion del chat antes de asignar asesor: decidir antes de construir"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: L
+    status: backlog
+    acceptance:
+      - "AUDIO DEL CLIENTE (2026-11-22): que una IA atienda en primera medida, con la informacion de
+        los tours, lo disponible y las promociones, y pueda recomendar antes de asignar a un asesor"
+      - "VERIFICADO: hoy NO hay una sola linea que llame a la IA. Ninguna referencia a anthropic ni a
+        los modelos en apps ni en packages. Es construir de cero, no ampliar"
+      - "ESTO NO SE EMPIEZA SIN ADR (R7). Lo que hay que decidir antes de teclear: que puede y que NO
+        puede decir la IA (precios y disponibilidad comprometen a la agencia), cuando cede a un humano,
+        que pasa si se equivoca, y quien responde de lo que afirme"
+      - "Coste por conversacion: es dinero por mensaje recibido y hay que estimarlo antes, no despues.
+        Mirar docs/09-ia y el agente ingeniero-ia"
+      - "Hay una base aprovechable: el catalogo ya esta modelado, asi que la IA leeria datos reales y
+        no inventaria tours. Eso rebaja mucho el riesgo frente a un bot generico"
+      - "Partirlo: primero algo acotado y medible (responder que incluye un tour a partir del catalogo)
+        antes que un asistente abierto"
+    source: "audio del cliente del piloto, transcrito por el propietario (2026-11-22)"
+    owner: ingeniero-ia
+
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs
