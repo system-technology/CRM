@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import type { Oportunidad } from '@viajapro/contracts';
-import { Calendar, FileText, MapPin, PlusCircle, Users, ExternalLink } from 'lucide-react';
+import { Calendar, FileText, MapPin, PlusCircle, Users } from 'lucide-react';
 import { formatearDinero } from '../../lib/formato';
 import {
   describirVencimiento,
@@ -12,6 +12,9 @@ import {
   type ViajeDeContacto,
 } from '../../lib/viaje-solicitado-logica';
 import { InsigniaDePlazo, CLASES_POR_NIVEL } from '../comun/viaje-insignias';
+import { EnlacesDelViaje } from '../comun/enlaces-del-viaje';
+import { enlaceDeArchivo, enlaceDeCobro, soloEnlaces } from '../../lib/enlaces-viaje-logica';
+import { usePermisos } from '../../lib/permisos';
 
 interface SolicitudDeViajeProps {
   viaje: ViajeDeContacto;
@@ -34,6 +37,7 @@ export function SolicitudDeViaje({
   oportunidad,
   onCrearOportunidad,
 }: SolicitudDeViajeProps) {
+  const { tienePermiso } = usePermisos();
   const destino = nombreCortoDeDestino(viaje.destino);
   const salida = fechaDeSalidaTexto(viaje.fechaSalida);
   const pasajeros = pasajerosEnLetras(viaje.pasajeros);
@@ -192,15 +196,14 @@ export function SolicitudDeViaje({
         </div>
       )}
 
+      {/* Hacia delante: el archivo de viaje y su cobro, con la misma fila que usan las demás pantallas */}
       {viaje.archivo && (
-        <Link
-          href={`/viajes?id=${viaje.archivo.id}`}
-          data-testid="enlace-archivo"
-          className="text-acento-700 dark:text-acento-100 flex min-h-[44px] items-center gap-1.5 text-sm font-semibold hover:underline md:min-h-[28px]"
-        >
-          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Archivo de viaje {viaje.archivo.numero} en Reservas</span>
-        </Link>
+        <EnlacesDelViaje
+          enlaces={soloEnlaces([
+            enlaceDeArchivo({ tipo: 'listo', valor: viaje.archivo }),
+            enlaceDeCobro(viaje.archivo, tienePermiso('cobro.ver')),
+          ])}
+        />
       )}
 
       <Link

@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Briefcase, FileText, MessageSquare, User } from 'lucide-react';
+import { Briefcase, FileText, MessageSquare, User, Wallet } from 'lucide-react';
 import type { EnlaceDelViaje } from '../../lib/enlaces-viaje-logica';
 
 const ICONOS = {
@@ -8,6 +8,7 @@ const ICONOS = {
   contacto: User,
   cotizacion: FileText,
   archivo: Briefcase,
+  cobro: Wallet,
 } as const;
 
 const BASE =

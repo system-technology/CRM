@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import React from 'react';
 import { TituloDePantalla } from '../components/comun/titulo-de-pantalla';
@@ -170,6 +170,34 @@ describe('permiso', () => {
     const e = { ...entradaDe('catalogo'), permiso: 'catalogo.administrar' as const };
     expect(esVisiblePara(e, tiene())).toBe(false);
     expect(esVisiblePara(e, tiene('catalogo.administrar'))).toBe(true);
+  });
+});
+
+describe('esVisiblePara en la demostración (T-623)', () => {
+  const tiene =
+    (...concedidos: string[]) =>
+    (p: string) =>
+      concedidos.includes(p);
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('con la vista del dueño, Configuración se ve aunque la sesión de muestra sea de asesor', () => {
+    window.localStorage.setItem('viajapro_modo_demo', 'true');
+    window.localStorage.setItem('viajapro_vista_demo', 'dueno');
+    expect(esVisiblePara(entradaDe('configuracion'), tiene('bandeja.operar'))).toBe(true);
+  });
+
+  it('con la vista de asesor sigue oculta: la vista decide qué se pinta', () => {
+    window.localStorage.setItem('viajapro_modo_demo', 'true');
+    window.localStorage.setItem('viajapro_vista_demo', 'asesor');
+    expect(esVisiblePara(entradaDe('configuracion'), tiene('bandeja.operar'))).toBe(false);
+  });
+
+  it('fuera de la demostración no cambia nada: sin permiso, oculta', () => {
+    window.localStorage.setItem('viajapro_modo_demo', 'false');
+    expect(esVisiblePara(entradaDe('configuracion'), tiene())).toBe(false);
   });
 });
 
