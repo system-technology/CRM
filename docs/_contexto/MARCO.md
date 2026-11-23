@@ -61,6 +61,13 @@ más viejo que el último commit (o lleva más de 2 h con el árbol sucio). Bloq
 - **Flujo:** worktree por rama; `cd <wt> && git …` en una sola llamada (hook `guard-rama`); push con
   `node scripts/gh-app.mjs <carril> push`; PR con `… gh pr create`; auto-merge `--auto --merge`;
   ramas rezagadas con `gh pr update-branch`. 8 checks, protección de servidor, R11.
+- **El PR lo abre SIEMPRE la app del carril, nunca la cuenta del propietario.** Ya no es una
+  recomendación: el hook `guard-rama` **bloquea** `gh pr create` y `gh pr merge` a secas. Un PR
+  cuyo autor es el propietario y que toca una ruta protegida **no puede aprobarse jamás** —GitHub
+  no deja aprobar el PR propio—, así que queda muerto. El 2026-11-23 eso tenía **seis PR detenidos
+  a la vez**; hubo que cerrarlos y reabrirlos con la app (#533, #534, #535, #536). Leer y editar
+  metadatos (`view`, `list`, `checks`, `diff`, `edit`, `update-branch`, `close`) sí se puede con la
+  cuenta del propietario. **El propietario es el aprobador, nunca el autor.**
 - **Autorización:** el propietario delegó aprobar rutas protegidas y merges, pero el hook de
   integración impide autoautorizarse: si lo bloquea, se pide al propietario, no se rodea.
 - **Agentes:** reanudar con `SendMessage` en vez de crear nuevos; encargo con alcance, rutas y

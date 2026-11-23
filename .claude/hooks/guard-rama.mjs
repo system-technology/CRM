@@ -79,9 +79,27 @@ try {
 
 // Se pasa el comando CRUDO: la política lo tokeniza respetando comillas y heredocs.
 // Normalizar los espacios aquí destruiría los saltos de línea que delimitan un heredoc.
-const { accion, esCommit } = evaluar(comando, ramaActual);
+const { accion, esCommit, gh } = evaluar(comando, ramaActual);
 
 if (accion === 'permitir') process.exit(0);
+
+if (accion === 'exigir-app') {
+  const queHace = gh === 'create' ? 'abrir un PR' : 'integrar un PR';
+  bloquear(
+    `Bloqueado: ${queHace} con \`gh\` a secas usa la cuenta del propietario.\n\n` +
+      'Un PR cuyo autor es el propietario NO PUEDE pasar la compuerta `rutas-protegidas` si toca\n' +
+      'una ruta protegida: GitHub no deja aprobar el PR propio, así que queda inaprobable para\n' +
+      'siempre. El 2026-11-23 esto dejó seis PR detenidos a la vez.\n\n' +
+      'Usa la app del carril (MARCO.md §5), que abre el PR con su propia identidad y así el\n' +
+      'propietario SÍ puede aprobarlo:\n\n' +
+      `  node scripts/gh-app.mjs <integradora|backend|frontend> gh pr ${gh} …\n\n` +
+      '  integradora → carril i/ (docs e integración; la única que puede mergear)\n' +
+      '  backend     → carril a/ (API y base de datos)\n' +
+      '  frontend    → carril b/ (web)\n\n' +
+      'Leer y editar metadatos (`gh pr view|list|checks|diff|edit|update-branch|close`) sí se\n' +
+      'puede con la cuenta del propietario: no falsean el autor ni integran nada.',
+  );
+}
 
 if (accion === 'bloquear-destructivo') {
   bloquear(
