@@ -158,7 +158,7 @@ export function BloqueSeguimientosDia({
       {itemsAMostrar.length === 0 && (
         <div
           data-testid="seguimientos-vacio"
-          className="dark:bg-neutral-850 my-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-neutral-50/70 p-8 text-center dark:border-neutral-800"
+          className="my-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-neutral-50/70 p-8 text-center dark:border-neutral-800 dark:bg-neutral-900"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
             <CheckCircle2 className="h-6 w-6" />
@@ -205,7 +205,7 @@ export function BloqueSeguimientosDia({
                 className={`group tarjeta-turismo-hover flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${obtenerClaseEscalonada(idx)} ${
                   esVencido
                     ? 'border-rose-200 bg-rose-50/40 hover:border-rose-300 dark:border-rose-900/50 dark:bg-rose-950/20'
-                    : 'dark:bg-neutral-850 hover:border-acento-500/40 dark:hover:border-acento-500/30 border-neutral-200 bg-white dark:border-neutral-800'
+                    : 'hover:border-acento-500/40 dark:hover:border-acento-500/30 border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900'
                 }`}
               >
                 <div className="flex flex-1 items-start gap-3">
