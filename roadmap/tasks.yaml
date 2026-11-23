@@ -14303,25 +14303,50 @@ tasks:
         con depender de la externa, y escribirlo. Una dependencia no declarada es una dependencia igual"
   - id: T-666
     phase: 1
-    title: Terminar la limpieza de worktreees huerfanos y evitar que se vuelvan a acumular
+    title: Terminar la limpieza de worktrees huerfanos y evitar que se vuelvan a acumular
     type: infra
     priority: P2
     effort: S
     status: blocked
-    blocked_reason: "human_required: borrar las 52 carpetas huerfanas exige rm -rf, denegado por el sistema de
-      permisos en sus tres formas (script en segundo plano, tandas con rutas explicitas, y de una en una).
+    blocked_reason: "human_required: borrar exige rm -rf, denegado por el sistema de permisos en sus tres formas.
       Anadir la regla exige editar .claude/settings.json, que una sesion NO puede editar: es el candado que
       impide que un agente se amplie sus propios permisos. Solo el propietario."
     acceptance:
-      - "MEDIDO el 2026-11-23: .claude/worktrees ocupaba 6,9 GB y bajo a 3,7 GB. Worktrees registrados de 108
-        a 14"
-      - "Quedan 52 carpetas muertas: 28 agent-* mas res/102, res/111 y res/122 dentro del proyecto, y 24
-        hermanas en D:/Projects"
-      - "NO TOCAR: res/130, los 4 agent-* registrados, CRM-bandeja, CRM-docs, CRM-wt-zona, D:/Projects/wt/* y
-        D:/Projects/wt-crm/ci. Son de los 14 vivos, con trabajo sin integrar (uno es
-        feat/db-cifrado-campos-sensibles, PR #29)"
-      - "CAUSA RAIZ, y es lo que hay que arreglar: git worktree remove falla en Windows con Filename too long
-        en node_modules profundos, INCLUSO con core.longpaths true. Por eso git los desregistra y deja la
-        carpeta"
+      - "INVENTARIO CORREGIDO el 2026-11-23 con la captura del propietario: son 81 carpetas huerfanas, no 52.
+        Mi listado se basaba en el glob CRM-* y se dejaba fuera crm-wt-124 (minusculas), wt-fix, 23 hijos de
+        D:/Projects/wt y wt-crm/pruebas"
+      - "REGLA FIABLE, y sustituye a mi comparacion de cadenas que ya fallo una vez: un worktree SIN fichero
+        .git ya esta desregistrado, luego es huerfano. No comparar rutas a mano"
+      - "MEDIDO: .claude/worktrees 6,9 GB -> 3,7 GB. Pendiente: D:/Projects/wt 1,8 GB, CRM-api 727 MB, wt-crm
+        86 MB, CRM-reportes 78 MB, crm-wt-124 67 MB. Quedan del orden de 6 GB por recuperar"
+      - "NO TOCAR, verificado por tener .git: CRM-bandeja, CRM-docs, CRM-wt-zona, wt/api-cuerpo-json,
+        wt/hallazgos, wt/render, wt/retro, wt/tareas2, wt-crm/ci, los 4 agent-* registrados y res/130"
+      - "NO TOCAR NUNCA, y no son worktrees: _datos (tiene fotos-jd-tours y jd-tours-cartagena.json, datos del
+        piloto que NO estan en el repositorio) y _tools (cloudflared, hace falta para la prueba con Meta de
+        T-080)"
+      - "CAUSA RAIZ: git worktree remove falla en Windows con Filename too long en node_modules profundos
+        INCLUSO con core.longpaths true, asi que git desregistra el worktree y deja la carpeta. Por eso se
+        acumularon 108"
       - "PREVENCION, que vale mas que la limpieza: que cada worktree se borre al terminar su tarea, o que no
-        instale node_modules propio"
+        instale su propio node_modules"
+  - id: T-667
+    phase: 1
+    title: Diez commits vivian en una sola carpeta del disco, y casi se borran
+    type: audit
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-647
+    acceptance:
+      - "HECHO: D:/Projects/CRM-ciclo NO es un worktree sino un CLON COMPLETO con 9 ramas locales. Seis de
+        ellas tenian 10 commits que NO estaban en origin ni en ninguna otra parte"
+      - Entre ellas a/T-001-comprobar-la-cabecera-origin-en-toda-mut, justo el fallo que impidio entrar al
+        cliente del piloto el 2026-11-21 (ORIGEN_NO_CONFIABLE). Tambien CSP, registros de auditoria de
+        lecturas y una auditoria del 2026-10-26
+      - "HECHO YA: las seis estan en origin bajo rescate/*. El trabajo ya no se puede perder"
+      - "PENDIENTE: decidir que se hace con cada una. Son del ciclo autonomo de OpenCode (ADR-0016), detenido.
+        Puede que algo ya este resuelto de otra forma en main"
+      - "LECCION DEL MARCO: un clon completo fuera del repositorio no lo ve git worktree list, no lo ve el CI
+        y no lo ve nadie. Si una sesion trabaja en un clon aparte y no empuja, su trabajo existe en UN solo
+        disco. Hay que prohibirlo o detectarlo"
