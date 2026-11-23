@@ -13341,7 +13341,7 @@ tasks:
     owner: frontend
 
   - id: T-639
-    title: "Bandeja: marcarLeida existe y nadie la llama, asi que el contador de sin leer no se limpia"
+    title: "Bandeja: el contador de sin leer NO EXISTE fuera del mock, y marcarLeida no la llama nadie"
     type: bug
     phase: 1
     priority: P1
@@ -13359,6 +13359,19 @@ tasks:
         escribir porque habria fallado. Para esa prueba la fila necesita un data-testid"
     source: "hallazgo de la sesion de T-126 (2026-11-22)"
     owner: frontend
+    confirmed_note: "CONFIRMADO el 2026-11-22 por la sesion madre, con grep sobre main. Y es PEOR de
+      lo que el hallazgo decia:
+      (1) apps/web/src/lib/inbox-api.ts:381 define marcarLeida y NADIE la llama fuera de specs y mocks;
+      (2) la API SI expone la ruta: conversaciones.controller.ts:136 POST :id/leida, que llama a
+      actuar.marcarLeida. O sea, el backend esta hecho y la web no lo usa;
+      (3) y lo gordo: el contador de sin leer NO EXISTE en packages/contracts, NI en
+      apps/api/src/modules/inbox, NI en la lista de conversaciones. La unica aparicion de sinLeer en
+      toda la web es apps/web/src/lib/mock-inbox.ts.
+      Conclusion: el primer paso del flujo critico —«ver el chat nuevo con contador de sin leer»— NO
+      esta implementado. En la demostracion se ve porque el mock lo fabrica.
+      Asi que esto no es un bug de una llamada que falta: es una funcionalidad de la bandeja que no
+      existe, en la pantalla principal del producto. Decidir con dueno-de-producto si entra, y
+      entonces hace falta contrato (R3), API y web."
 
   - id: T-640
     title: "Los flujos criticos no definen H1 a H6, pero media cola los nombra"
