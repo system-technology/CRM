@@ -409,6 +409,10 @@ jobs:
           # daban «Demasiadas peticiones» (429) y volvian el check obligatorio fragil. El limitador
           # sigue ACTIVO; solo sube el tope por IP. Nada de esto toca produccion ni Render.
           LIMITE_TASA_POR_IP: '5000'
+          # T-612: la suite hace 7 ingresos por corrida, todos desde esta IP, y el limite por IP del
+          # inicio de sesion es 5/min. 20 da margen de casi 3 veces los ingresos actuales sin quitar
+          # el limite. Solo aqui (efimero); el tope por identidad en Postgres no cambia.
+          LIMITE_INICIO_SESION_POR_IP: '20'
 
       - name: Arrancar la web
         run: nohup pnpm --filter @viajapro/web start > web.log 2>&1 &

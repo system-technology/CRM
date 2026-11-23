@@ -41,7 +41,7 @@ export function ModalCompararVersiones({
 }: ModalCompararVersionesProps) {
   // Ordenar versiones de menor a mayor número
   const versionesOrdenadas = useMemo(() => {
-    return [...versiones].sort((a, b) => a.numero - b.numero);
+    return versiones.toSorted((a, b) => a.numero - b.numero);
   }, [versiones]);
 
   const [numeroA, setNumeroA] = useState<number>(() => {

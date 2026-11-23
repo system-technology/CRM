@@ -148,7 +148,9 @@ test.describe('sin sesion', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test('ingresa con el usuario, a 390 px', async ({ page }) => {
-    test.skip(!miembroId, 'depende de que la prueba anterior haya fijado el usuario');
+    // Sin `test.skip`: el modo serial ya omite esta prueba si la anterior falla, y un `skip` propio
+    // dejaria pasar en verde una corrida donde el usuario nunca se fijo.
+    expect(miembroId, 'la prueba anterior debe haber fijado el usuario').not.toBe('');
     await ingresar(page, apodo, credenciales().clave);
   });
 

@@ -119,7 +119,7 @@ export function ordenarVersiones(
   versiones: readonly VersionDeCotizacion[],
   orden: 'asc' | 'desc' = 'asc',
 ): VersionDeCotizacion[] {
-  return [...versiones].sort((a, b) =>
+  return versiones.toSorted((a, b) =>
     orden === 'asc' ? a.numero - b.numero : b.numero - a.numero,
   );
 }

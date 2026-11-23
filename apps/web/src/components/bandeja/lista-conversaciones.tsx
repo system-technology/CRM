@@ -177,7 +177,7 @@ export function ListaConversaciones() {
   // Aplicar reorden diferido al hacer clic en el banner o salir del área
   const aplicarReordenDiferido = useCallback(() => {
     if (bufferConversacionesRef.current) {
-      const ordenadas = [...bufferConversacionesRef.current].sort((a, b) => {
+      const ordenadas = bufferConversacionesRef.current.toSorted((a, b) => {
         const tA = a.ultimoMensajeEn ? new Date(a.ultimoMensajeEn).getTime() : 0;
         const tB = b.ultimoMensajeEn ? new Date(b.ultimoMensajeEn).getTime() : 0;
         return tB - tA;
