@@ -14026,6 +14026,8 @@ tasks:
       - "PRUEBA NEGATIVA: un PR que toque ruta protegida NO se puede integrar sin aprobacion del propietario"
       - "SOLO LO PUEDE HACER EL PROPIETARIO: gh-app.mjs prohibe a las apps tocar la proteccion de rama"
       - "Autorizado por el propietario el 2026-11-23, condicionado a que el PR #536 funcione"
+      - "T-661 (proteccion de rama como codigo) convierte esta tarea en un PR normal: entonces el propietario
+        aprueba el diff en vez de ejecutar la operacion"
   - phase: 1
     id: T-650
     title: Prueba negativa de cada una de las 15 compuertas
@@ -14168,3 +14170,67 @@ tasks:
       - "Tope de 6 PR abiertos: al septimo avisa en vez de abrir"
       - "Las 6 P0 actuales reclasificadas: lo que espera a un tercero pasa a blocked con dueno externo y fecha"
       - P0 queda reservado a lo que bloquea HOY a alguien. Hoy ninguna de las 6 es de codigo
+  - phase: 1
+    id: T-660
+    title: "Aprobar la decision y no el borrador: un ADR en Propuesto no exige firma"
+    type: infra
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on:
+      - T-647
+    acceptance:
+      - "Un ADR en estado Propuesto pasa a via ambar: no ejecuta nada, lo declara su propia cabecera"
+      - La firma del propietario se exige en la transicion Propuesto -> Aceptado, que es donde ocurre la
+        decision
+      - "PRUEBA 1: un PR que ANADE un ADR en Propuesto se integra sin firma"
+      - "PRUEBA 2: un PR que cambia su estado a Aceptado SI la exige. Las dos, o no esta hecho"
+      - "Hoy el propietario firma borradores: #534 y #539 son ADR en Propuesto esperando su aprobacion"
+  - phase: 1
+    id: T-661
+    title: "Proteccion de rama como codigo: el propietario aprueba el diff, no ejecuta la operacion"
+    type: security
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on:
+      - T-647
+      - T-648
+    acceptance:
+      - El manifiesto de T-648 pasa a ser la fuente de verdad de la proteccion de main
+      - Una credencial estrecha lo aplica; las apps de carril siguen SIN poder tocar la proteccion
+      - "PRUEBA: el propietario aprueba un diff del manifiesto y la proteccion real cambia sola. Verificado
+        con gh api .../protection antes y despues"
+      - Convierte T-649 de operacion manual del propietario en un PR normal. Delegacion de una vez, no accion
+        en cada evento
+  - phase: 1
+    id: T-662
+    title: Globs de rutas protegidas por riesgo y no por carpeta
+    type: security
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on:
+      - T-647
+      - T-660
+    acceptance:
+      - "Afinar scripts/**, .claude/** y **/package.json: hoy tratan igual una compuerta que un fichero
+        inocuo, y subir la version de una herramienta de desarrollo que anadir una dependencia de produccion"
+      - FICHERO A FICHERO, NUNCA POR LOTES. Por cada glob que se estrecha se nombra que dano concreto podia
+        hacer lo que sale de la lista
+      - La regla ante la duda, roja, queda intacta
+      - "ATENCION: es la unica tarea del plan que reduce DE VERDAD la supervision del propietario. Las demas
+        le quitan mecanica, esta le quita superficie. Va despacio"
+  - phase: 1
+    id: T-663
+    title: Lote de aprobacion con resumen, en vez de PR por PR
+    type: docs
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-647
+    acceptance:
+      - Un digest diario con los PR que esperan firma, ordenados por riesgo, diciendo que mirar en cada uno
+      - "El coste real no es el clic: es reconstruir el contexto una vez por PR"
+      - "Medida de exito: el propietario decide sobre la cola entera en una sola sentada"

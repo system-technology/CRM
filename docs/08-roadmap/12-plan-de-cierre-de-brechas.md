@@ -58,6 +58,29 @@ T-598 (secretos de Render). No los toca el congelamiento porque no pasan por `ma
 
 ---
 
+## Ola 1.5 — Que el propietario deje de ser el cuello de botella
+
+**Añadida el 2026-11-23**, después de que el propietario señalara el defecto antes de firmar: *«lo
+único que me preocupa es que este marco de trabajo depende mucho de mí»*. **Tenía razón y el plan lo
+empeoraba:** las olas 2 a 4 son **100 % plano de control**, así que sin esta ola él aprueba cada paso
+de su propio plan de corrección.
+
+**Medido, no supuesto:** de los 60 PR integrados más recientes, **10 (17 %)** habrían exigido su
+firma. El 7 de 7 de hoy es el **pico**, no el régimen. Los globs que más la disparan: `.github/**`,
+`scripts/**`, `.claude/**` y `CLAUDE.md` — todos, plano de control.
+
+| Tarea | Qué | Criterio de aceptación (ejecutable) |
+|---|---|---|
+| **T-660** | **Aprobar la decisión, no el borrador.** Un ADR en `Propuesto` pasa a vía ámbar; la firma se exige en la transición `Propuesto → Aceptado` | Un PR que **añade** un ADR en `Propuesto` se integra sin firma. Un PR que **cambia su estado a Aceptado** la exige. **Las dos pruebas, o no está hecho** |
+| **T-661** | **Protección de rama como código.** El manifiesto de T-648 pasa a fuente de verdad; una credencial estrecha lo aplica | El propietario aprueba un **diff del manifiesto** y la protección real cambia sola. Verificado con `gh api .../protection` antes y después. Convierte T-649 en un PR normal |
+| **T-662** | **Globs por riesgo, no por carpeta.** Afinar `scripts/**`, `.claude/**`, `**/package.json` | **Fichero a fichero, nunca por lotes.** Por cada glob que se estrecha, se nombra qué daño concreto podía hacer lo que sale de la lista. «Ante la duda, roja» intacta. **Esta es la única tarea del plan que reduce de verdad la supervisión: va despacio** |
+| **T-663** | **Lote de aprobación con resumen.** Un digest diario ordenado por riesgo | El propietario recibe **una** lista con qué mirar y en qué orden, en vez de reconstruir el contexto una vez por PR |
+
+> **Criterio de salida:** fila 7 de la tabla del ADR — PR que exigen su firma **≤ 10 %** en régimen
+> normal. **Si no baja del 17 %, el Pilar 6 no cumplió.**
+
+---
+
 ## Ola 2 — Que no se pierda nada · *el único fallo de datos real*
 
 | Tarea | Qué | Criterio de aceptación (ejecutable) |

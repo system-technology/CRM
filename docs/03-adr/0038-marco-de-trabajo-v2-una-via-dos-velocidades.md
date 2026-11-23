@@ -148,6 +148,62 @@ Tres condiciones **innegociables**:
   fecha de revisión. Hoy las 6 P0 no son de código y el tablero no dice qué hacer primero.
 - **Una vuelta de revisión** (R13 vigente, sin cambios), salvo aislamiento entre agencias.
 
+### Pilar 6 — Que el propietario no sea el cuello de botella
+
+**Añadido el 2026-11-23 a petición del propietario**, que señaló el defecto antes de firmar: *«lo
+único que me preocupa es que este marco de trabajo depende mucho de mí»*. **Tenía razón, y el plan
+tal como estaba escrito lo empeoraba:** las olas 1 a 4 son **100 % plano de control**, así que
+durante toda la corrección la dependencia habría sido total. Un plan que convierte a su aprobador en
+el cuello de botella de su propia ejecución está mal diseñado.
+
+**Lo primero es dimensionarlo, no suponerlo.** Medido el 2026-11-23 sobre los **60 PR integrados más
+recientes**, aplicando los mismos globs `humanRequired` de `ownership.json`:
+
+| Medida | Valor |
+|---|---|
+| PR que habrían exigido la firma del propietario | **10 de 60 (17 %)** |
+| PR que no le tocaban | 50 |
+| Globs que más la disparan | `.github/**` (5), `scripts/**` (5), `.claude/**` (4), `CLAUDE.md` (3) |
+
+**El 7 de 7 de hoy es el pico histórico, no el régimen normal**, y lo es precisamente porque lo que
+se está arreglando *es* el plano de control. Pero eso no excusa nada: durante el plan la dependencia
+sí será del 100 %.
+
+**Hay que separar tres dependencias que se venían confundiendo:**
+
+| Tipo | Ejemplo | ¿Reducible? |
+|---|---|---|
+| **De decisión** | Aceptar un ADR, el aviso de privacidad, el precio, la prioridad | **No, y no se debe.** Es el trabajo del propietario |
+| **De credencial** | Protección de rama, secretos, paneles de Render/Vercel/Neon | **Sí.** No hay juicio que ejercer: solo tiene la llave |
+| **De sobre-protección** | Un borrador de ADR en `Propuesto` exige su firma | **Sí, y es autoinfligida** |
+
+**Se decide:**
+
+- **(a) Aprobar la decisión, no el borrador.** Un ADR en `Propuesto` **no ejecuta nada** —lo declara
+  su propia cabecera— y pasa a vía **ámbar**. La firma del propietario se exige en la transición
+  **`Propuesto → Aceptado`**, que es donde ocurre la decisión. *Hoy firma borradores.*
+- **(b) Protección de rama como código.** El manifiesto del Pilar 2 pasa a ser la fuente de verdad y
+  una credencial estrecha lo aplica. **El propietario aprueba el diff; no ejecuta la operación.**
+  Delegación de una vez, en lugar de acción en cada evento.
+- **(c) Globs por riesgo, no por carpeta.** `scripts/**` son decenas de ficheros y solo unos pocos
+  son compuertas; `**/package.json` trata igual subir la versión de una herramienta de desarrollo
+  que añadir una dependencia de producción. Es el Pilar 1 aplicado a la lista roja. **Se hace
+  fichero a fichero, nunca por lotes** (ver la contrapartida).
+- **(d) Lote de aprobación con resumen.** El coste no es el clic: es **reconstruir el contexto una
+  vez por PR**. Un digest ordenado por riesgo, una vez al día.
+- **(e) Núcleo irreducible, declarado.** Tras (a)–(d) queda del propietario: **aceptar ADR, lo legal,
+  la identidad en Meta, gastar dinero y la prioridad.** Del orden de **cinco decisiones por semana**,
+  no siete PR al día.
+
+**La contrapartida, dicha sin adornos:** reducir la dependencia del propietario es, por definición,
+**aumentar lo que los agentes hacen sin supervisión**. (a), (b) y (d) son seguras —sigue aprobando la
+*decisión* y deja de ejecutar la *mecánica*—. **(c) no lo es:** afina de verdad la superficie que
+mira, y por eso va fichero a fichero y con la regla «ante la duda, roja» intacta.
+
+**Y se añade a la tabla de medición una fila que hoy no existía:** el **porcentaje de PR que exigen
+la firma del propietario**, con objetivo **≤ 10 %** en régimen normal. Si el Pilar 6 no lo baja del
+17 % actual, no cumplió.
+
 ---
 
 ## Orden de implementación, y por qué ese
@@ -160,6 +216,7 @@ en el [plan de cierre de brechas](../08-roadmap/12-plan-de-cierre-de-brechas.md)
 |---|---|---|
 | **0** | Desatascar: aprobar los 6 PR pendientes | — |
 | **1** | Que las compuertas no mientan | 2 |
+| **1.5** | **Que el propietario deje de ser el cuello de botella.** Va aquí, y no al final, porque **las olas 2 a 4 son todas plano de control**: sin esto, él aprueba cada paso de su propio plan de corrección | 6 |
 | **2** | Que no se pierda nada | 3 |
 | **3** | Velocidad: enrutado por radio de impacto | 1 |
 | **4** | Flujo: topes, eje de entrega, P0 saneadas | 4 y 5 |
@@ -224,7 +281,11 @@ Verificable, no opinable. Se mide a las **cuatro semanas** de aceptarlo:
 | 4 | Artefactos de memoria | 8 | 3 |
 | 5 | Estado vivo versionado | **No** (H5) | Sí |
 | 6 | Tareas abiertas en la cola | 345 | ≤ 300 y bajando |
-| 7 | Capacidades **usadas por alguien real** | **0** | ≥ 1 |
+| 7 | **PR que exigen la firma del propietario** | **17 %** (10 de los 60 últimos) | ≤ 10 % |
+| 8 | Capacidades **usadas por alguien real** | **0** | ≥ 1 |
 
-**La fila 7 es la que importa.** Si las seis primeras salen verdes y la séptima sigue en cero, este
+**La fila 8 es la que importa.** Si las siete primeras salen verdes y la octava sigue en cero, este
 ADR habrá hecho el repositorio más honesto y el producto igual de parado.
+
+**Y la fila 7 es la que delata si el marco escala.** Un marco que solo funciona mientras su
+propietario esté disponible todos los días no es un marco: es una guardia.

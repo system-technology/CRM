@@ -95,3 +95,44 @@ propio ADR lo declara una **apuesta** y fija cómo se mide y cuándo se revierte
 2. **Aprobar los 7 PR abiertos** (#533 a #539). Ningún agente puede: ese es el diseño, y ahora
    funciona.
 3. **T-649 exige su cuenta:** `gh-app.mjs` prohíbe a las apps tocar la protección de rama.
+
+---
+
+## Enmienda del mismo día: el propietario encontró el defecto del plan antes de firmarlo
+
+*«Lo único que me preocupa es que este marco de trabajo depende mucho de mí.»*
+
+**Tenía razón, y el plan lo empeoraba.** Las olas 2 a 4 son **100 % plano de control**: tal como
+estaba escrito, él habría tenido que aprobar cada paso de su propio plan de corrección. **Un plan que
+convierte a su aprobador en el cuello de botella de su propia ejecución está mal diseñado**, y lo
+escribí yo.
+
+**Primero se midió, en vez de suponerlo.** Sobre los 60 PR integrados más recientes, aplicando los
+mismos globs `humanRequired`:
+
+| Medida | Valor |
+|---|---|
+| PR que habrían exigido su firma | **10 de 60 (17 %)** |
+| PR que no le tocaban | 50 |
+| Globs que más la disparan | `.github/**`, `scripts/**`, `.claude/**`, `CLAUDE.md` — **todos, plano de control** |
+
+**El 7 de 7 de hoy es el pico histórico, no el régimen normal.** Y lo es justo porque lo que estamos
+arreglando *es* el plano de control.
+
+**Lo que destrabó el análisis fue separar tres dependencias que se venían confundiendo:** la **de
+decisión** (aceptar un ADR, lo legal, el precio — irreducible, y es su trabajo), la **de credencial**
+(protección de rama, secretos — no hay juicio que ejercer, solo tiene la llave) y la **de
+sobre-protección** (un borrador de ADR en `Propuesto` exige su firma — autoinfligida). Las dos
+últimas le comen el tiempo **sin requerir su criterio**.
+
+**Añadidos:** Pilar 6 al ADR, **Ola 1.5** al plan —colocada antes de las olas 2-4 a propósito— y
+cuatro tareas: **T-660** (firmar la decisión y no el borrador), **T-661** (protección de rama como
+código), **T-662** (globs por riesgo) y **T-663** (lote de aprobación con resumen). Y una fila nueva
+en la tabla de medición: **% de PR que exigen su firma, objetivo ≤ 10 %**.
+
+**La contrapartida queda escrita, no escondida:** reducir su dependencia es aumentar lo que los
+agentes hacen sin supervisión. T-660, T-661 y T-663 son seguras —le quitan **mecánica**, no
+**criterio**—. **T-662 no lo es:** le quita superficie de revisión, y por eso va fichero a fichero.
+
+> **Un marco que solo funciona mientras su propietario esté disponible todos los días no es un
+> marco: es una guardia.**
