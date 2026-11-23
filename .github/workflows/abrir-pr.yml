@@ -1,0 +1,108 @@
+name: Abrir PR con la Integradora
+
+# Abre el pull request de una rama de trabajo (a/, b/, i/) con la app Integradora, para que el PR figure
+# como de `altardiario-integradora[bot]` y no del propietario (GitHub no deja aprobar un PR propio, y la
+# compuerta de rutas protegidas necesita que el propietario pueda aprobar).
+#
+# DISPARADOR EXPLICITO, nunca «todo push abre PR»: el ultimo commit empujado debe llevar en su mensaje la
+# linea de pie `Abrir-PR: si`; o bien se lanza a mano (workflow_dispatch) con el nombre de la rama.
+# Un push sin esa linea no hace nada, asi que los pushes a mitad de trabajo no llenan de PR a medias.
+#
+# Se usa el token de la app y NO GITHUB_TOKEN: un PR abierto con GITHUB_TOKEN no dispara los flujos
+# `pull_request` y el CI no correria. Mientras falte la variable INTEGRADORA_APP_ID o el secreto
+# INTEGRADORA_APP_KEY, avisa y termina sin fallar.
+#
+# Sin bucles: este flujo solo escucha `push` (y `workflow_dispatch`); abrir un PR emite eventos
+# `pull_request`, que este flujo no escucha. Ademas excluye las ramas i/cerrar-* (las empuja
+# cerrar-tarea.yml con la misma app, que ya abre su propio PR) y exige el pie explicito.
+# Mecanico, sin modelo. Ver docs/07-ingenieria/03-git.md.
+
+on:
+  push:
+    branches: ['a/**', 'b/**', 'i/**']
+  workflow_dispatch:
+    inputs:
+      rama:
+        description: 'Rama de trabajo (a/..., b/..., i/...) de la que abrir el PR'
+        required: true
+        type: string
+
+concurrency:
+  group: abrir-pr-${{ github.event.inputs.rama || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  abrir:
+    name: Abrir el PR de la rama
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deleted != true && github.ref_name != 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      REPO: ${{ github.repository }}
+      RAMA: ${{ github.event.inputs.rama || github.ref_name }}
+      MENSAJE_PUSH: ${{ github.event.head_commit.message }}
+      APP_ID: ${{ vars.INTEGRADORA_APP_ID }}
+      APP_KEY: ${{ secrets.INTEGRADORA_APP_KEY }}
+    steps:
+      - name: Decidir si toca abrir el PR
+        id: decidir
+        run: |
+          set -euo pipefail
+          if ! [[ "$RAMA" =~ ^(a|b|i)/[A-Za-z0-9._/-]+$ ]] || [[ "$RAMA" == i/cerrar-* ]]; then
+            echo "Rama '$RAMA' fuera de la convencion de carriles o de cierre automatico: nada que hacer."
+            echo "abrir=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ -z "$APP_ID" ] || [ -z "$APP_KEY" ]; then
+            echo "::warning::Falta la variable INTEGRADORA_APP_ID o el secreto INTEGRADORA_APP_KEY: no se abre el PR de '$RAMA'. Abrelo a mano."
+            echo "abrir=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if ! printf '%s\n' "$MENSAJE_PUSH" | grep -qiE '^Abrir-PR:[[:space:]]*(si|sí|yes)[[:space:]]*$'; then
+              echo "El ultimo commit no lleva 'Abrir-PR: si': push de trabajo en curso, no se abre PR."
+              echo "abrir=no" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          fi
+          echo "abrir=si" >> "$GITHUB_OUTPUT"
+      - name: Token de la app Integradora
+        id: app
+        if: steps.decidir.outputs.abrir == 'si'
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.INTEGRADORA_APP_ID }}
+          private-key: ${{ secrets.INTEGRADORA_APP_KEY }}
+      - name: Abrir el PR si no existe
+        if: steps.decidir.outputs.abrir == 'si' && steps.app.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          set -euo pipefail
+          existente=$(gh pr list --repo "$REPO" --head "$RAMA" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existente" ]; then
+            echo "Ya hay un PR abierto para '$RAMA': #$existente. No se abre otro."
+            exit 0
+          fi
+          # Mensaje del commit en la punta de la rama (vale para push y para workflow_dispatch).
+          gh api "repos/$REPO/commits/$RAMA" --jq '.commit.message' > mensaje.txt
+          titulo=$(head -n1 mensaje.txt)
+          # Cuerpo del commit sin la linea de pie del disparador.
+          tail -n +2 mensaje.txt | grep -viE '^Abrir-PR:' > cuerpo-commit.txt || true
+          gh api "repos/$REPO/contents/.github/pull_request_template.md?ref=main" \
+            -H "Accept: application/vnd.github.raw" > plantilla.md || : > plantilla.md
+          {
+            echo "## Del commit"
+            echo
+            cat cuerpo-commit.txt
+            echo
+            echo "---"
+            echo
+            cat plantilla.md
+            echo
+            echo "_PR abierto por .github/workflows/abrir-pr.yml con la app Integradora._"
+          } > cuerpo.md
+          gh pr create --repo "$REPO" --base main --head "$RAMA" --title "$titulo" --body-file cuerpo.md
