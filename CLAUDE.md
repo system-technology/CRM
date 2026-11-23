@@ -13,12 +13,12 @@ mueve a `docs/` y aquí queda solo el enlace.
 WhatsApp: el dominio del turismo (pasajeros, tarifas netas, itinerarios, archivos de viaje,
 proveedores) está en el núcleo del modelo.
 
-Estado actual: **en construcción y sin agencia real todavía. Hay staging desplegado y en pie** (verificado por HTTP el 2026-11-21: la web responde y la API de Render devuelve `baseDeDatos: ok`, `rol: viajapro_app`, `aislamiento: forzado`), **y un cliente del propietario probándolo: el 2026-11-22 consiguió iniciar sesión** (T-594, T-600). Este párrafo decía «sin servicio desplegado» y era falso. Hay catálogo,
-cotizador, autenticación, CRM, bandeja, reportes, recepción y envío de WhatsApp (probados con el número
-de prueba de Meta y con una Graph API falsa) y un modo de un solo proceso sin Redis, con el CI de
-10 checks (8 obligatorios: `.github/proteccion-main.json`). Faltan el despliegue, el cifrado de PII (ADR-0015), la prueba de la web
-contra la API, pagos y automatizaciones. El repositorio es **público** (`system-technology/CRM`) y
+Estado actual (comprobado el 2026-11-22 contra `origin/main` `4a1b5f00`): **en construcción y sin agencia real todavía. Hay staging desplegado y en pie** (verificado por HTTP el 2026-11-21: la web responde y la API de Render devuelve `baseDeDatos: ok`, `rol: viajapro_app`, `aislamiento: forzado`; el 2026-11-22 el último `Deploy staging` sobre `main` terminó en `success`), **y un cliente del propietario probándolo: el 2026-11-22 consiguió iniciar sesión** (T-594, T-600). Este párrafo decía «sin servicio desplegado» y era falso. Hay catálogo,
+cotizador, autenticación, CRM, bandeja, reportes, archivo de viaje (`booking`), cobros manuales del viajero (`payments`: libro, API y pantalla), recepción y envío de WhatsApp (probados con el número
+de prueba de Meta y con una Graph API falsa) y un modo de un solo proceso sin Redis. El CI corre 15 comprobaciones por PR, más `rutas-protegidas` (16), y **8 son obligatorias** en el servidor: la lista real sale de `gh api repos/system-technology/CRM/branches/main/protection` (`.github/proteccion-main.json` difiere del servidor, T-083). El cifrado de PII (ADR-0015) está implementado en el código; **que la clave de producción esté cargada en Render no está verificado**. La suite de navegador del CI ya prueba la web contra la API real (con Graph falsa). **Faltan** una pasarela de pagos, las automatizaciones, el contexto `audit` y un mensaje de WhatsApp real desde un celular (T-080). El repositorio es **público** (`system-technology/CRM`) y
 `main` tiene protección de servidor. Este párrafo caduca: el punto exacto está en `ESTADO.md`.
+
+**Corregido el 2026-11-22 (T-625), contra el repositorio:** este párrafo decía «10 checks», y «faltan el despliegue, el cifrado de PII y la prueba de la web contra la API». Las tres cosas estaban hechas o eran otra cifra. §5 decía `booking` y `payments` «sin código» (tienen controladores y migraciones) y §4 daba como stack lo que solo es la intención de ADR-0001.
 
 ## 2. Antes de hacer cualquier cosa
 
@@ -44,7 +44,7 @@ contra la API, pagos y automatizaciones. El repositorio es **público** (`system
 | R8 | **Dinero en enteros, en la unidad mínima de la moneda, + código ISO-4217.** Nunca `float`. «Unidad mínima» no es «centavos»: en USD son centavos, **en COP es el peso**. | Multi-moneda con TRM; los redondeos se cobran caro. Confundirlas ya produjo un error de dos órdenes de magnitud que llegó a la pantalla. |
 | R9 | **Fechas en UTC en la base; la zona horaria del tenant solo en presentación.** | Agencias en varios husos; los vuelos cruzan fechas. |
 | R10 | **PII de viajeros (pasaporte, fecha de nacimiento) se trata como dato sensible**: cifrado y acceso auditado. | Ley 1581 de 2012. Ver `docs/05-seguridad/02-proteccion-de-datos.md`. |
-| R11 | **En `main` solo entra lo que supera un PR con los 8 checks del CI en verde y la rama al día**, por auto-merge o por el agente `integrador`. Nadie empuja directo, administradores incluidos: lo impide la protección del servidor. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. La compuerta ya no es la disciplina de un solo escritor sino la protección de servidor. Ver ADR-0005 y ADR-0016 §6. |
+| R11 | **En `main` solo entra lo que supera un PR con los 8 checks obligatorios en verde y la rama al día**, por auto-merge o por el agente `integrador`. Nadie empuja directo, administradores incluidos: lo impide la protección del servidor (`enforce_admins`, `strict` y conversaciones resueltas, comprobados con `gh api`). **Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) deberían esperar la aprobación del propietario, pero HOY NO LA ESPERAN:** la protección tiene `require_code_owner_reviews: true` con `required_approving_review_count: 0`, y con 0 GitHub no exige esa revisión (medido el 2026-11-22; #511 tocó `CLAUDE.md` y entró sin ninguna). El check `rutas-protegidas` (#517) ya está en `main` pero **no es obligatorio**: lo añade el propietario en la protección (T-619). Hasta entonces es una convención, no una compuerta, y esta regla es falsa en su segunda mitad. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. La compuerta ya no es la disciplina de un solo escritor sino la protección de servidor. Ver ADR-0005 y ADR-0016 («Aprobación humana siempre»). |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum`. | Sin configurabilidad perdemos clientes; con configurabilidad infinita nos volvemos un CRM genérico y perdemos la ventaja. Ver ADR-0006. |
 | R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola (`roadmap/tasks.yaml`, ADR-0016) con dueño, no bloquea. | Un revisor siempre encuentra algo: ese es su encargo. Revisar revisiones tiene rendimientos decrecientes y consume el tiempo que el producto necesita. Ver §3.1. |
 | R14 | **Todo cambio se documenta, lo hecho y lo que se va a hacer.** Cada PR deja su rastro en la documentación versionada, en el mismo PR (o, como tarde, en el PR de cierre del lote): lo que se hizo, en `ESTADO.md`, `docs/_contexto/DIARIO.md` y `docs/_bitacora/`; lo que se va a hacer, en `roadmap/tasks.yaml` y en la hoja de ruta o el paso a paso que corresponda (`docs/08-roadmap/`); cada decisión estructural, en un ADR (R7); y cada cambio de comportamiento, en la doc de su tema (lenguaje ubicuo, runbook, seguridad). Un plan, una hoja de ruta o un paso a paso que solo existe en una conversación o en el `CHECKPOINT.local.md` **no existe**. Un cambio sin su rastro no está terminado. | Hay muchas sesiones y la memoria de una conversación muere al compactar. Lo que no está escrito se pierde, se contradice o se repite. Ver §9. |
@@ -83,11 +83,11 @@ mensajes reales enseña más que un diseño perfecto que no existe.
 ## 4. Stack
 
 - **Lenguaje:** TypeScript estricto, Node 22 LTS. `strict: true`, `noUncheckedIndexedAccess: true`.
-- **API:** NestJS — monolito modular, un módulo por contexto delimitado.
-- **Web:** Next.js (App Router) + React + Tailwind + shadcn/ui + TanStack Query.
-- **Datos:** PostgreSQL 16 + Prisma. RLS activo. Migraciones versionadas.
+- **API:** NestJS 10 — monolito modular, un módulo por contexto delimitado.
+- **Web:** Next.js 15 (App Router) + React 19 + Tailwind 4, con componentes propios e iconos de `lucide-react`. **shadcn/ui y TanStack Query figuran en ADR-0001 pero no están instalados** (comprobado en `apps/web/package.json` y por búsqueda en `src/`).
+- **Datos:** PostgreSQL 16 (`postgres:16-alpine` en `docker-compose.yml` y en el CI) + Prisma 5. RLS activo. Migraciones versionadas.
 - **Colas y tiempo real:** Redis + BullMQ. Socket.IO para la bandeja en vivo.
-- **Objetos:** S3 (MinIO en local) para media de WhatsApp, PDFs y documentos de viajeros.
+- **Objetos:** S3 (MinIO en local) para media de WhatsApp, PDFs y documentos de viajeros. **Hoy solo existe la infraestructura** (MinIO en `docker-compose.yml` y variables `S3_*` en `.env.example`); ningún código usa S3 todavía.
 - **IA:** Claude API (`claude-sonnet-5-5` por defecto, `claude-haiku-5-5` para alto volumen). Los
   modelos `claude-sonnet-5` y `claude-haiku-4-5-20251001` son legados. Aún no hay código que llame a
   la API; ver `docs/09-ia/09-ingesta-de-catalogo-con-ia.md` §IA1.
@@ -100,7 +100,7 @@ Detalle y alternativas descartadas: `docs/03-adr/0001-stack-tecnologico.md`.
 ```
 apps/api        NestJS. src/modules/<contexto>/ — cada uno con domain/ application/ infrastructure/ interface/.
                 También el trabajador (src/worker.ts) y el modo de un solo proceso (src/main-unico.ts, src/proceso-unico/)
-apps/web        Next.js (App Router). Hoy src/app/<ruta>/ plano; destino (ADR-0032): privadas en src/app/(app)/ con marco común, públicas fuera, menú en lib/navegacion.ts
+apps/web        Next.js (App Router). Privadas en src/app/(app)/ con marco común (layout.tsx), públicas fuera (ingresar, privacidad…), menú en lib/navegacion.ts (ADR-0032)
 apps/worker     Solo un README: el único consumidor (inbox) vive en apps/api, ADR-0010
 packages/contracts   Zod + tipos compartidos. FUENTE DE VERDAD de los contratos.
 packages/database    prisma/schema.prisma, prisma/migrations/, prisma/policies/ (RLS), prisma/seed*.ts
@@ -110,16 +110,16 @@ packages/ui          Solo un README (sistema de diseño sin construir)
 packages/sdk         Solo un README (cliente tipado sin generar)
 ```
 
-Contextos delimitados **que existen como módulo** en `apps/api/src/modules/`: `identity`, `inbox`,
-`crm`, `quoting`, `analytics`, `notifications`. **Diseñados, sin código:** `booking`, `payments`,
-`automation`, `audit`.
+Contextos delimitados **que existen como módulo** en `apps/api/src/modules/` (comprobado el 2026-11-22 con `ls`): `identity`, `inbox`,
+`crm`, `quoting`, `analytics`, `notifications`, `booking` (archivo de viaje) y `payments` (cobros manuales del viajero; sin pasarela).
+**Diseñados, sin código:** `automation`, `audit`. (Esta línea decía que `booking` y `payments` no tenían código: tenían 30 y 18 ficheros.)
 
 ## 6. Convenciones rápidas
 
 - **Commits:** Conventional Commits con scope de contexto — `feat(quoting): agrega markup por pasajero`.
 - **Ramas:** `main` es intocable. Toda tarea empieza con
   `git checkout main && git pull && git checkout -b feat/<contexto>-<descripción>`.
-  Ramas de 1-3 días; si es más largo, se parte. Integración solo por `/integrar`. Ver
+  Ramas de 1-3 días; si es más largo, se parte. Integración por PR: auto-merge o `/integrar` (R11). Ver
   `docs/07-ingenieria/03-git.md`.
 - **Archivos:** `kebab-case.ts`. Clases `PascalCase`. Funciones y variables `camelCase`.
   Constantes `SCREAMING_SNAKE`. Tablas y columnas en la base: `snake_case`.
@@ -172,10 +172,10 @@ corresponde, definido en `.claude/agents/`.
 | `investigador` | Información externa verificable: precios de Meta, normativa, competencia |
 | **`integrador`** | **Guardián de `main`.** Integra por PR con los 8 checks; el auto-merge es la otra vía. Ver R11 |
 
-**Quién escribe código hoy (2026-11-15):** los agentes de arriba (Claude), también en frontend:
+**Quién escribe código hoy (2026-11-22):** los agentes de arriba (Claude), también en frontend:
 **Antigravity no está habilitado** (decisión del propietario, 2026-11-05) y un agente `frontend`
 hace su carril. El ciclo autónomo de **OpenCode (ADR-0016) está detenido** por decisión del
-propietario: se agotó la cuota y los ciclos eran lentos. Su infraestructura sigue en el repositorio.
+propietario: se agotó la cuota y los ciclos eran lentos. Su infraestructura sigue en el repositorio (`scripts/ciclo*.mjs`; ningún workflow del ciclo corre: no aparece en las últimas 100 ejecuciones de Actions). Desde el 2026-11-16, 20 de los commits de `main` están firmados por la GitHub App `altardiario-integradora[bot]` (abre y deja los PR de las ramas de trabajo; T-624 amplía eso), y el resto por la cuenta del propietario.
 La cola de trabajo vive en `roadmap/tasks.yaml`, no en `ESTADO.md`.
 
 Modelo operativo completo, loops y protocolo de traspaso: `docs/09-ia/01-modelo-operativo.md`.
