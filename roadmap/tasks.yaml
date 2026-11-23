@@ -14262,6 +14262,7 @@ tasks:
     status: backlog
     depends_on:
       - T-647
+      - T-649
     acceptance:
       - "abrir-pr.yml (PR #536) activa el auto-merge en el mismo paso en que crea el PR"
       - "CAUSA MEDIDA: mantener-ramas.yml solo actualiza PR que YA tienen auto-merge (autoMergeRequest !=
@@ -14272,3 +14273,9 @@ tasks:
       - "PRUEBA: abrir un PR, integrar otra cosa en main para dejarlo BEHIND, y comprobar que
         mantener-ramas.yml lo actualiza y entra solo"
       - Frente al 1,2 por ciento de techo del Pilar 1, esta sola medida ataca el 83 por ciento del tiempo
+      - "DEPENDE DE T-649 Y NO SE PUEDE HACER ANTES. Mientras rutas-protegidas NO sea un check requerido,
+        activar el auto-merge en un PR que toque ruta protegida lo integraria en cuanto pasen los 8
+        requeridos, SIN la firma del propietario: seria saltarse R11 por la puerta de atras"
+      - "CASI PASA EL 2026-11-23: iba a activar auto-merge en los 6 PR abiertos para que se actualizaran
+        solos, y los 6 tocan rutas protegidas. Lo freno el clasificador de permisos, no el diseno. Una
+        compuerta que no bloquea convierte una mejora de velocidad en una brecha"

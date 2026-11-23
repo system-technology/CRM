@@ -104,6 +104,17 @@ firma. El 7 de 7 de hoy es el **pico**, no el régimen. Los globs que más la di
 | **T-664** | **Auto-merge activado al abrir el PR, siempre.** `abrir-pr.yml` lo activa en el mismo paso en que crea el PR | Abre un PR, integra otra cosa en `main` para dejarlo `BEHIND`, y comprueba que `mantener-ramas.yml` lo actualiza y **entra solo**. **No cuesta nada en seguridad:** el auto-merge sigue esperando a todas las compuertas requeridas |
 | **T-659** | **Tope de 6 PR abiertos** + «entra una, sale una» + **P0 solo si bloquea hoy a alguien** | Las P0 reclasificadas: lo que espera a un tercero pasa a `blocked` con dueño externo y fecha. Abrir el séptimo PR **avisa** |
 
+> ### ⚠ T-664 depende de T-649 y no se puede hacer antes
+>
+> **Mientras `rutas-protegidas` no sea un check requerido**, activar el auto-merge en un PR que toque
+> ruta protegida **lo integraría en cuanto pasen los 8 requeridos, sin la firma del propietario**.
+> Sería saltarse R11 por la puerta de atrás.
+>
+> **Y casi pasa.** El 2026-11-23 iba a activar auto-merge en los 6 PR abiertos para que se
+> actualizaran solos — **y los 6 tocan rutas protegidas**. Lo frenó el clasificador de permisos, **no
+> el diseño**. *Una compuerta que no bloquea convierte una mejora de velocidad en una brecha, y la
+> convierte en manos de quien va con buena intención.*
+
 ### Por qué T-664 es la tarea más rentable del plan
 
 `mantener-ramas.yml` actualiza los PR que quedan atrás, **pero solo los que ya tienen auto-merge
