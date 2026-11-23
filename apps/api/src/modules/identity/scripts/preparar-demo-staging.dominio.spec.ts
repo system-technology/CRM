@@ -54,16 +54,17 @@ describe('diagnóstico y resumen', () => {
     const sinClave = { ...vacio, agencias: 1, agenciaDemo: true, usuarios: 3 };
     expect(diagnosticoEnPalabras(sinClave)).toContain('ningún usuario tenía contraseña');
   });
-  it('el resumen muestra correo y contraseña en claro y avisa de rotarla', () => {
-    const texto = resumenDeLaPreparacion({
+  it('el resumen NO contiene ni la contraseña ni el correo', () => {
+    const datos = {
       antes: vacio,
       despues: { ...vacio, agencias: 1 },
       correo: 'demo@viajapro.app',
       contrasena: 'Demo2026Viaja',
-      estado: 'creado',
-    });
-    expect(texto).toContain('`demo@viajapro.app`');
-    expect(texto).toContain('`Demo2026Viaja`');
-    expect(texto).toContain('Rotar esta contraseña');
+      estado: 'creado' as const,
+    };
+    const texto = resumenDeLaPreparacion(datos);
+    expect(texto).not.toContain('Demo2026Viaja');
+    expect(texto).not.toContain('demo@viajapro.app');
+    expect(texto).toContain('creado');
   });
 });
