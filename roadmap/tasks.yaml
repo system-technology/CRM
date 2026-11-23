@@ -14329,7 +14329,7 @@ tasks:
       - T-647
   - id: T-667
     phase: 1
-    title: Diez commits vivian en una sola carpeta del disco, y casi se borran
+    title: "Trabajo que vivia en un solo disco: clones aparte y HEAD sueltos que nadie ve"
     type: audit
     priority: P1
     effort: S
@@ -14348,6 +14348,16 @@ tasks:
       - "LECCION DEL MARCO: un clon completo fuera del repositorio no lo ve git worktree list, no lo ve el CI
         y no lo ve nadie. Si una sesion trabaja en un clon aparte y no empuja, su trabajo existe en UN solo
         disco. Hay que prohibirlo o detectarlo"
+      - "SEGUNDO CASO, encontrado el 2026-11-23 DESPUES de la limpieza: D:/Projects/CRM-bandeja estaba en
+        DETACHED HEAD con 2 commits de T-037 (inicio con saludo por hora y acciones rapidas, 125 lineas de
+        apps/web/src/lib/inicio-logica.ts) que NINGUNA rama contenia, ni local ni remota"
+      - "Mi rescate recorria RAMAS, y un HEAD suelto no es una rama: se habria perdido si esa carpeta llega a
+        borrarse. Asegurado como rescate/bandeja-head-suelto"
+      - "Barrido final: de los 11 worktrees que quedan, ese era el unico detached. Los otros 10 van en rama y
+        todas sus ramas con contenido unico estan en origin"
+      - "LO QUE HAY QUE ARREGLAR, y son dos agujeros distintos: 1) un clon completo fuera del repositorio no
+        lo ve git worktree list; 2) un worktree en detached HEAD no lo ve ninguna auditoria basada en ramas.
+        Las dos formas dejan trabajo en un solo disco sin que nadie se entere"
   - id: T-668
     phase: 1
     title: Subir las 8 ramas que GitHub rechaza por falta de permiso workflow, y borrar .rescate
