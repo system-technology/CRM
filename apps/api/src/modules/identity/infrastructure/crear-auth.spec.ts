@@ -19,6 +19,32 @@ function auth() {
   });
 }
 
+describe('límite de inicios de sesión por IP configurable (T-612)', () => {
+  const con = (n?: number) =>
+    crearAuth({
+      prisma: {} as unknown as PrismaClient,
+      enviarCodigo: () => Promise.resolve(),
+      secreto: 'x'.repeat(48),
+      baseUrl: 'http://localhost:3333',
+      origenesDeConfianza: ['http://localhost:3000'],
+      ...(n === undefined ? {} : { intentosDeInicioPorMinuto: n }),
+    }).options.rateLimit?.customRules;
+
+  it('sin opción, 5 en las dos rutas de inicio y 3 en el envío de códigos', () => {
+    const r = con();
+    expect(r?.['/sign-in/email']).toMatchObject({ max: 5 });
+    expect(r?.['/sign-in/email-otp']).toMatchObject({ max: 5 });
+    expect(r?.['/email-otp/send-verification-otp']).toMatchObject({ max: 3 });
+  });
+
+  it('con opción, la usa en las dos rutas de inicio y no toca el envío de códigos', () => {
+    const r = con(20);
+    expect(r?.['/sign-in/email']).toMatchObject({ max: 20 });
+    expect(r?.['/sign-in/email-otp']).toMatchObject({ max: 20 });
+    expect(r?.['/email-otp/send-verification-otp']).toMatchObject({ max: 3 });
+  });
+});
+
 describe('configuración de Better Auth', () => {
   const opciones = auth().options;
 

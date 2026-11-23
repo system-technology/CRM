@@ -14,6 +14,8 @@ export const hrefConversacion = (conversacionId: string): string => `/bandeja/${
 export const hrefContacto = (contactoId: string): string => `/contactos/${contactoId}`;
 export const hrefCotizacion = (cotizacionId: string): string => `/cotizaciones/${cotizacionId}`;
 export const hrefArchivo = (archivoId: string): string => `/viajes?id=${archivoId}`;
+/** El cobro vive en el panel del archivo de viaje; el ancla lo lleva hasta él (`#cobro`). */
+export const hrefCobro = (archivoId: string): string => `/viajes?id=${archivoId}#cobro`;
 
 type ConversacionParaEnlace = Pick<ConversacionResumen, 'id' | 'contactoId' | 'ultimoMensajeEn'>;
 
@@ -82,7 +84,7 @@ export function cotizacionVigenteDelContacto<
 export const etiquetaDelArchivo = (numero: number): string => `File ${numero}`;
 
 export interface EnlaceDelViaje {
-  clave: 'conversacion' | 'contacto' | 'cotizacion' | 'archivo';
+  clave: 'conversacion' | 'contacto' | 'cotizacion' | 'archivo' | 'cobro';
   /** Texto del enlace: lo que abre, no «ver más». */
   texto: string;
   /** `null` = la pieza no existe todavía o no es visible: se explica en `sinDestino`. */
@@ -138,4 +140,22 @@ export function enlaceDeArchivo(
     href: estado.valor ? hrefArchivo(estado.valor.id) : null,
     sinDestino: 'Sin archivo de viaje todavía',
   };
+}
+
+/**
+ * El cobro del viaje: lo que pagó y lo que debe. No existe sin archivo de viaje y se oculta a quien
+ * no tiene `cobro.ver` (solo oculta; la API decide). Devuelve `null` cuando no hay nada que enlazar,
+ * para no sumar un segundo «sin archivo» a la fila.
+ */
+export function enlaceDeCobro(
+  archivo: { id: string } | null,
+  puedeVerCobros: boolean,
+): EnlaceDelViaje | null {
+  if (!archivo || !puedeVerCobros) return null;
+  return { clave: 'cobro', texto: 'Cobro del viaje', href: hrefCobro(archivo.id) };
+}
+
+/** Quita los huecos (`null`) de una lista de enlaces. */
+export function soloEnlaces(enlaces: ReadonlyArray<EnlaceDelViaje | null>): EnlaceDelViaje[] {
+  return enlaces.filter((e): e is EnlaceDelViaje => e !== null);
 }

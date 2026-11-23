@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ajustarLongitud,
+  composicionDeLaPeticion,
   edadesParaEnviar,
   faltanEdades,
   interpretarEdad,
@@ -57,5 +58,37 @@ describe('edades del cotizador (T-179)', () => {
     expect(interpretarEdad('7.5', 17)).toBeNull();
     expect(interpretarEdad('18', 17)).toBeNull();
     expect(interpretarEdad('-1', 17)).toBeNull();
+  });
+});
+
+describe('composición de la petición, igual al cotizar y al guardar (T-321)', () => {
+  const entrada = {
+    ...base,
+    adultos: 2,
+    ninos: 1,
+    infantes: 0,
+    edadesNinos: [7],
+  };
+
+  it('con pideComposicion en false manda igual los números, y no las edades', () => {
+    expect(composicionDeLaPeticion({ ...entrada, pideComposicion: false })).toEqual({
+      adultos: 2,
+      ninos: 1,
+      infantes: 0,
+    });
+  });
+
+  it('con pideComposicion en true añade las edades', () => {
+    expect(composicionDeLaPeticion({ ...entrada, pideComposicion: true })).toEqual({
+      adultos: 2,
+      ninos: 1,
+      infantes: 0,
+      edadesNinos: [7],
+    });
+  });
+
+  it('nunca omite adultos: la API cotizaría para 1', () => {
+    const c = composicionDeLaPeticion({ ...entrada, adultos: 2, ninos: 0, pideComposicion: false });
+    expect(c.adultos).toBe(2);
   });
 });
