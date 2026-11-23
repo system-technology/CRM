@@ -1,13 +1,16 @@
 /**
- * Prepara la demo de STAGING para que alguien pueda entrar (T-600). Lo lanza el workflow manual
- * `preparar-demo-staging.yml`, con la conexión del propietario (`DATABASE_URL` = `DIRECT_URL`).
+ * Prepara la demo de STAGING para que alguien pueda entrar (T-600). Lo lanzan los workflows manuales
+ * `sembrar-demo-staging.yml` y `rotar-credencial-demo-staging.yml`, con la conexión del propietario
+ * (`DATABASE_URL` = `DIRECT_URL`).
  *
- * Dos fases, con la semilla (`pnpm db:seed`) en medio, que corre como paso aparte del workflow:
+ * Dos fases, usadas por DOS workflows (T-646):
  *
  *   diagnosticar  Cuenta agencias, identidades, usuarios y credenciales ANTES de tocar nada y lo
  *                 guarda para el resumen. Aplica las guardias: si se niega, no se siembra nada.
+ *                 No lee credenciales. Lo usan `sembrar-demo-staging.yml` (seguido de la semilla) y
+ *                 `rotar-credencial-demo-staging.yml`.
  *   credencial    Crea (o reemplaza) la contraseña del usuario de la demo y lo deja entrar. Escribe
- *                 el resumen del run.
+ *                 el resumen del run, SIN correo ni contraseña. Solo el segundo workflow.
  *
  * La contraseña la escribe quien lanza el workflow (`DEMO_CONTRASENA`); aquí no hay ninguna. Se
  * hashea con `hashPassword` de Better Auth, el mismo scrypt con el que `/sign-in/email` la
@@ -17,7 +20,7 @@
  * Crea una identidad y un usuario NUEVOS con el correo elegido y el rol dueño de la agencia demo, en
  * vez de renombrar a `dueno@agenciademo.test`: así la semilla, que hace upsert por ese correo, no
  * duplica a nadie al volver a correr. Nunca se imprime la cadena de conexión ni la contraseña por
- * la salida estándar: la contraseña solo va al resumen del run.
+ * la salida estándar: la contraseña tampoco va al resumen del run (repositorio público).
  */
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -82,8 +85,7 @@ function escribirEnElResumen(texto: string): void {
 }
 
 async function diagnosticar(): Promise<void> {
-  // Fallar pronto, antes de sembrar: un correo o clave inválidos no deben dejar la base a medias.
-  leerCredencialesDelEntorno();
+  // No pide ni lee credenciales (T-646): sembrar no las toca. La clave se valida en `credencial`.
   const antes = await contar();
   console.log('Antes de tocar nada:', JSON.stringify(antes));
 
@@ -102,6 +104,7 @@ async function diagnosticar(): Promise<void> {
 }
 
 async function ponerCredencial(): Promise<void> {
+  // Fallar pronto, antes de escribir nada: un correo o clave inválidos no dejan la base a medias.
   const { correo, contrasena } = leerCredencialesDelEntorno();
   const antes = JSON.parse(readFileSync(archivoDeAntes(), 'utf8')) as Conteos;
 
@@ -179,7 +182,7 @@ async function ponerCredencial(): Promise<void> {
 
   const despues = await contar();
   console.log('Después:', JSON.stringify(despues), `| usuario: ${estado}`);
-  escribirEnElResumen(resumenDeLaPreparacion({ antes, despues, correo, contrasena, estado }));
+  escribirEnElResumen(resumenDeLaPreparacion({ antes, despues, estado }));
 }
 
 async function principal(): Promise<void> {
