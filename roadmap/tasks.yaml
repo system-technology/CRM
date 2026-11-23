@@ -14312,6 +14312,9 @@ tasks:
       Anadir la regla exige editar .claude/settings.json, que una sesion NO puede editar: es el candado que
       impide que un agente se amplie sus propios permisos. Solo el propietario."
     acceptance:
+      - "BLOQUEADA POR T-668: no se borra nada hasta que las 8 ramas sin permiso workflow esten en origin.
+        Auditado el 2026-11-23: habia 29 ramas locales con ~22.000 lineas que no estaban en ninguna otra
+        parte, y 21 ya se aseguraron en rescate/*"
       - "INVENTARIO CORREGIDO el 2026-11-23 con la captura del propietario: son 81 carpetas huerfanas, no 52.
         Mi listado se basaba en el glob CRM-* y se dejaba fuera crm-wt-124 (minusculas), wt-fix, 23 hijos de
         D:/Projects/wt y wt-crm/pruebas"
@@ -14329,6 +14332,9 @@ tasks:
         acumularon 108"
       - "PREVENCION, que vale mas que la limpieza: que cada worktree se borre al terminar su tarea, o que no
         instale su propio node_modules"
+    depends_on:
+      - T-647
+      - T-668
   - id: T-667
     phase: 1
     title: Diez commits vivian en una sola carpeta del disco, y casi se borran
@@ -14350,3 +14356,25 @@ tasks:
       - "LECCION DEL MARCO: un clon completo fuera del repositorio no lo ve git worktree list, no lo ve el CI
         y no lo ve nadie. Si una sesion trabaja en un clon aparte y no empuja, su trabajo existe en UN solo
         disco. Hay que prohibirlo o detectarlo"
+  - id: T-668
+    phase: 1
+    title: Subir las 8 ramas que GitHub rechaza por falta de permiso workflow, y borrar .rescate
+    type: infra
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: GitHub rechaza empujar ramas cuyos commits tocan .github/workflows sin el
+      permiso workflow, y NINGUNA de las dos identidades lo tiene: ni la cuenta del propietario (gh sin scope
+      workflow) ni la app Integradora (sin workflows: write). Comprobadas las dos. Solo el propietario puede
+      concederlo."
+    acceptance:
+      - "Conceder el permiso: gh auth refresh -s workflow en su cuenta, O workflows: write a la app
+        Integradora"
+      - "Empujar las 8 ramas a rescate/* como las otras 21: docs/interruptores-web, fix/guard-rama-worktrees,
+        fix/respaldo-de-credenciales, i/T-000-ci-modo-unico, i/T-083-endurecimiento-de-ci, test/aud-008-rojo,
+        test/auditoria-externa-mutacion-reg02, test/reg-02-mutacion"
+      - BORRAR la carpeta .rescate entera, bundle incluido. Es temporal por definicion
+      - "CONTEXTO: el bundle de 22 KB existe porque su contenido vivia en UN solo disco. No rodea la
+        proteccion: un .bundle es un archivo, no instala ni modifica ningun workflow"
+      - "HASTA ENTONCES NO BORRAR los worktrees de T-666: algunas de esas 8 ramas pueden tener su unica copia
+        de trabajo ahi"
