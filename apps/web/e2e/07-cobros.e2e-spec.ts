@@ -87,7 +87,7 @@ async function cifra(page: Page, etiqueta: string): Promise<string> {
 async function parteDelSaldo(
   page: Page,
   divisor: number,
-): Promise<{ escrito: string; pintado: string }> {
+): Promise<{ escrito: string; pintado: string; restante: string }> {
   const cobro = (await json(page, `/api/v1/archivos/${archivoId}/cobro`)) as {
     moneda: string;
     saldo: { unidades: string };
@@ -100,7 +100,9 @@ async function parteDelSaldo(
   );
   const unidades = Math.floor(saldo / divisor);
   const conMiles = unidades.toLocaleString('es-CO');
-  return { escrito: conMiles, pintado: conMiles };
+  // Lo que debe quedar por cobrar tras ese pago: saldo del servidor menos lo pagado.
+  const restante = (saldo - unidades).toLocaleString('es-CO');
+  return { escrito: conMiles, pintado: conMiles, restante };
 }
 
 async function registrarPago(page: Page, escrito: string): Promise<void> {
@@ -165,7 +167,8 @@ test('registrar un pago baja el saldo y lo deja en el historial', async ({ page 
 
   // La cifra que se pinta es la que se escribio: ni un cero de mas (R8, en COP la unidad es el peso).
   expect(await cifra(page, 'Pagado')).toBe(pago.pintado);
-  expect(await cifra(page, 'Falta por cobrar')).not.toBe(totalPintado);
+  // El saldo se recalcula: lo que habia menos lo pagado, no solo «distinto del total».
+  expect(await cifra(page, 'Falta por cobrar')).toBe(pago.restante);
 
   const historial = page.getByTestId('historial-de-pagos');
   await expect(historial).toBeVisible();
@@ -218,6 +221,7 @@ test('a 390 px se ve el saldo y se registra un pago sin desplazamiento lateral',
 
   await expect(page.getByTestId('pago-registrado')).toBeVisible();
   expect(await cifra(page, 'Pagado')).not.toBe(pagadoAntes);
+  expect(await cifra(page, 'Falta por cobrar'), 'el saldo baja en lo pagado').toBe(pago.restante);
   await expect(page.getByTestId('historial-de-pagos').getByRole('listitem')).toHaveCount(2);
 });
 

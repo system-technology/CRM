@@ -23,6 +23,8 @@ import {
 } from '../../lib/bandeja-logica';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
 import { InsigniaDePlazo } from '../comun/viaje-insignias';
+import { InsigniaDeVentanaEnFila } from './insignia-ventana-fila';
+import { nivelDeUrgenciaVentana } from '../../lib/ventana-24h';
 import { useViajesBandeja } from '../../lib/viajes-bandeja';
 import { viajeDeContacto } from '../../lib/viajes-de-contactos-logica';
 import { lineaDeViaje } from '../../lib/viaje-solicitado-logica';
@@ -175,7 +177,7 @@ export function ListaConversaciones() {
   // Aplicar reorden diferido al hacer clic en el banner o salir del área
   const aplicarReordenDiferido = useCallback(() => {
     if (bufferConversacionesRef.current) {
-      const ordenadas = [...bufferConversacionesRef.current].sort((a, b) => {
+      const ordenadas = bufferConversacionesRef.current.toSorted((a, b) => {
         const tA = a.ultimoMensajeEn ? new Date(a.ultimoMensajeEn).getTime() : 0;
         const tB = b.ultimoMensajeEn ? new Date(b.ultimoMensajeEn).getTime() : 0;
         return tB - tA;
@@ -540,15 +542,13 @@ export function ListaConversaciones() {
                           </span>
                         )}
 
-                        {!conv.ventana.abierta ? (
-                          <span className="py-0.2 rounded bg-neutral-100 px-1.5 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                            24h Cerrada
-                          </span>
-                        ) : (
-                          <span className="bg-ok-50 py-0.2 text-ok-700 dark:bg-ok-950/40 dark:text-ok-400 rounded px-1.5 font-semibold">
-                            {ventanaInfo.texto}
-                          </span>
-                        )}
+                        <InsigniaDeVentanaEnFila
+                          nivel={nivelDeUrgenciaVentana(
+                            ventanaInfo.minutos,
+                            !conv.ventana.abierta || ventanaInfo.cerrada,
+                          )}
+                          texto={ventanaInfo.texto}
+                        />
                       </div>
                     </div>
                   </div>

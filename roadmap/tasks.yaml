@@ -3191,7 +3191,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: ready
     depends_on: []
     acceptance:
       - "Stack completo local en modo unico contra la base de desarrollo: API, web, correo de prueba"
@@ -3215,6 +3215,13 @@ tasks:
       docs/_bitacora/hallazgos-funcionales-2026-11-05.md declara «recorrido NO ejecutado» y no hay otro: falta
       que una persona recorra H1 a H6 en un navegador y deje la bitacora de hallazgos antes de ensenar el
       producto."
+    progreso_note: "2026-11-22: NO se cierra. El PR #527 hizo la parte que SI era posible —el mapa de
+      cobertura de los flujos criticos contra las once pruebas e2e, nueve casos de cobertura falsa
+      corregidos y los huecos de «Hoy» cubiertos—, y gracias a el se cazo un error de dinero real
+      (T-321: el cotizador mostraba el precio de una persona rotulado como el de dos). Pero lo que
+      pide esta tarea es un RECORRIDO MANUAL con stack local, y en este entorno no se puede levantar
+      Postgres. Sigue pendiente, y el CI no lo sustituye."
+
   - id: T-127
     title: Atajos de teclado en la bandeja con ayuda en pantalla
     type: feature
@@ -12478,6 +12485,9 @@ tasks:
     evidence: "Mergeado en main por el PR #485 (rama i/T-593-diario-del-lote) con el CI en verde: format, analyze,
       tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 5f150305882db109f5e57461eabb62aaa8e2ba88
+  - id: T-599
+    title: "Herramienta: script acotado para diagnosticar el ingreso contra un entorno desplegado"
+
   - id: T-595
     title: "Staging: verificar de verdad el estado de Neon (migraciones y roles), que el hilo daba por sabido y no
       cuadra"
@@ -12486,6 +12496,25 @@ tasks:
     priority: P1
     effort: S
     status: blocked
+    blocked_reason: "human_required: scripts/ es ruta protegida y la regla de permiso vive en .claude/settings.json, que una sesion NO puede editar (el clasificador lo deniega, y hace bien: es el candado que impide que un agente se amplie sus propios permisos). Solo el propietario anade la regla."
+    acceptance:
+      - "PROBLEMA: un intento de ingreso es un POST y la unica herramienta de red de una sesion hace
+        GET. Diagnosticar «el cliente no puede entrar» exigia que una persona mirara el navegador y
+        transcribiera lo que veia"
+      - "Bash(curl:*) esta en la lista deny de .claude/settings.json, puesto a proposito, y quitarlo
+        daria a cualquier sesion capacidad de mandar cualquier cosa a cualquier sitio. Acotar curl por
+        prefijo NO es una barrera real: el orden de los argumentos es libre"
+      - "SOLUCION: scripts/diagnostico-ingreso.mjs, que solo habla con los hosts de ViajaPro
+        declarados en el propio script y solo hace las dos peticiones del diagnostico. Permitir ese
+        script no es permitir curl"
+      - "No acepta ni imprime secretos: la clave es un valor de descarte fijo, porque lo que se mide
+        es QUE RESPUESTA DA, no si la credencial vale. Las tres causas se distinguen sin conocer
+        ninguna clave real"
+      - "Para que sirva, el propietario anade a allow: Bash(node scripts/diagnostico-ingreso.mjs:*).
+        Mientras no la anada, el script esta en el repositorio pero la sesion no puede ejecutarlo"
+    source: "peticion del propietario de que la sesion sea autonoma para diagnosticar (2026-11-21)"
+    owner: propietario
+
     blocked_reason: "human_required: leer el estado de Neon exige el panel o una credencial de la base, las dos
       fuera de la autorizacion del orquestador. El MCP de Neon rechaza su credencial (HTTP 401)."
     acceptance:
@@ -12867,7 +12896,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-586
     acceptance:
@@ -12887,6 +12916,9 @@ tasks:
         habia API ni base en la sesion"
     source: causa de fondo declarada por la sesion de T-586, no silenciada (2026-11-22)
     owner: frontend
+    evidence: "Integrado en main por el PR #516. MEDIDO con next build y Chrome real: de 15 rutas con ?demo=1 que fallaban la hidratacion (React 418) se pasa a 1. PERO NO ESTA COMPLETA: /configuracion?demo=1 sigue fallando por otra causa (las pestanas que dependen de permisos, probablemente PERMISOS_ASESOR_DEMO) y no se investigo. El resto se mueve a T-644. Cerrada a mano el 2026-11-22 con ese limite escrito."
+    commit: 38bd920f
+
   - id: T-613
     title: "Hilo: el cliente del piloto ya entra; el estado decia lo contrario"
     type: docs
@@ -13047,7 +13079,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: review
+    status: done
     acceptance:
       - "Primer fruto de T-617. legacy-scan de modern-web-guidance senalo 11 sitios en apps/web con
         la regla js/copying-array-methods"
@@ -13060,6 +13092,8 @@ tasks:
       - "NO se probo en un navegador real: el soporte lo da por hecho el target del tsconfig"
     source: "hallazgo de legacy-scan al adoptar la guia web moderna (2026-11-22)"
     owner: frontend
+    evidence: "Integrado en main por el PR #512. Los 11 sitios de apps/web cambiados a toSorted y toReversed, y cinco spreads dejados intactos por NO ser copias de array (dos Set, dos iteradores de Map y dos concatenaciones). 2096 pruebas en verde. Cerrada a mano el 2026-11-22: el cierre automatico estaba apagado por el envenenamiento de la cola."
+    commit: 97a396cc
 
   - id: T-616
     title: "API: toSorted y toReversed, y propaga la causa del error donde se estaba perdiendo"
@@ -13114,6 +13148,427 @@ tasks:
     source: "peticion del propietario tras encontrar el repositorio (2026-11-22)"
     owner: documentador
 
+  - id: T-620
+    title: "Ingreso: el panel del degradado lleva fotos de vacaciones, como paquete por defecto"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: done
+    acceptance:
+      - "Lo pidio el propietario viendo la pantalla: «me gusta mucho, pero siento que le daria un
+        toque... quiero que en ese fondo azul gradiente tengamos imagenes de vacaciones»"
+      - "NO es un redisenno: le gusta como esta. Es anadir fotografia sin romper lo que funciona"
+      - "Paquete por defecto con SEIS destinos que decidio el propietario: Cartagena, Santa Marta,
+        Barranquilla, Baru, Playa Blanca e Islas del Rosario"
+      - "R12: las fotos y los textos son DATOS con valor por omision, no JSX. Una agencia peruana no
+        puede ver playas colombianas incrustadas en el codigo"
+      - "El pie dice hoy «San Andres, Cartagena, Santa Marta» y San Andres ya no esta en la lista: ese
+        pie y la insignia «Operacion Colombia» salen tambien de la estructura de datos"
+      - "Licencia impecable y escrita: el repositorio es PUBLICO. Si para un destino no hay foto
+        limpia, se deja fuera y se dice; no se sustituye por otro por cuenta propia"
+      - "Peso cuidado: es la primera pantalla que carga cualquiera. Solo la primera foto es
+        prioritaria"
+      - "Contraste MEDIDO con numeros sobre la foto: el texto es blanco y cian, y con una imagen
+        debajo se va al suelo. No se retrocede de AA (T-583)"
+      - "La otra mitad -que la agencia suba las suyas- es T-622"
+    source: "peticion del propietario sobre la pantalla de ingreso (2026-11-22)"
+    owner: frontend
+    evidence: "Integrado en main por el PR #526. OJO: CUATRO destinos de seis. De Islas del Rosario no hay foto con licencia limpia y de Playa Blanca la unica encontrada era de otro lugar; NO se sustituyeron. Todo el contenido del panel es dato con valor por omision, listo para T-622. La legibilidad la garantiza un velo de marca y no las fotos, asi que aguantara las que suba una agencia: peor caso de 544 mediciones, 4,62:1. Cerrada a mano el 2026-11-22."
+    commit: 6c8b0345
+
+  - id: T-623
+    title: "Navegabilidad: enlaces rotos, cadena hacia delante, Configuracion y colores que mienten"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    acceptance:
+      - "Filas 1, 2 y 4 del diagnostico T-618, que su recomendacion pide hacer juntas en un solo lote"
+      - "Las 9 tarjetas del pipeline y el icono de chat de Contactos apuntan a /bandeja/<id>, no a /bandeja"
+      - "La fila de enlaces que ya existe en Archivo de viaje se lleva a conversacion, cotizacion y ficha, con archivo y cobro"
+      - "Configuracion vuelve al menu, a la hoja «Mas» y a la paleta de comandos"
+      - "«Ventana cerrada» y «Perdida» dejan de ser verdes; el contador de 24 h gana umbral ambar y rojo"
+      - "EXIGENCIA: medirlo como se midio el problema, con la aplicacion levantada y capturas antes y despues"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+    evidence: "Integrado en main por el PR #524. Filas 1, 2 y 4 del diagnostico T-618: los enlaces del pipeline y de Contactos llevan a /bandeja/<id>, la cadena enlaza tambien hacia delante (archivo y cobro desde el chat, la cotizacion y la ficha), Configuracion vuelve al menu, a «Mas» y a la paleta, y los colores dejan de mentir, con contrastes WCAG medidos. Cerrada a mano el 2026-11-22."
+    commit: 3328ae53
+
+  - id: T-624
+    title: "Los PR de las ramas de trabajo los abre la app Integradora"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: review
+    acceptance:
+      - "GitHub no deja que el autor apruebe su propio PR y todos los de la sesion salen a nombre del propietario"
+      - "Sin esto, activar la compuerta de T-619 lo bloquea a el mismo"
+      - "PR #521. Se dispara con push a a/, b/ o i/ y solo si el commit lleva la linea «Abrir-PR: si»"
+      - "NO se ha ejecutado nunca: no hay act ni actionlint. Probarlo con workflow_dispatch al integrarlo"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: devops
+  - id: T-625
+    title: "Verificar afirmacion por afirmacion CLAUDE.md y ESTADO.md"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: in_progress
+    acceptance:
+      - "Lo pidio el propietario: «todo debe estar integral, todo debe estar correcto... si no, vamos a tener problemas»"
+      - "Hoy aparecieron CINCO afirmaciones falsas en los documentos, cada una con coste real"
+      - "Cada cifra se comprueba con un comando. Lo que no se pueda comprobar se marca SIN VERIFICAR, no se arregla a ojo"
+      - "Sabido ya: section 5 dice que booking y payments no tienen codigo, y tienen 30 y 18 ficheros"
+      - "OJO: el check rutas-protegidas esta en main pero NO es obligatorio todavia, asi que siguen siendo 8, no 9, y R11 sigue siendo falsa"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: documentador
+  - id: T-642
+    title: "Decision de producto: el cotizador asume 2 adultos sin que la asesora pueda elegirlo"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: es una decision de producto del propietario y del dueno-de-producto, no del arquitecto ni de frontend."
+    acceptance:
+      - "SALE del diagnostico de T-321. Cuando ninguna tarifa filtra por acomodacion, tipo de pasajero,
+        edad o silla, `pideComposicion` es false y el selector de pasajeros se OCULTA"
+      - "Pero el estado arranca en 2 adultos y eso es lo que se guarda y se cobra. En una excursion
+        POR_PERSONA el precio depende del numero de personas, asi que se esta cobrando un supuesto que
+        la asesora no eligio"
+      - "`seleccion-de-tarifas.ts` dice que `pideComposicion` solo decide si se pregunta QUIENES viajan:
+        «para saber cuantos van basta un numero». Ocultar el CUANTOS no era su proposito"
+      - "PROPUESTA del agente que lo diagnostico, a decidir: que el selector de adultos, ninos e
+        infantes se muestre SIEMPRE, y que `pideComposicion` solo oculte acomodacion y edades"
+      - "T-321 arregla la incoherencia entre cotizar y guardar. ESTA tarea es distinta: decide si el
+        numero de pasajeros debe poder elegirse siempre"
+    source: "decision de producto que destapo el arreglo de T-321 (2026-11-22)"
+    owner: dueno-de-producto
+
+  - id: T-643
+    title: "Comprobar si mensajes.wamid lleva dentro el telefono del interlocutor"
+    type: test
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "HALLAZGO del ADR-0037 (T-090), SIN CONFIRMAR y senalado por el propio arquitecto como «el
+        unico punto que podria ser bloqueante en vez de cola»"
+      - "Si el wamid de Meta codifica el telefono del interlocutor, entonces cifrar `texto` y dejar el
+        `wamid` DEJA EL TELEFONO EN CLARO en la tabla mas grande del sistema"
+      - "Y no se puede borrar sin mas: `wamid` sostiene la unicidad que da la idempotencia de R5"
+      - "No se pudo comprobar sin un wamid real: hace falta mirar uno de verdad, o la documentacion de
+        Meta sobre el formato del identificador"
+      - "Si se confirma: decidir si se cifra, se trunca o se sustituye por un hash con sal, SIN perder
+        la idempotencia. Eso seria un ADR o una enmienda al ADR-0037"
+    source: "hallazgo sin confirmar del borrador de ADR-0037 (2026-11-22)"
+    owner: whatsapp
+
+  - id: T-646
+    title: "Sembrar la demo deja de exigir y de publicar una contrasena"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: review
+    acceptance:
+      - "preparar-demo-staging.yml hacia dos cosas que no tienen por que ir juntas: sembrar los datos
+        de demostracion Y crear o rotar la credencial"
+      - "Consecuencia real: las etiquetas de #509 llevaban horas en el codigo SIN llegar a staging,
+        porque lanzarlo le habria cambiado la contrasena al cliente del piloto justo despues de que
+        consiguiera entrar"
+      - "PR #532. Queda sembrar-demo-staging.yml SIN NINGUN input, y rotar-credencial-demo-staging.yml
+        con la contrasena obligatoria como antes. Dos workflows y no un input de modo, para que
+        sembrar no tenga ningun campo donde meter una clave por error"
+      - "Las guardias se conservan todas: solo staging, solo desde main, negativa si falta DIRECT_URL,
+        y el script sigue negandose si hay agencias ajenas a la demo"
+      - "El resumen ya NO escribe ni la contrasena ni el correo, y hay una prueba que lo comprueba"
+      - "LIMITE QUE NO SE PUDO TAPAR, y es decision del propietario: GitHub muestra los input de un
+        workflow_dispatch en la pagina de la ejecucion, con add-mask o sin el. En un repositorio
+        PUBLICO la contrasena de rotacion sigue siendo visible ahi. O se asume usando una nueva cada
+        vez, o se lee de un secreto del Environment. Escrito en la cabecera del workflow"
+      - "DESPUES DE INTEGRAR: lanzar sembrar-demo-staging.yml para que el cliente vea sus etiquetas"
+    source: "lo bloqueaba la demo del cliente; autorizado por el propietario (2026-11-22)"
+    owner: devops
+
+  - id: T-645
+    title: "Los dos contextos que «faltan enteros» no son lo mismo, y ninguno se empieza a ciegas"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: `automation` necesita un ADR y decisiones de producto del propietario antes de escribir una linea. `audit` necesita decidir si se consolida ahora o despues."
+    acceptance:
+      - "MEDIDO el 2026-11-22. CLAUDE.md dice que faltan `automation` y `audit`, y eso es cierto como
+        modulos, pero los dos casos son MUY distintos y conviene no tratarlos igual"
+      - "`audit`: la funcion YA EXISTE, repartida. La tabla `registros_auditoria` esta en el esquema
+        con tenant_id y RLS forzada, y se escribe (por ejemplo LECTURA_DATOS_SENSIBLES). Crear el
+        modulo seria CONSOLIDAR lo que ya hay, no anadir capacidad"
+      - "Y el hueco real de `audit` no es el modulo: es que **no tiene purga ninguna**, asi que su
+        «retencion de 5 anios» no es cierta hoy. Lo encontro el ADR-0037 (T-090)"
+      - "`automation` es otra cosa: su diseno dice «reglas e IA del producto», y ahi vive justo lo que
+        pidio el cliente del piloto (T-610, la IA que atiende la primera interaccion). **T-610 dice
+        literalmente que NO SE EMPIEZA SIN ADR (R7)**"
+      - "Su propio diseno avisa: «es el contexto con mas riesgo de convertirse en el basurero de la
+        logica que no encaja en ningun lado». Empezarlo sin alcance decidido es pedir ese basurero"
+      - "DECISION DEL PROPIETARIO: si `audit` se consolida ahora o se deja como esta; y si se abre el
+        ADR de `automation`, que arrastra coste por conversacion y responsabilidad sobre lo que la IA
+        afirme"
+    source: "revision antes de empezar los dos contextos, pedida en el orden de trabajo (2026-11-22)"
+    owner: arquitecto
+
+  - id: T-644
+    title: "La hidratacion sigue fallando en /configuracion con ?demo=1, por otra causa"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "Resto de T-607. MEDIDO: tras el PR #516, 14 de 15 rutas de la demostracion hidratan limpias.
+        /configuracion?demo=1 sigue dando React 418"
+      - "Los diffs de React apuntan a las pestanas (tab-btn-etiquetas frente a tab-btn-respuestas),
+        que dependen de permisos. La sospecha es PERMISOS_ASESOR_DEMO, SIN confirmar"
+      - "Es una causa DISTINTA de la que arreglo T-607: alli el problema era leer ?demo=1 y
+        localStorage en el primer render"
+      - "Medir con el mismo observador y demostrar que deja de fallar, no solo que se ve bien"
+    source: "limite declarado por la sesion de T-607, no silenciado (2026-11-22)"
+    owner: frontend
+
+  - id: T-639
+    title: "Bandeja: marcarLeida existe y nadie la llama, asi que el contador de sin leer no se limpia"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "HALLAZGO de T-126, SIN CONFIRMAR: inboxApi.marcarLeida esta definido en
+        apps/web/src/lib/inbox-api.ts:381 y un grep no encuentra a NADIE que lo llame desde la web.
+        La busqueda excluyo specs y mocks"
+      - "Si se confirma, abrir una conversacion NUNCA limpia su contador de sin leer, y el primer paso
+        del flujo critico («ver el chat nuevo con contador de sin leer y abrirlo») queda a medias"
+      - "PRIMERO CONFIRMARLO, mirando el codigo. Si resulta que si se llama por otra via, cerrar la
+        tarea diciendo por donde"
+      - "Si es cierto: llamarla al abrir la conversacion, y anadir la prueba e2e que hoy no se pudo
+        escribir porque habria fallado. Para esa prueba la fila necesita un data-testid"
+    source: "hallazgo de la sesion de T-126 (2026-11-22)"
+    owner: frontend
+
+  - id: T-640
+    title: "Los flujos criticos no definen H1 a H6, pero media cola los nombra"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "MEDIDO en T-126: docs/01-producto/04-flujos-criticos.md NO define H1 a H6. Define dos flujos:
+        contacto a cobro (10 pasos) y «Hoy» (4 pasos)"
+      - "«H1 a H6» solo existe como rotulo en la cabecera de apps/web/e2e/02-flujo-h1-h6.e2e-spec.ts:
+        ingreso, webhook, bandeja, abrir conversacion, oportunidad y cotizar"
+      - "T-126, que es P0, se escribio hablando de H1 a H6, asi que su criterio apunta a algo que el
+        documento no define. Lo mismo varias tareas mas"
+      - "Decidir: o el documento define H1 a H6 de verdad, o la cola deja de nombrarlos y habla de los
+        dos flujos. Lo que no vale es que media cola cite una numeracion que no existe"
+    source: "desajuste encontrado al mapear la cobertura en T-126 (2026-11-22)"
+    owner: documentador
+
+  - id: T-641
+    title: "Sin cobertura: reservas con time limit dentro del archivo de viaje"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    acceptance:
+      - "Paso 8 del flujo de contacto a cobro: CERO cobertura, medido en T-126"
+      - "SI se puede cubrir en CI, sin WhatsApp: el FormularioReserva ya existe"
+      - "No se hizo en T-126 porque no habia navegador para comprobar los selectores y no se quisieron
+        inventar. Quien la tome, que los verifique contra la pantalla"
+    source: "hueco declarado por la sesion de T-126 (2026-11-22)"
+    owner: qa
+
+  - id: T-626
+    title: "Contactos no se puede usar en el telefono: 0 de 8 enlaces alcanzables"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "Fila 3 del diagnostico. MEDIDO: tabla de 877 px dentro de una caja de 340 con overflow hidden, y los 8 enlaces de ficha viven en x entre 850 y 886"
+      - "Es una de las once pantallas inservible en el dispositivo principal del asesor"
+      - "El arreglo ya existe en el producto: tabla con @container que apila en tarjetas, como hace Cobros. Copiar ese patron"
+      - "La guia web moderna lo cubre en responsive-table, que el diagnostico ya verifico que aplica"
+      - "Medir a 390 px con la aplicacion levantada y demostrar que los 8 enlaces son alcanzables"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-627
+    title: "Modo oscuro de «Hoy»: contraste 1,1 a 1 sobre un importe en pesos"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Fila 5. MEDIDO: dark:bg-neutral-850 NO emite CSS porque neutral-850 no existe en @theme, asi que la tarjeta se queda blanca"
+      - "El contraste cae a 1,1:1 justo en la linea que lleva «$2.500.000»"
+      - "Definir el token en @theme o usar uno existente. Es una linea"
+      - "Comprobar que no haya mas clases que apunten a tokens inexistentes: la prueba de T-569 deberia haberlo cazado y no lo hizo. Mirar por que"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-628
+    title: "El aviso de cookies tapa el ingreso en movil"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "Fila 6. MEDIDO: el aviso empieza en y=501 y el boton ocupa de 470 a 514, asi que el enlace «Ingresar con codigo de 6 digitos» queda INALCANZABLE"
+      - "Es la primera pantalla, y viene de la semana en que un cliente real no conseguia entrar (T-594, T-600)"
+      - "Comprobar a 390 px que los dos caminos de ingreso son alcanzables con el aviso visible"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-629
+    title: "Una pasada de lenguaje: que las once pantallas hablen igual"
+    type: refactor
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    acceptance:
+      - "Fila 7, y segun el diagnostico es «lo que el propietario ve como que el diseno cambio»"
+      - "La misma pantalla se llama «Conversaciones» en el menu y «Bandeja» en las migas; la misma lista es «Contactos», «Directorio comercial» y «Directorio de Contactos»"
+      - "Fechas ISO del catalogo a «15 jun 2027», que es como escriben las demas pantallas"
+      - "Fuera de la interfaz: WABA, SLA, CSV, Opt-In, CRM, leads. Son nuestra jerga, no la del asesor"
+      - "Fuera MAYUSCULAS en etiquetas y Title Case. Plurales coherentes"
+      - "R3 y el lenguaje ubicuo mandan: docs/01-producto/02-lenguaje-ubicuo.md es el diccionario"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: diseno-ux
+  - id: T-630
+    title: "Murallas de cabecera en movil: 380 px de controles antes del primer dato"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 8. Cuatro pantallas ponen «Exportar CSV» e «Importar archivo» antes del contenido"
+      - "Bajarlos a un menu y dejar el dato arriba"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-631
+    title: "Pestañas que no caben y que el usuario no sabe que existen"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 9, en Configuracion y Catalogo"
+      - "Scroll horizontal con desvanecido y scrollIntoView sobre la activa"
+      - "La guia lo cubre en tabs, que el diagnostico verifico que aplica"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-632
+    title: "Botones de solo icono sin nombre accesible"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 10. Mas de 6 controles sin nombre"
+      - "No solo afecta a lectores de pantalla: dos iconos iguales tampoco se distinguen mirandolos"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-633
+    title: "Titulos de documento y migas, segun ADR-0032"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 11. MEDIDO: NINGUN detalle sobrescribe su document.title, asi que seis pestanas dicen «Conversaciones»"
+      - "/bandeja/<id> deberia decir «Juan Perez», /contactos/<id> igual, /cotizaciones/<id> el titulo de la cotizacion"
+      - "Las migas de /seguimientos se escriben a mano y meten un nivel «CRM» que no es una pantalla"
+      - "El mecanismo ya existe en la tabla unica de navegacion: usarlo, no inventar otro"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-634
+    title: "La paleta de comandos no encuentra la mitad de lo que hay"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Hallazgos N10 y N11 del diagnostico"
+      - "«Laura» devuelve 0 resultados aunque Laura Restrepo esta escrita en «Hoy» y en Seguimientos: la paleta NO busca seguimientos"
+      - "Las pestanas de categoria no coinciden con lo que devuelve: sale un grupo «Pipeline / Oportunidades» que no tiene pestana, y ademas se llama distinto que en el menu"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: frontend
+  - id: T-635
+    title: "Reportes con menos texto y acciones en la fila de Cobros"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Fila 12, y el diagnostico la marca como carril PRODUCTO, no diseno"
+      - "Reportes es la pantalla que decide si el dueno de la agencia paga"
+      - "Cobros sin una accion en la fila es un informe, no una herramienta"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: dueno-de-producto
+  - id: T-636
+    title: "Cotizador: neto, markup, margen, items y enviar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    acceptance:
+      - "Fila 13. El diagnostico es explicito: «es la promesa central del producto y no esta», y «NO lo arregla un redisenno»"
+      - "Lo que falta es PRODUCTO, no diseno: decidir su alcance es del dueno-de-producto"
+      - "EL DIAGNOSTICO RECOMIENDA NO TOCAR LA PANTALLA ANTES de esa decision: redisenarla ahora seria dibujar dos veces"
+      - "R8 manda en todo lo que toque dinero: enteros, unidad minima de la moneda, y en COP la unidad minima es el peso"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: dueno-de-producto
+  - id: T-637
+    title: "Datos de demostracion que no mienten"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Fila 14. MEDIDO: tareas a las 2 de la madrugada, salida por defecto en el pasado, «270 conversaciones» que no existen, 2 archivos de viaje en su lista frente a 9 en Cobros, y tres asesores con «7 min» identicos"
+      - "Una demo con datos que mienten resta mas que un diseno sobrio"
+      - "Relacionada con T-614: la siembra buena ya esta en el codigo pero no en staging"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: datos
+  - id: T-638
+    title: "El ADR-0032 y el codigo no coinciden en la barra movil"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "Hallazgo del diagnostico: el ADR section 4 dice que la barra movil lleva «Buscar» y el codigo lleva la accion «Cotizar»"
+      - "Un ADR no se edita, se supersede (R7). O se cambia el codigo para que cumpla el ADR, o se escribe un ADR nuevo que explique por que gano «Cotizar»"
+      - "Decidir cual de las dos, y hacerlo. Lo que no vale es dejar los dos textos contradiciendose"
+    source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
+    owner: arquitecto
   - id: T-576
     title: "Manual: el recorrido del asesor describe dos pantallas que T-565 y T-566 acaban de cambiar"
     type: docs

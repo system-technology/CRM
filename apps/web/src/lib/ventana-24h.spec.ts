@@ -4,6 +4,7 @@ import {
   calcularExpiracionDesdeUltimoMensaje,
   evaluarReaperturaConPlantilla,
   formatearHorasYMinutosRestantes,
+  nivelDeUrgenciaVentana,
 } from './ventana-24h';
 
 describe('ventana-24h — Lógica pura de cuenta regresiva con reloj inyectable (T-113)', () => {
@@ -129,5 +130,21 @@ describe('ventana-24h — Lógica pura de cuenta regresiva con reloj inyectable 
       expect(res.plantillaSugerida).toBeNull();
       expect(res.motivoDeshabilitada).toContain('APROBADA');
     });
+  });
+});
+
+describe('nivelDeUrgenciaVentana (T-623)', () => {
+  it.each([
+    [719, false, 'abierta'],
+    [121, false, 'abierta'],
+    [120, false, 'ambar'],
+    [34, false, 'ambar'],
+    [16, false, 'ambar'],
+    [15, false, 'rojo'],
+    [1, false, 'rojo'],
+    [0, false, 'cerrada'],
+    [300, true, 'cerrada'],
+  ] as const)('%i min, cerrada=%s -> %s', (minutos, cerrada, esperado) => {
+    expect(nivelDeUrgenciaVentana(minutos, cerrada)).toBe(esperado);
   });
 });
