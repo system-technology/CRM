@@ -49,8 +49,8 @@ export function reiniciarCatalogoMock(): void {
 }
 
 export function listarEtiquetasMock(): Etiqueta[] {
-  return [...catalogo]
-    .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'))
+  return catalogo
+    .toSorted((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'))
     .map((e) => ({ ...e }));
 }
 

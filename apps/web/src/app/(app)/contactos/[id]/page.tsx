@@ -38,9 +38,11 @@ import {
   archivoVigenteDelContacto,
   cotizacionVigenteDelContacto,
   enlaceDeArchivo,
+  enlaceDeCobro,
   enlaceDeConversacion,
   enlaceDeCotizacion,
   hrefConversacion,
+  soloEnlaces,
 } from '../../../../lib/enlaces-viaje-logica';
 import { useEnlacesDelViaje } from '../../../../lib/use-enlaces-del-viaje';
 import { generarColorAvatar, obtenerIniciales } from '../../../../lib/bandeja-logica';
@@ -135,7 +137,7 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { puedeEscribirCrm, sesion } = usePermisos();
+  const { puedeEscribirCrm, sesion, tienePermiso } = usePermisos();
   const soloLoPropio = alcanceDeVista(sesion) === 'PROPIO';
 
   // Pestaña activa: vive en `?pestana=` (T-318). `replace`: cambiar de pestaña no es navegar;
@@ -508,7 +510,7 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
             )}
             <EnlacesDelViaje
               className="mt-3"
-              enlaces={[
+              enlaces={soloEnlaces([
                 enlaceDeConversacion(enlaces.conversacionId),
                 ...(cotizacionVigente
                   ? [enlaceDeCotizacion(cotizacionVigente.id, cotizacionVigente.version)]
@@ -525,7 +527,11 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
                           (archivoPorId ? { id: archivoPorId, numero: null } : null),
                       },
                 ),
-              ]}
+                enlaceDeCobro(
+                  archivoVigente ?? (archivoPorId ? { id: archivoPorId } : null),
+                  tienePermiso('cobro.ver'),
+                ),
+              ])}
             />
           </section>
 

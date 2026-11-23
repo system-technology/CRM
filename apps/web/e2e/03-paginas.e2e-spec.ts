@@ -4,24 +4,29 @@ import { expect, test } from './fixtures';
  * Recorrido de las pantallas principales con sesion: ninguna debe producir errores de consola
  * (hidratacion incluida) ni respuestas 5xx; lo vigila el fixture `vigilante` de fixtures.ts.
  */
-const RUTAS: Array<{ ruta: string; titulo: RegExp }> = [
-  { ruta: '/bandeja', titulo: /Elige una conversación|Lista de conversaciones/ },
-  { ruta: '/contactos', titulo: /Contactos/ },
-  { ruta: '/pipeline', titulo: /Oportunidades/ },
-  { ruta: '/cotizador', titulo: /Cotizador Comercial/ },
-  { ruta: '/cotizaciones', titulo: /Cotizaciones/ },
-  { ruta: '/reportes', titulo: /Reportes/ },
-  { ruta: '/viajes', titulo: /Archivos de viaje/ },
+// `h1: true` busca el título como H1 de la página. Antes se buscaba como texto suelto visible, y casi
+// todos esos títulos («Contactos», «Cotizaciones», «Reportes», «Archivos de viaje»...) son TAMBIÉN la
+// etiqueta del menú lateral, siempre visible a 1440 px: la prueba pasaba aunque el contenido de la
+// pantalla no hubiera pintado nada. La bandeja se queda con su texto de estado vacío, que no es una
+// etiqueta del menú.
+const RUTAS: Array<{ ruta: string; titulo: RegExp; h1: boolean }> = [
+  { ruta: '/bandeja', titulo: /Elige una conversación/, h1: false },
+  { ruta: '/contactos', titulo: /^Contactos$/, h1: true },
+  { ruta: '/pipeline', titulo: /^Oportunidades$/, h1: true },
+  { ruta: '/cotizador', titulo: /^Cotizador Comercial$/, h1: true },
+  { ruta: '/cotizaciones', titulo: /^Cotizaciones$/, h1: true },
+  { ruta: '/reportes', titulo: /^Reportes/, h1: true },
+  { ruta: '/viajes', titulo: /^Archivos de viaje$/, h1: true },
 ];
 
-for (const { ruta, titulo } of RUTAS) {
+for (const { ruta, titulo, h1 } of RUTAS) {
   test(`${ruta} carga sin errores de consola ni 5xx`, async ({ page }) => {
     const respuesta = await page.goto(ruta);
     expect(respuesta?.status()).toBeLessThan(400);
-    // El título también aparece en la barra inferior móvil (oculta a 1440): se busca el visible.
-    await expect(page.getByText(titulo).filter({ visible: true }).first()).toBeVisible({
-      timeout: 20_000,
-    });
+    const encabezado = h1
+      ? page.getByRole('heading', { level: 1, name: titulo })
+      : page.getByText(titulo).filter({ visible: true }).first();
+    await expect(encabezado).toBeVisible({ timeout: 20_000 });
     // Deja correr la hidratacion y las primeras llamadas a la API antes de que el vigilante evalue.
     // No se usa `networkidle`: Socket.IO mantiene la red ocupada y nunca llegaria.
     await page.waitForTimeout(2_000);

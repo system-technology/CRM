@@ -11,12 +11,15 @@ import {
   RUTA_DE_IMPORTACIONES,
 } from './shared/red/cuerpo-de-importaciones.js';
 import { leerProxyDeConfianza } from './shared/red/proxy-de-confianza.js';
+import { avisarDeLimiteDeInicioDeSesion } from './shared/red/limite-de-inicio-de-sesion.js';
 import { avisarDeUrlsPublicas } from './shared/red/urls-publicas.js';
 import { DominioExcepcionFilter } from './shared/filtros/dominio-excepcion.filter.js';
 
 export function configurarApi(app: NestExpressApplication): void {
   // T-597: avisa, sin abortar, si las URL públicas faltan o apuntan a localhost fuera de desarrollo.
   avisarDeUrlsPublicas(process.env, new Logger('arranque'));
+  // T-612: avisa si el límite de inicios de sesión por IP es inválido o más alto que 5 fuera de local.
+  avisarDeLimiteDeInicioDeSesion(process.env, new Logger('arranque'));
 
   app.useGlobalFilters(new DominioExcepcionFilter());
 

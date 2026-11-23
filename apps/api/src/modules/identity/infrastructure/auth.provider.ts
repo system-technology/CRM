@@ -8,6 +8,7 @@ import { Logger, type Provider } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { origenesDeConfianzaDeLaWeb } from '../../../shared/red/origen.js';
 import { urlPublicaDeLaApi } from '../../../shared/red/urls-publicas.js';
+import { leerLimiteDeInicioDeSesion } from '../../../shared/red/limite-de-inicio-de-sesion.js';
 import { PuertoColaDeCorreo } from '../../../shared/puertos/puerto-de-correo.js';
 import { type AuthDeViajaPro, crearAuth, leerSecretoDeAutenticacion } from './crear-auth.js';
 import { PrismaIdentidadService } from './prisma-identidad.service.js';
@@ -25,6 +26,8 @@ export const proveedorDeAuth: Provider = {
       secreto: leerSecretoDeAutenticacion(process.env),
       baseUrl: urlPublicaDeLaApi(process.env),
       origenesDeConfianza: origenesDeConfianza(process.env),
+      // Los avisos se dan una vez al arrancar (`configurar-api.ts`); aquí solo el valor validado.
+      intentosDeInicioPorMinuto: leerLimiteDeInicioDeSesion(process.env).valor,
       // Encola (R5), sin esperar al envío. Clave aleatoria: cada petición es un código distinto.
       enviarCodigo: (destino, codigo) =>
         correo
