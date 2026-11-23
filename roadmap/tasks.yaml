@@ -14038,12 +14038,16 @@ tasks:
     depends_on:
       - T-647
     acceptance:
+      - "PARTE HECHA el 2026-11-23: inventario de las 16 compuertas y cuales bloquean (solo 8 de 16), en
+        docs/07-ingenieria/06-inventario-de-compuertas.md. Falta el grueso: la prueba negativa de cada una"
       - Inventario de las 15 compuertas con, por cada una, el enlace a la corrida donde fallo A PROPOSITO
       - Las que no se puedan probar asi quedan declaradas como tales, con el motivo
       - "Regla que lo motiva: una compuerta que nadie ha visto rechazar no es una compuerta (H1)"
+      - "Hallazgo del inventario: rutas-protegidas y mutaciones-aislamiento NO bloquean. La segunda es la que
+        mide el aislamiento entre agencias"
   - phase: 1
     id: T-651
-    title: Cuarentena de compuertas inestables, empezando por navegador
+    title: "Arreglar o retirar navegador: concentra el 100 por cien de los fallos de CI y no bloquea nada"
     type: infra
     priority: P1
     effort: M
@@ -14051,9 +14055,16 @@ tasks:
     depends_on:
       - T-647
     acceptance:
-      - "Procedimiento escrito: un job que falla y pasa al relanzarlo sin cambios sale de requeridos"
-      - navegador medido sobre 20 corridas; si falla mas del 2 por ciento se queda fuera con fecha de revision
-      - "H7: fallo en dos PR sin nada en comun y paso al relanzarlo sin cambiar una linea"
+      - "MEDIDO el 2026-11-23: las 12 corridas fallidas mas recientes de ci.yml fallaron TODAS y SOLO en
+        navegador. Cero fallos de cualquier otro job"
+      - "PROBADO inestable, no un fallo real: fallo en una rama que solo toca roadmap/tasks.yaml, y fallo en
+        main, donde solo entra lo que ya paso sus checks"
+      - "CORRIGE LA TAREA: pedia sacarlo de requeridos, pero NO es requerido. El problema es el contrario: un
+        job siempre rojo sin consecuencia no esta en cuarentena, es ruido que ensena que el rojo no significa
+        nada"
+      - Intento acotado de encontrar la causa del no determinismo. Si no se encuentra, SE RETIRA del CI con
+        fecha y su cobertura se recupera donde pueda ser determinista
+      - "Evidencia: docs/07-ingenieria/06-inventario-de-compuertas.md seccion 2"
   - phase: 1
     id: T-652
     title: El validador de la cola aisla el fallo al registro que toca
