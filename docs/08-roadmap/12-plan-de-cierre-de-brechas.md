@@ -50,8 +50,8 @@ T-598 (secretos de Render). No los toca el congelamiento porque no pasan por `ma
 |---|---|---|
 | **T-648** | **Paridad declarado ↔ requerido.** Manifiesto versionado de checks requeridos + job que lo compara contra la API de GitHub | Quita un check del manifiesto → **el CI debe ponerse rojo**. Añade uno que el servidor no exige → **rojo**. Pega las dos salidas |
 | **T-649** | **Volver requerida `rutas-protegidas`** (cierra T-619 de verdad) | `gh api .../branches/main/protection` la lista. **Y** un PR de prueba que toque ruta protegida **no se puede integrar** sin aprobación. **Autorizado ya por el propietario** el 2026-11-23, condicionado a que #536 funcione |
-| **T-650** | **Prueba negativa de cada compuerta.** Inventario de las 15 y, por cada una, una prueba que demuestre que rechaza | Tabla con las 15 filas y, en cada una, el enlace a la corrida donde **falló a propósito**. Las que no se puedan probar así, declaradas como tales |
-| **T-651** | **Cuarentena de compuertas inestables.** Procedimiento + sacar `navegador` de requeridos y medir su tasa de fallo | 20 corridas medidas. Si falla > 2 %, se queda fuera con fecha de revisión |
+| **T-650** | **Prueba negativa de cada compuerta.** **Inventario ya hecho** (PR #540): son **16 compuertas y solo 8 bloquean** — entre las que **no** bloquean están `rutas-protegidas` y **`mutaciones-aislamiento`**, la del aislamiento entre agencias | Tabla con las 16 filas y, en cada una, el enlace a la corrida donde **falló a propósito**. Las que no se puedan probar así, declaradas como tales |
+| **T-651** | **Arreglar o retirar `navegador`.** *Corregida el 2026-11-23: la tarea pedía «sacarlo de requeridos» y la medición demuestra que **ya no es requerido**.* Concentra el **100 % de los fallos de CI** (12 de 12) **sin bloquear nada** | Intento acotado de hallar la causa del no determinismo; si no se halla, **se retira con fecha**. Probado inestable: falló en una rama que solo toca `roadmap/tasks.yaml` **y falló en `main`**. Un job siempre rojo sin consecuencia **enseña que el rojo no significa nada** |
 | **T-652** | **El validador de la cola aísla el fallo al registro** (`cerrar-tarea.mjs`, H6). **Sube a P0 sobre la marcha:** al escribir este plan la cola de `main` estaba **inválida** por `T-599` truncada, así que el cierre automático no cerraba nada. Reparada ya; la causa no | Mete a propósito una fila corrupta **ajena** y cierra otra tarea: **debe cerrarse**, avisando de la fila mala |
 
 > **Criterio de salida de la ola:** las filas 1 y 2 de la tabla de medición del ADR, en verde.
@@ -94,26 +94,43 @@ firma. El 7 de 7 de hoy es el **pico**, no el régimen. Los globs que más la di
 
 ---
 
-## Ola 3 — Velocidad · *solo después de 1 y 2*
+## Ola 3 — Flujo · *aquí está el 83 % del tiempo*
+
+**Reordenada el 2026-11-23 tras medir.** Era la Ola 4; sube porque la medición demostró que es aquí
+—y no en las compuertas— donde se pierde el tiempo.
 
 | Tarea | Qué | Criterio de aceptación (ejecutable) |
 |---|---|---|
-| **T-657** | **Clasificador de vía** (verde / ámbar / roja) sobre los ficheros del PR, con la lista roja leída de `ownership.json` | Un PR de cada clase, y la vía asignada es la esperada. **Y un PR mixto docs + migración → roja.** Ante la duda, roja |
-| **T-658** | **Vías verde y ámbar en el CI**, con su juego reducido de compuertas | Un PR solo de `docs/` se integra en **menos de 3 minutos**. Medido, no estimado |
+| **T-664** | **Auto-merge activado al abrir el PR, siempre.** `abrir-pr.yml` lo activa en el mismo paso en que crea el PR | Abre un PR, integra otra cosa en `main` para dejarlo `BEHIND`, y comprueba que `mantener-ramas.yml` lo actualiza y **entra solo**. **No cuesta nada en seguridad:** el auto-merge sigue esperando a todas las compuertas requeridas |
+| **T-659** | **Tope de 6 PR abiertos** + «entra una, sale una» + **P0 solo si bloquea hoy a alguien** | Las P0 reclasificadas: lo que espera a un tercero pasa a `blocked` con dueño externo y fecha. Abrir el séptimo PR **avisa** |
 
-> **Criterio de salida, y es una apuesta que se mide:** el tiempo medio de un PR de documentación
-> baja de forma clara. **Si no baja, el Pilar 1 no cumplió y se revierte** (§«Riesgo que se asume a
-> sabiendas» del ADR).
+### Por qué T-664 es la tarea más rentable del plan
+
+`mantener-ramas.yml` actualiza los PR que quedan atrás, **pero solo los que ya tienen auto-merge
+activado**. **#530 y #531 no lo tenían**: quedaron `BEHIND`, nadie los actualizó nunca y acumularon
+**32,6 h y 32,0 h muertos** — y **los dos eran de vía verde**, documentación y cola. No los frenó
+ninguna compuerta: los frenó que nadie los tocara.
+
+**Una línea en un workflow ataca el 83 % del tiempo perdido.**
+
+> **Criterio de salida:** ningún PR abierto sin auto-merge, y fila 6 del ADR (≤ 300 abiertas).
 
 ---
 
-## Ola 4 — Flujo
+## Ola 4 — Velocidad · **degradada por medición**
 
-| Tarea | Qué | Criterio de aceptación (ejecutable) |
+| Tarea | Qué | Estado |
 |---|---|---|
-| **T-659** | **Tope de 6 PR abiertos** + «entra una, sale una» + **P0 solo si bloquea hoy a alguien** | Las 6 P0 actuales reclasificadas: las que esperan a un tercero pasan a `blocked` con dueño externo y fecha. Abrir el séptimo PR **avisa** |
+| **T-657** | Clasificador de vía (verde / ámbar / roja) | **P3** |
+| **T-658** | Vías verde y ámbar en el CI | **P3** |
 
-> **Criterio de salida:** fila 6 del ADR (≤ 300 abiertas y bajando).
+**Medido el 2026-11-23, y desmiente el Pilar 1 que yo mismo escribí:** su techo de mejora es de
+**1,3 h sobre 104,8 h = 1,2 %**. Las medianas ya son rápidas —verde **7 min**, ámbar 16, roja 24— y
+el CI tarda **5 min de mediana**. Es cierto que el CI es el 74 % de la vida de un PR verde, pero esa
+vida son siete minutos.
+
+**Se hace si sobra tiempo, o no se hace.** La idea sigue siendo correcta; lo que no es correcto es el
+tamaño que le atribuí.
 
 ---
 

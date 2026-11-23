@@ -14142,7 +14142,7 @@ tasks:
     id: T-657
     title: Clasificador de via por radio de impacto (verde, ambar, roja)
     type: infra
-    priority: P2
+    priority: P3
     effort: M
     status: backlog
     depends_on:
@@ -14153,11 +14153,15 @@ tasks:
       - Script que clasifica el PR por sus ficheros; la lista roja se LEE de ownership.json, no se duplica
       - "PRUEBAS: un PR de cada clase cae en la via esperada, y un PR mixto docs mas migracion cae en ROJA"
       - Ante la duda, roja. La via la decide el script, nunca el autor
+      - "DEGRADADA EL 2026-11-23 POR MEDICION: el techo de mejora del Pilar 1 es del 1,2 por ciento (1,3 h de
+        104,8 h en la ventana medida). Las medianas ya son rapidas (verde 7 min, ambar 16, roja 24) y el 83
+        por ciento del tiempo esta en 7 PR de 60 que se quedaron esperando, no en compuertas. Se hace si sobra
+        tiempo, o no se hace. Ver T-664"
   - phase: 1
     id: T-658
     title: Vias verde y ambar en el CI, con su juego reducido de compuertas
     type: infra
-    priority: P2
+    priority: P3
     effort: M
     status: backlog
     depends_on:
@@ -14168,6 +14172,10 @@ tasks:
       - "MEDIDO, no estimado: un PR solo de docs se integra en menos de 3 minutos"
       - Si el tiempo medio de un PR de documentacion no baja de forma clara, el Pilar 1 no cumplio y SE
         REVIERTE
+      - "DEGRADADA EL 2026-11-23 POR MEDICION: el techo de mejora del Pilar 1 es del 1,2 por ciento (1,3 h de
+        104,8 h en la ventana medida). Las medianas ya son rapidas (verde 7 min, ambar 16, roja 24) y el 83
+        por ciento del tiempo esta en 7 PR de 60 que se quedaron esperando, no en compuertas. Se hace si sobra
+        tiempo, o no se hace. Ver T-664"
   - phase: 1
     id: T-659
     title: "Flujo acotado: tope de PR abiertos, entra una sale una, y P0 saneadas"
@@ -14245,3 +14253,22 @@ tasks:
       - Un digest diario con los PR que esperan firma, ordenados por riesgo, diciendo que mirar en cada uno
       - "El coste real no es el clic: es reconstruir el contexto una vez por PR"
       - "Medida de exito: el propietario decide sobre la cola entera en una sola sentada"
+  - id: T-664
+    phase: 1
+    title: "Auto-merge activado al abrir el PR: ataca el 83 por ciento del tiempo perdido"
+    type: infra
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on:
+      - T-647
+    acceptance:
+      - "abrir-pr.yml (PR #536) activa el auto-merge en el mismo paso en que crea el PR"
+      - "CAUSA MEDIDA: mantener-ramas.yml solo actualiza PR que YA tienen auto-merge (autoMergeRequest !=
+        null). #530 y #531 no lo tenian, quedaron BEHIND y nadie los actualizo nunca: 32,6 h y 32,0 h muertos,
+        y los dos eran de via verde"
+      - "No cuesta nada en seguridad: el auto-merge sigue esperando a que pasen todas las compuertas
+        requeridas"
+      - "PRUEBA: abrir un PR, integrar otra cosa en main para dejarlo BEHIND, y comprobar que
+        mantener-ramas.yml lo actualiza y entra solo"
+      - Frente al 1,2 por ciento de techo del Pilar 1, esta sola medida ataca el 83 por ciento del tiempo

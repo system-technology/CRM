@@ -66,7 +66,11 @@ Hoy hay **un solo camino, y es pesado para todo**. Un cambio de una línea en un
 mismas 15 compuertas que una migración de base de datos. La consecuencia no es solo lentitud: empuja
 a **agrupar cambios en lotes grandes**, y un lote grande es **menos** seguro que varios pequeños.
 
-### Pilar 1 — Enrutado por radio de impacto (velocidad)
+### Pilar 1 — Enrutado por radio de impacto (velocidad) · **DEGRADADO POR MEDICIÓN**
+
+> **Medido el 2026-11-23, después de escribir este pilar: su techo de mejora es del 1,2 %.**
+> Se conserva la descripción porque la idea sigue siendo correcta, pero **deja de justificar una
+> ola propia** y baja al final de la cola. La medición está en §«Lo que midió el propio ADR».
 
 El coste de verificación pasa a ser **proporcional al daño que el cambio puede hacer**, no uniforme.
 
@@ -206,6 +210,59 @@ la firma del propietario**, con objetivo **≤ 10 %** en régimen normal. Si el 
 
 ---
 
+## Lo que midió el propio ADR, y lo que desmintió
+
+**Medido el 2026-11-23** sobre los **60 PR integrados más recientes** (ventana 2026-11-21 a 11-23) y
+las **100 corridas correctas** de `ci.yml`. Se midió porque el Pilar 1 se escribió sobre una
+intuición —«un cambio de documentación paga 15 compuertas»— y una intuición no es un dato.
+
+### Vida de un PR, por vía
+
+| Vía | n | Mediana | p90 | Mínimo |
+|---|---|---|---|---|
+| Verde (solo `docs/`, cola) | 26 | **7 min** | 6,2 h | 4 min |
+| Ámbar | 24 | **16 min** | 1,9 h | 5 min |
+| Roja | 10 | **24 min** | 6,3 h | 6 min |
+
+Duración del CI en corridas correctas: **mediana 5 min**, p90 9 min, máximo 11 min.
+
+### El dato que desmiente el Pilar 1
+
+Es cierto que **el CI es el 74 % de la vida de un PR verde**… pero esa vida es de **7 minutos**. Lo
+que importa está en otro sitio:
+
+| Medida | Valor |
+|---|---|
+| Horas-PR totales en la ventana | **104,8 h** |
+| Las acumulan **7 PR de 60** (los de más de 2 h) | **86,7 h = 83 %** |
+| Techo del ahorro del Pilar 1, siendo generosos (3 min × 26 PR verdes) | **1,3 h = 1,2 %** |
+
+**Las medianas ya son rápidas. Las horas están en la cola larga, y la cola larga no son compuertas:
+es espera.** Los dos PR que más tiempo acumulan son **#530 (32,6 h) y #531 (32,0 h)**, y **los dos son
+verdes**: documentación y cola, el caso que el Pilar 1 venía a acelerar. No los frenó ninguna
+compuerta.
+
+### Y la causa de esas 32 horas, encontrada
+
+`mantener-ramas.yml` actualiza los PR que quedan atrás, **pero solo los que ya tienen auto-merge
+activado** (`autoMergeRequest != null`). **#530 y #531 no lo tenían**, así que al quedar `BEHIND`
+nadie los actualizó nunca y se quedaron muertos hasta que el 2026-11-23 alguien los tocó a mano.
+
+**Se decide, y sustituye al Pilar 1 como palanca de velocidad:**
+
+> **Auto-merge activado en el momento de abrir el PR, siempre.** Con eso `mantener-ramas.yml` ya los
+> recoge solo y la cadena se cierra sin intervención. **No cuesta nada en seguridad:** el auto-merge
+> sigue esperando a que pasen todas las compuertas requeridas.
+
+Convierte una cola de 32 horas en minutos, y es **una línea en el workflow que abre los PR**
+(`abrir-pr.yml`, PR #536). Frente al 1,2 % del Pilar 1, esta sola medida ataca el **83 %**.
+
+**La lección, que es del marco y no de este ADR:** *escribí un pilar entero sobre una intuición de
+coste que resultó ser dos órdenes de magnitud menor de lo que suponía. Medir antes de diseñar habría
+ahorrado el pilar.*
+
+---
+
 ## Orden de implementación, y por qué ese
 
 **Seguridad antes que velocidad, y no es retórica:** implementar el Pilar 1 antes que el 2 sería
@@ -218,8 +275,8 @@ en el [plan de cierre de brechas](../08-roadmap/12-plan-de-cierre-de-brechas.md)
 | **1** | Que las compuertas no mientan | 2 |
 | **1.5** | **Que el propietario deje de ser el cuello de botella.** Va aquí, y no al final, porque **las olas 2 a 4 son todas plano de control**: sin esto, él aprueba cada paso de su propio plan de corrección | 6 |
 | **2** | Que no se pierda nada | 3 |
-| **3** | Velocidad: enrutado por radio de impacto | 1 |
-| **4** | Flujo: topes, eje de entrega, P0 saneadas | 4 y 5 |
+| **3** | Flujo: **auto-merge por defecto** (ataca el 83 % del tiempo), topes, eje de entrega, P0 saneadas | 4 y 5 |
+| **4** | ~~Velocidad: enrutado por radio de impacto~~ **Degradado: techo medido del 1,2 %.** Se hace si sobra tiempo, o no se hace | 1 |
 
 **El congelamiento se levanta al terminar la Ola 2**, verificada. Las olas 3 y 4 ya pueden convivir
 con el producto en marcha.
