@@ -103,8 +103,6 @@ export type EstadoDelUsuario = 'creado' | 'contraseña puesta' | 'contraseña re
 export interface DatosDelResumen {
   readonly antes: Conteos;
   readonly despues: Conteos;
-  readonly correo: string;
-  readonly contrasena: string;
   readonly estado: EstadoDelUsuario;
 }
 
@@ -120,10 +118,16 @@ function tabla(c: Conteos): string {
   ].join('\n');
 }
 
-/** El resumen que lee el propietario. La contraseña solo aparece aquí, nunca en el registro. */
+/**
+ * El resumen que lee el propietario. NO lleva ni la contraseña ni el correo: el repositorio es
+ * público y quien lanza el workflow ya los conoce (los escribió él). T-646.
+ */
 export function resumenDeLaPreparacion(d: DatosDelResumen): string {
   return [
-    '## Demo de staging preparada',
+    '## Credencial de la demo de staging',
+    '',
+    `Usuario dueño de la agencia demo: **${d.estado}**. Entra con el correo y la contraseña que ` +
+      'escribiste al lanzar el workflow; aquí no se repiten.',
     '',
     `**Diagnóstico de lo que había:** ${diagnosticoEnPalabras(d.antes)}`,
     '',
@@ -132,16 +136,6 @@ export function resumenDeLaPreparacion(d: DatosDelResumen): string {
     '',
     '### Después',
     tabla(d.despues),
-    '',
-    '### Con qué se entra',
-    `Usuario (${d.estado}), rol dueño de la agencia demo, entra con **correo y contraseña** en la web de staging:`,
-    '',
-    `- Correo: \`${d.correo}\``,
-    `- Contraseña: \`${d.contrasena}\``,
-    '',
-    '> **Rotar esta contraseña** cuando dejen de ser datos de demostración: lanza de nuevo el ' +
-      'workflow con otra. En un repositorio público este resumen lo puede leer cualquiera que ' +
-      'vea la ejecución, así que no sirve como secreto duradero.',
     '',
   ].join('\n');
 }
