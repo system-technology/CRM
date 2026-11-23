@@ -3191,7 +3191,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: ready
     depends_on: []
     acceptance:
       - "Stack completo local en modo unico contra la base de desarrollo: API, web, correo de prueba"
@@ -3215,6 +3215,13 @@ tasks:
       docs/_bitacora/hallazgos-funcionales-2026-11-05.md declara «recorrido NO ejecutado» y no hay otro: falta
       que una persona recorra H1 a H6 en un navegador y deje la bitacora de hallazgos antes de ensenar el
       producto."
+    progreso_note: "2026-11-22: NO se cierra. El PR #527 hizo la parte que SI era posible —el mapa de
+      cobertura de los flujos criticos contra las once pruebas e2e, nueve casos de cobertura falsa
+      corregidos y los huecos de «Hoy» cubiertos—, y gracias a el se cazo un error de dinero real
+      (T-321: el cotizador mostraba el precio de una persona rotulado como el de dos). Pero lo que
+      pide esta tarea es un RECORRIDO MANUAL con stack local, y en este entorno no se puede levantar
+      Postgres. Sigue pendiente, y el CI no lo sustituye."
+
   - id: T-127
     title: Atajos de teclado en la bandeja con ayuda en pantalla
     type: feature
@@ -12889,7 +12896,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-586
     acceptance:
@@ -12909,6 +12916,9 @@ tasks:
         habia API ni base en la sesion"
     source: causa de fondo declarada por la sesion de T-586, no silenciada (2026-11-22)
     owner: frontend
+    evidence: "Integrado en main por el PR #516. MEDIDO con next build y Chrome real: de 15 rutas con ?demo=1 que fallaban la hidratacion (React 418) se pasa a 1. PERO NO ESTA COMPLETA: /configuracion?demo=1 sigue fallando por otra causa (las pestanas que dependen de permisos, probablemente PERMISOS_ASESOR_DEMO) y no se investigo. El resto se mueve a T-644. Cerrada a mano el 2026-11-22 con ese limite escrito."
+    commit: 38bd920f
+
   - id: T-613
     title: "Hilo: el cliente del piloto ya entra; el estado decia lo contrario"
     type: docs
@@ -13069,7 +13079,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: review
+    status: done
     acceptance:
       - "Primer fruto de T-617. legacy-scan de modern-web-guidance senalo 11 sitios en apps/web con
         la regla js/copying-array-methods"
@@ -13082,6 +13092,8 @@ tasks:
       - "NO se probo en un navegador real: el soporte lo da por hecho el target del tsconfig"
     source: "hallazgo de legacy-scan al adoptar la guia web moderna (2026-11-22)"
     owner: frontend
+    evidence: "Integrado en main por el PR #512. Los 11 sitios de apps/web cambiados a toSorted y toReversed, y cinco spreads dejados intactos por NO ser copias de array (dos Set, dos iteradores de Map y dos concatenaciones). 2096 pruebas en verde. Cerrada a mano el 2026-11-22: el cierre automatico estaba apagado por el envenenamiento de la cola."
+    commit: 97a396cc
 
   - id: T-616
     title: "API: toSorted y toReversed, y propaga la causa del error donde se estaba perdiendo"
@@ -13142,7 +13154,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
     acceptance:
       - "Lo pidio el propietario viendo la pantalla: «me gusta mucho, pero siento que le daria un
         toque... quiero que en ese fondo azul gradiente tengamos imagenes de vacaciones»"
@@ -13162,6 +13174,8 @@ tasks:
       - "La otra mitad -que la agencia suba las suyas- es T-622"
     source: "peticion del propietario sobre la pantalla de ingreso (2026-11-22)"
     owner: frontend
+    evidence: "Integrado en main por el PR #526. OJO: CUATRO destinos de seis. De Islas del Rosario no hay foto con licencia limpia y de Playa Blanca la unica encontrada era de otro lugar; NO se sustituyeron. Todo el contenido del panel es dato con valor por omision, listo para T-622. La legibilidad la garantiza un velo de marca y no las fotos, asi que aguantara las que suba una agencia: peor caso de 544 mediciones, 4,62:1. Cerrada a mano el 2026-11-22."
+    commit: 6c8b0345
 
   - id: T-623
     title: "Navegabilidad: enlaces rotos, cadena hacia delante, Configuracion y colores que mienten"
@@ -13169,7 +13183,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: review
+    status: done
     acceptance:
       - "Filas 1, 2 y 4 del diagnostico T-618, que su recomendacion pide hacer juntas en un solo lote"
       - "Las 9 tarjetas del pipeline y el icono de chat de Contactos apuntan a /bandeja/<id>, no a /bandeja"
@@ -13179,6 +13193,9 @@ tasks:
       - "EXIGENCIA: medirlo como se midio el problema, con la aplicacion levantada y capturas antes y despues"
     source: "plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)"
     owner: frontend
+    evidence: "Integrado en main por el PR #524. Filas 1, 2 y 4 del diagnostico T-618: los enlaces del pipeline y de Contactos llevan a /bandeja/<id>, la cadena enlaza tambien hacia delante (archivo y cobro desde el chat, la cotizacion y la ficha), Configuracion vuelve al menu, a «Mas» y a la paleta, y los colores dejan de mentir, con contrastes WCAG medidos. Cerrada a mano el 2026-11-22."
+    commit: 3328ae53
+
   - id: T-624
     title: "Los PR de las ramas de trabajo los abre la app Integradora"
     type: infra
@@ -13250,6 +13267,78 @@ tasks:
         la idempotencia. Eso seria un ADR o una enmienda al ADR-0037"
     source: "hallazgo sin confirmar del borrador de ADR-0037 (2026-11-22)"
     owner: whatsapp
+
+  - id: T-646
+    title: "Sembrar la demo deja de exigir y de publicar una contrasena"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: review
+    acceptance:
+      - "preparar-demo-staging.yml hacia dos cosas que no tienen por que ir juntas: sembrar los datos
+        de demostracion Y crear o rotar la credencial"
+      - "Consecuencia real: las etiquetas de #509 llevaban horas en el codigo SIN llegar a staging,
+        porque lanzarlo le habria cambiado la contrasena al cliente del piloto justo despues de que
+        consiguiera entrar"
+      - "PR #532. Queda sembrar-demo-staging.yml SIN NINGUN input, y rotar-credencial-demo-staging.yml
+        con la contrasena obligatoria como antes. Dos workflows y no un input de modo, para que
+        sembrar no tenga ningun campo donde meter una clave por error"
+      - "Las guardias se conservan todas: solo staging, solo desde main, negativa si falta DIRECT_URL,
+        y el script sigue negandose si hay agencias ajenas a la demo"
+      - "El resumen ya NO escribe ni la contrasena ni el correo, y hay una prueba que lo comprueba"
+      - "LIMITE QUE NO SE PUDO TAPAR, y es decision del propietario: GitHub muestra los input de un
+        workflow_dispatch en la pagina de la ejecucion, con add-mask o sin el. En un repositorio
+        PUBLICO la contrasena de rotacion sigue siendo visible ahi. O se asume usando una nueva cada
+        vez, o se lee de un secreto del Environment. Escrito en la cabecera del workflow"
+      - "DESPUES DE INTEGRAR: lanzar sembrar-demo-staging.yml para que el cliente vea sus etiquetas"
+    source: "lo bloqueaba la demo del cliente; autorizado por el propietario (2026-11-22)"
+    owner: devops
+
+  - id: T-645
+    title: "Los dos contextos que «faltan enteros» no son lo mismo, y ninguno se empieza a ciegas"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: `automation` necesita un ADR y decisiones de producto del propietario antes de escribir una linea. `audit` necesita decidir si se consolida ahora o despues."
+    acceptance:
+      - "MEDIDO el 2026-11-22. CLAUDE.md dice que faltan `automation` y `audit`, y eso es cierto como
+        modulos, pero los dos casos son MUY distintos y conviene no tratarlos igual"
+      - "`audit`: la funcion YA EXISTE, repartida. La tabla `registros_auditoria` esta en el esquema
+        con tenant_id y RLS forzada, y se escribe (por ejemplo LECTURA_DATOS_SENSIBLES). Crear el
+        modulo seria CONSOLIDAR lo que ya hay, no anadir capacidad"
+      - "Y el hueco real de `audit` no es el modulo: es que **no tiene purga ninguna**, asi que su
+        «retencion de 5 anios» no es cierta hoy. Lo encontro el ADR-0037 (T-090)"
+      - "`automation` es otra cosa: su diseno dice «reglas e IA del producto», y ahi vive justo lo que
+        pidio el cliente del piloto (T-610, la IA que atiende la primera interaccion). **T-610 dice
+        literalmente que NO SE EMPIEZA SIN ADR (R7)**"
+      - "Su propio diseno avisa: «es el contexto con mas riesgo de convertirse en el basurero de la
+        logica que no encaja en ningun lado». Empezarlo sin alcance decidido es pedir ese basurero"
+      - "DECISION DEL PROPIETARIO: si `audit` se consolida ahora o se deja como esta; y si se abre el
+        ADR de `automation`, que arrastra coste por conversacion y responsabilidad sobre lo que la IA
+        afirme"
+    source: "revision antes de empezar los dos contextos, pedida en el orden de trabajo (2026-11-22)"
+    owner: arquitecto
+
+  - id: T-644
+    title: "La hidratacion sigue fallando en /configuracion con ?demo=1, por otra causa"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    acceptance:
+      - "Resto de T-607. MEDIDO: tras el PR #516, 14 de 15 rutas de la demostracion hidratan limpias.
+        /configuracion?demo=1 sigue dando React 418"
+      - "Los diffs de React apuntan a las pestanas (tab-btn-etiquetas frente a tab-btn-respuestas),
+        que dependen de permisos. La sospecha es PERMISOS_ASESOR_DEMO, SIN confirmar"
+      - "Es una causa DISTINTA de la que arreglo T-607: alli el problema era leer ?demo=1 y
+        localStorage en el primer render"
+      - "Medir con el mismo observador y demostrar que deja de fallar, no solo que se ve bien"
+    source: "limite declarado por la sesion de T-607, no silenciado (2026-11-22)"
+    owner: frontend
 
   - id: T-639
     title: "Bandeja: marcarLeida existe y nadie la llama, asi que el contador de sin leer no se limpia"
