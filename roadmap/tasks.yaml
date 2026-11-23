@@ -14279,3 +14279,49 @@ tasks:
       - "CASI PASA EL 2026-11-23: iba a activar auto-merge en los 6 PR abiertos para que se actualizaran
         solos, y los 6 tocan rutas protegidas. Lo freno el clasificador de permisos, no el diseno. Una
         compuerta que no bloquea convierte una mejora de velocidad en una brecha"
+  - id: T-665
+    phase: 1
+    title: Las tres salvaguardas que funcionaron el 2026-11-23 no eran nuestras
+    type: audit
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-647
+    acceptance:
+      - "HECHO VERIFICADO: el 2026-11-23 tres cosas frenaron errores reales, y NINGUNA era del marco de
+        ViajaPro"
+      - "1) El clasificador de permisos freno activar auto-merge en 6 PR de rutas protegidas. Como
+        rutas-protegidas NO es requerida, se habrian integrado sin la firma del propietario: brecha de R11.
+        Ver T-664"
+      - 2) El sistema de permisos denego tres intentos de borrado masivo de worktrees, el ultimo tras un error
+        REAL de normalizacion de rutas que marcaba como huerfanas 5 carpetas que si estaban registradas
+      - 3) commitlint rechazo dos commits mal formados que habrian pasado sin el
+      - "La pregunta que hay que responder: que pasa cuando el agente corra en un entorno SIN clasificador
+        (CI, otra herramienta, OpenCode). Hoy la respuesta es que nada lo frena"
+      - "Entregable: por cada uno de los tres, decidir si el marco necesita su propia barandilla o si basta
+        con depender de la externa, y escribirlo. Una dependencia no declarada es una dependencia igual"
+  - id: T-666
+    phase: 1
+    title: Terminar la limpieza de worktreees huerfanos y evitar que se vuelvan a acumular
+    type: infra
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: borrar las 52 carpetas huerfanas exige rm -rf, denegado por el sistema de
+      permisos en sus tres formas (script en segundo plano, tandas con rutas explicitas, y de una en una).
+      Anadir la regla exige editar .claude/settings.json, que una sesion NO puede editar: es el candado que
+      impide que un agente se amplie sus propios permisos. Solo el propietario."
+    acceptance:
+      - "MEDIDO el 2026-11-23: .claude/worktrees ocupaba 6,9 GB y bajo a 3,7 GB. Worktrees registrados de 108
+        a 14"
+      - "Quedan 52 carpetas muertas: 28 agent-* mas res/102, res/111 y res/122 dentro del proyecto, y 24
+        hermanas en D:/Projects"
+      - "NO TOCAR: res/130, los 4 agent-* registrados, CRM-bandeja, CRM-docs, CRM-wt-zona, D:/Projects/wt/* y
+        D:/Projects/wt-crm/ci. Son de los 14 vivos, con trabajo sin integrar (uno es
+        feat/db-cifrado-campos-sensibles, PR #29)"
+      - "CAUSA RAIZ, y es lo que hay que arreglar: git worktree remove falla en Windows con Filename too long
+        en node_modules profundos, INCLUSO con core.longpaths true. Por eso git los desregistra y deja la
+        carpeta"
+      - "PREVENCION, que vale mas que la limpieza: que cada worktree se borre al terminar su tarea, o que no
+        instale node_modules propio"
