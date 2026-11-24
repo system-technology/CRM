@@ -605,3 +605,102 @@ body {
       rgba(var(--velo), 0.36) 100%
     );
 }
+
+/**
+ * TABLA QUE SE APILA EN TARJETAS (T-626)
+ *
+ * El problema que resuelve, medido el 2026-11-22 en el diagnóstico de pantallas (T-618):
+ * `/contactos` pintaba una tabla de siete columnas (877 px) dentro de una caja de 340 px con
+ * `overflow: hidden`. No es que se viera apretada: **los ocho enlaces de ficha quedaban fuera del
+ * recorte y no había ni desplazamiento lateral**, así que la pantalla era inservible en el teléfono,
+ * que es el aparato principal de la asesora.
+ *
+ * Se consulta por el ancho del CONTENEDOR y no del viewport (`modern-web-guidance`,
+ * `responsive-table`): así la misma tabla se apila también cuando vive en un panel estrecho de
+ * escritorio, no solo cuando el teléfono es pequeño.
+ *
+ * La cabecera se oculta con `display: none`, que la quita del layout **y del lector de pantalla**: en
+ * modo apilado sus celdas ya no están en columna, así que leerla engañaría. Cada celda lleva su
+ * etiqueta dentro, inyectada desde `data-etiqueta`.
+ *
+ * DESVIACIÓN DELIBERADA de la guía, anotada como pide la skill `diseno-web`: la guía inyecta las
+ * etiquetas con `--label-N` y `td:nth-child(N)`. Aquí se usa `attr(data-etiqueta)`, porque
+ * `nth-child` ata el CSS al ORDEN de las columnas y se rompe en silencio al reordenarlas o insertar
+ * una —justo la clase de fallo mudo que ya costó T-561, T-627 y T-569 en este proyecto—. El
+ * resultado accesible es el mismo y la etiqueta vive junto al dato que nombra.
+ *
+ * Marcado que espera: `<div class="tabla-apilable">` envolviendo una sola `<table>` semántica, y
+ * `data-etiqueta="…"` en cada `<td>` que deba nombrarse al apilarse. Una celda sin `data-etiqueta`
+ * se apila sin etiqueta, que es lo correcto para la primera (el nombre, que hace de título).
+ */
+.tabla-apilable {
+  container-type: inline-size;
+}
+
+@container (width < 44rem) {
+  .tabla-apilable > table,
+  .tabla-apilable > table > tbody,
+  .tabla-apilable > table > tbody > tr,
+  .tabla-apilable > table > tbody > tr > td {
+    display: block;
+    width: auto;
+    max-width: none;
+  }
+
+  /* Fuera del layout Y del lector de pantalla: en apilado ya no encabeza ninguna columna. */
+  .tabla-apilable > table > thead {
+    display: none;
+  }
+
+  .tabla-apilable > table > tbody > tr {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .dark .tabla-apilable > table > tbody > tr {
+    border-bottom-color: var(--color-neutral-800);
+  }
+
+  .tabla-apilable > table > tbody > tr:last-child {
+    border-bottom: 0;
+  }
+
+  /* El relleno lo pone la fila: las celdas solo se separan entre sí. */
+  .tabla-apilable > table > tbody > tr > td {
+    padding: 0.25rem 0;
+    text-align: left;
+  }
+
+  .tabla-apilable > table > tbody > tr > td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: var(--text-micro);
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-neutral-500);
+  }
+
+  .dark .tabla-apilable > table > tbody > tr > td[data-etiqueta]::before {
+    color: var(--color-neutral-400);
+  }
+
+  /*
+   * Las acciones se alinean a la derecha en tabla y a la izquierda apiladas. Se apunta a la ÚLTIMA
+   * celda, no a una posición concreta: si algún día dejan de ser las últimas, lo peor que pasa es
+   * que queden alineadas a la derecha. No es como `nth-child`, donde el fallo sería una etiqueta
+   * equivocada sobre un dato.
+   */
+  .tabla-apilable > table > tbody > tr > td:last-child > div {
+    justify-content: flex-start;
+  }
+
+  /* La celda que ocupa toda la fila (vacío, error) no se disfraza de tarjeta. */
+  .tabla-apilable > table > tbody > tr > td[colspan] {
+    padding: 0;
+  }
+
+  .tabla-apilable > table > tbody > tr > td[colspan]::before {
+    content: none;
+  }
+}

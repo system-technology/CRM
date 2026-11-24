@@ -247,3 +247,103 @@ describe('ContactosPage — Estados de Carga, Error y Vacío (T-005)', () => {
     });
   });
 });
+
+describe('ContactosPage — se puede usar en el teléfono (T-626)', () => {
+  /**
+   * Guarda del contrato que necesita `.tabla-apilable` de `globals.css`.
+   *
+   * Por qué existe: el arreglo de T-626 es CSS, y en este proyecto una clase que no emite CSS, o un
+   * atributo que desaparece, **no avisa de nada** (T-561, T-569, T-627). Si alguien quita
+   * `data-etiqueta` de una celda, la tabla se seguirá apilando pero ese dato quedará **sin nombre**
+   * en el teléfono: un número suelto sin decir de qué es. Esto lo pone en rojo.
+   *
+   * Lo que NO prueba, y hay que decirlo: que el apilado se vea bien. Eso son las consultas de
+   * contenedor, que jsdom no evalúa, y se midió con el navegador a 390 px.
+   */
+  const paginaConUnContacto: PaginaContactos = {
+    datos: [
+      {
+        id: '00000000-0002-4000-8000-000000000001',
+        nombre: 'Juan Pérez',
+        telefono: '+573000012345',
+        correo: 'juan.perez@ejemplo.com',
+        etiquetas: ['VIP'],
+        consentimientos: ['TRANSACCIONAL'],
+        creadoEn: '2026-01-15T10:00:00.000Z',
+        ultimoContactoEn: '2026-10-10T16:00:00.000Z',
+      },
+    ],
+    pageInfo: { nextCursor: null, hasMore: false },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // La pantalla RECUERDA los filtros (`AvisoSoloLocal`, «los filtros recordados»). Sin limpiarlos,
+    // la búsqueda que escribió la última prueba de arriba sobrevive aquí y filtra la única fila.
+    try {
+      window.localStorage.clear();
+    } catch {
+      /* en jsdom siempre existe, pero no se cae si algún día no */
+    }
+    vi.mocked(obtenerMockPaginaContactos).mockReturnValue(paginaConUnContacto);
+    vi.mocked(listarContactos).mockResolvedValue(paginaConUnContacto);
+  });
+
+  /**
+   * Pinta la pantalla y deja correr los efectos. Determinista a propósito: un `waitFor` con tiempo
+   * mayor que el del propio test lo agota antes de fallar por lo que se quería comprobar.
+   */
+  const conLaFilaPintada = async () => {
+    const vista = render(<ContactosPage />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 300));
+    });
+    expect(screen.getByText('Juan Pérez')).toBeDefined();
+    return vista;
+  };
+
+  it('la tabla vive en una región apilable, navegable por teclado y con nombre', async () => {
+    const { container } = await conLaFilaPintada();
+
+    const envoltorio = container.querySelector('.tabla-apilable');
+    expect(
+      envoltorio,
+      'el envoltorio de la tabla lleva `tabla-apilable` (globals.css)',
+    ).not.toBeNull();
+    expect(envoltorio!.getAttribute('role')).toBe('region');
+    expect(envoltorio!.getAttribute('aria-label')).toBeTruthy();
+    expect(envoltorio!.getAttribute('tabindex')).toBe('0');
+    // Lo que rompía la pantalla: recortar en vez de dejar desplazar.
+    expect(envoltorio!.className).not.toContain('overflow-hidden');
+    expect(envoltorio!.querySelector('table')).not.toBeNull();
+  });
+
+  it('cada dato de la fila lleva su etiqueta dentro, y el nombre no (es el título)', async () => {
+    const { container } = await conLaFilaPintada();
+
+    const celdas = Array.from(container.querySelectorAll('tbody tr td'));
+    expect(celdas.length).toBe(7);
+
+    // La primera celda es el nombre: hace de título de la tarjeta, no se etiqueta.
+    expect(celdas[0]!.hasAttribute('data-etiqueta')).toBe(false);
+
+    expect(celdas.slice(1).map((c) => c.getAttribute('data-etiqueta'))).toEqual([
+      'Teléfono WhatsApp',
+      'Correo',
+      'Etiquetas',
+      'Consentimiento',
+      'Último contacto',
+      'Acciones',
+    ]);
+  });
+
+  it('los enlaces de la fila siguen existiendo y apuntando a la ficha y al chat', async () => {
+    const { container } = await conLaFilaPintada();
+
+    const enlaces = Array.from(container.querySelectorAll('tbody a')).map((a) =>
+      a.getAttribute('href'),
+    );
+    expect(enlaces.some((h) => h === '/contactos/00000000-0002-4000-8000-000000000001')).toBe(true);
+    expect(enlaces.some((h) => h?.startsWith('/bandeja'))).toBe(true);
+  });
+});

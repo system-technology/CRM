@@ -246,7 +246,7 @@ export default function ContactosPage() {
         </header>
 
         {/* Tabla de Contactos con Estados (0c.25) */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {error ? (
             <AvisoErrorAccionable
               error={construirMensajeErrorAccionable(error, 'CONTACTOS_LISTA')}
@@ -257,7 +257,15 @@ export default function ContactosPage() {
               <EsqueletoTabla filas={6} />
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
+            <div
+              /* `tabla-apilable` (globals.css, T-626): por debajo de 44rem de ANCHO PROPIO se apila
+                 en tarjetas. Antes era `overflow-hidden` con una tabla de 877 px dentro de 340: los
+                 enlaces de ficha quedaban recortados y sin desplazamiento lateral. */
+              className="tabla-apilable overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900"
+              role="region"
+              aria-label="Contactos de la agencia"
+              tabIndex={0}
+            >
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                   <tr>
@@ -326,17 +334,23 @@ export default function ContactosPage() {
                           </td>
 
                           {/* Teléfono */}
-                          <td className="cifra px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">
+                          <td
+                            data-etiqueta="Teléfono WhatsApp"
+                            className="cifra px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300"
+                          >
                             {formatearTelefonoVisual(c.telefono, rolActivo)}
                           </td>
 
                           {/* Correo */}
-                          <td className="max-w-[160px] truncate px-4 py-3 text-neutral-500 dark:text-neutral-400">
+                          <td
+                            data-etiqueta="Correo"
+                            className="max-w-[160px] truncate px-4 py-3 text-neutral-500 dark:text-neutral-400"
+                          >
                             {c.correo || '—'}
                           </td>
 
                           {/* Etiquetas */}
-                          <td className="px-4 py-3">
+                          <td data-etiqueta="Etiquetas" className="px-4 py-3">
                             <div className="flex max-w-xs flex-wrap gap-1">
                               {c.etiquetas.slice(0, 2).map((et) => (
                                 <span
@@ -355,7 +369,7 @@ export default function ContactosPage() {
                           </td>
 
                           {/* Consentimiento */}
-                          <td className="px-4 py-3">
+                          <td data-etiqueta="Consentimiento" className="px-4 py-3">
                             <span
                               className={`inline-flex items-center space-x-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                                 tienePromocional
@@ -371,12 +385,15 @@ export default function ContactosPage() {
                           </td>
 
                           {/* Último contacto */}
-                          <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">
+                          <td
+                            data-etiqueta="Último contacto"
+                            className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400"
+                          >
                             {c.ultimoContactoEn ? formatearFecha(c.ultimoContactoEn) : '—'}
                           </td>
 
                           {/* Acciones */}
-                          <td className="px-4 py-3 text-right">
+                          <td data-etiqueta="Acciones" className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end space-x-2">
                               <EnlaceAConversacion
                                 contactoId={c.id}
