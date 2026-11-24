@@ -13481,7 +13481,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: review
     acceptance:
       - Fila 7, y segun el diagnostico es «lo que el propietario ve como que el diseno cambio»
       - La misma pantalla se llama «Conversaciones» en el menu y «Bandeja» en las migas; la misma lista es
@@ -13490,6 +13490,31 @@ tasks:
       - "Fuera de la interfaz: WABA, SLA, CSV, Opt-In, CRM, leads. Son nuestra jerga, no la del asesor"
       - Fuera MAYUSCULAS en etiquetas y Title Case. Plurales coherentes
       - "R3 y el lenguaje ubicuo mandan: docs/01-producto/02-lenguaje-ubicuo.md es el diccionario"
+      - "MEDIDO el 2026-11-24 en las once pantallas (H1, titulo, migas y bajada): DOS PREMISAS DE LA TAREA
+        YA NO SE CUMPLIAN. /bandeja dice «Conversaciones» en menu, H1 y titulo, y NO HAY MIGAS en ninguna
+        de las once. Y las once ya tenian el H1 igual que su etiqueta de menu, salvo «Hoy», que saluda"
+      - "LO QUE SI ESTABA ROTO, y peor de lo escrito: la lista de contactos tenia CUATRO nombres, no tres.
+        «Contactos» (menu y H1), «Directorio comercial» (bajada), «Directorio de Contactos» (ficha) y
+        «Directorio de Clientes» (paleta de modulos). Ahora es «Contactos» en los cuatro"
+      - "JERGA FUERA: «SLA Vencido» a «Fuera de plazo»; «SLA y Tiempos» a «Plazos de respuesta»; «Opt-In
+        Marketing» a «Aceptan promociones»; «Meta Opt-In» a «permiso expreso»; «proteccion PII» fuera; y
+        «Cero PII en Titulos (R10)» a «Sin datos personales en los titulos», que era lo peor: una sigla
+        tecnica Y el numero de una regla interna, en pantalla"
+      - "FECHAS ISO: eran CUATRO sitios, no uno. Las vigencias de la ficha (tres usos), la descripcion de
+        una salida, «Vigente hasta 2027-06-15» en la tarjeta de cada tarifario, y el aviso de vigencia,
+        que ademas ensenaba «(UTC)» al asesor, contra R9"
+      - "TITLE CASE: las ocho etiquetas que lo tenian. Y «Ver Pipeline Kanban» a «Ver oportunidades», que es
+        como el menu llama a esa pantalla"
+      - "CHOQUE CON EL DICCIONARIO, resuelto y anotado: decia «SLA de primera respuesta», asi que la tarea
+        chocaba con el. Se cambio el termino espanol a «Plazo de primera respuesta»; el nombre en codigo
+        (FirstResponseSla) NO cambia. Si el propietario prefiere lo contrario, se revierte en una linea"
+      - "GUARDA NUEVA (lenguaje-de-interfaz.spec.ts) que recorre los ficheros de interfaz y se pone roja
+        ante cualquier reincidencia, nombrando fichero, cadena y motivo. PROBADA RECHAZANDO como pide
+        ADR-0038. Lista exacta y corta a proposito, no un barrido: «CRM» es legitimo en la marca"
+      - "VERIFICADO en el navegador con la web levantada: las cuatro pantallas dicen lo nuevo, ninguna dice
+        lo viejo y no queda una sola fecha ISO en pantalla. typecheck, lint y 2136 pruebas en 216 ficheros"
+      - "NO SE CIERRA: queda «CSV» (46 apariciones). En un boton que descarga un .csv no es jerga, es el
+        formato; quitarlo de la prosa y dejarlo en los botones es decision de dueno-de-producto"
     source: plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)
     owner: diseno-ux
   - id: T-630

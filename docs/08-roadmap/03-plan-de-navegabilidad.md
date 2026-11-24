@@ -25,7 +25,7 @@ diagnóstico cuantificó toques, contrastes y píxeles; las correcciones se veri
 | 3 | **T-626** | Contactos en el teléfono: de **0 de 8** a **8 de 8** enlaces alcanzables | M | **en revisión** |
 | 5 | **T-627** | Modo oscuro de «Hoy»: **contraste 1,1:1 sobre un importe** | S | lista |
 | 6 | **T-628** | El aviso de cookies tapaba el ingreso: de **44 px tapados** a **59 de holgura** | S | **en revisión** (PR #549) |
-| 7 | **T-629** | Pasada de lenguaje: que las once pantallas hablen igual | M | lista |
+| 7 | **T-629** | Pasada de lenguaje: la lista de contactos tenía **cuatro nombres** | M | **en revisión** |
 | 8 | T-630 | Murallas de cabecera en móvil | M | cola |
 | 9 | T-631 | Pestañas que no caben | M | cola |
 | 10 | T-632 | Botones de solo icono sin nombre | S | cola |
@@ -129,3 +129,56 @@ ADR-0038: sobre `main` sin el arreglo, **3 de las 4 se ponen rojas**; con él, 1
 
 **Matiz que no bloquea:** los tres enlaces legales siguen tapados en la vista en reposo, pero la
 página scrollea (1123 px de 844) y al desplazarse los tres son alcanzables.
+
+---
+
+## T-629, medida antes de tocar nada (2026-11-24)
+
+**Dos premisas de la tarea ya no se cumplían.** Se levantaron las once pantallas y se leyó de cada una
+el H1, el título del documento, las migas y la bajada:
+
+1. «La misma pantalla se llama *Conversaciones* en el menú y *Bandeja* en las migas». Hoy `/bandeja`
+   dice **«Conversaciones»** en el menú, el H1 y el título. Y **no hay migas en ninguna de las once
+   pantallas**. Ese desajuste ya estaba arreglado.
+2. Las once ya tenían el H1 igual que su etiqueta de menú, salvo «Hoy», que saluda a propósito.
+
+**Lo que sí estaba roto, y era peor de lo escrito: la lista de contactos tenía CUATRO nombres.**
+
+| Dónde | Decía | Dice |
+|---|---|---|
+| Menú y H1 | Contactos | Contactos |
+| Bajada de `/contactos` | **Directorio comercial** | Preferencias de viaje y permisos de contacto |
+| Ficha del contacto | **Directorio de Contactos** | Contactos |
+| Paleta de módulos | **Directorio de Clientes** | Contactos |
+
+**Jerga fuera de la pantalla:** «SLA Vencido» → «Fuera de plazo»; «SLA y Tiempos» → «Plazos de
+respuesta»; «Opt-In Marketing» → «Aceptan promociones»; «Meta Opt-In» → «permiso expreso»;
+«protección PII» fuera; y **«Cero PII en Títulos (R10)» → «Sin datos personales en los títulos»**, que
+era lo peor del lote: una sigla técnica **y el número de una regla interna**, en pantalla.
+
+**Fechas ISO del catálogo: eran cuatro sitios, no uno.** Las vigencias de la ficha (tres usos), la
+descripción de una salida, «Vigente hasta 2027-06-15» en la tarjeta de cada tarifario, y el aviso de
+vigencia — que además enseñaba **«(UTC)»** al asesor, contra R9.
+
+**Title Case:** las ocho etiquetas que lo tenían. Y «Ver Pipeline Kanban» → «Ver oportunidades», que
+es como el menú llama a esa pantalla.
+
+**Guarda nueva** —`lenguaje-de-interfaz.spec.ts`, junto al resto de guardas en `apps/web/src/lib`—,
+porque nada de esto avisaba: una
+cadena que vuelve no rompe nada. Recorre los ficheros de interfaz y se pone roja ante cualquier
+reincidencia, nombrando fichero, cadena y motivo. **Probada rechazando**, como pide ADR-0038.
+
+### Un choque con el diccionario, resuelto y anotado
+
+El lenguaje ubicuo decía «**SLA de primera respuesta**», así que T-629 chocaba con él: la tarea manda
+sacar «SLA» de la interfaz y el diccionario lo usaba como término. Se resolvió por donde apunta la
+propia tarea —«el diccionario manda»— cambiando el término español a **«Plazo de primera respuesta»**.
+El nombre en código (`FirstResponseSla`) **no cambia**. Si el propietario prefiere lo contrario, se
+revierte en una línea.
+
+### Lo que NO se hizo, y por qué
+
+**«CSV» (46 apariciones) se deja como está.** En un botón que descarga un `.csv` no es jerga: es el
+formato del fichero, y decir «Excel» sería mentir. Quitarlo de la prosa y conservarlo en los botones
+es una decisión de lenguaje de producto, no de implementación: la toma `dueno-de-producto`. Por eso
+**T-629 no se cierra** con este lote y su rama va como `T-000`.
