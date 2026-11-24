@@ -14065,6 +14065,23 @@ tasks:
       - Intento acotado de encontrar la causa del no determinismo. Si no se encuentra, SE RETIRA del CI con
         fecha y su cobertura se recupera donde pueda ser determinista
       - "Evidencia: docs/07-ingenieria/06-inventario-de-compuertas.md seccion 2"
+      - "CAUSA HALLADA el 2026-11-24 (intento acotado, corrida 45284335410 sobre main): falla
+        07-cobros.e2e-spec.ts:136 por timeout de 90 s esperando el dt «Total del viaje». panel-de-cobro pinta
+        el MISMO data-testid en sus tres estados (cargando, error, listo) y el dl de cifras solo existe en
+        listo, asi que expect(panel).toBeVisible() pasa en los tres y la prueba espera un dt que no va a
+        aparecer. La pantalla TENIA la causa en un role=alert y la prueba la descartaba"
+      - "CORREGIDA la afirmacion de inestabilidad: fallar en una rama de solo documentacion y en main prueba
+        que el fallo es INDEPENDIENTE DEL CAMBIO, no que sea al azar; un fallo determinista lo cumple igual.
+        Lo unico que probaba variabilidad era el relanzamiento que paso sin tocar nada (diario 2026-11-21)"
+      - "HAY MAS DE UN MODO DE FALLO: la corrida 45280673804 fallo el paso en 71 s, por debajo del timeout de
+        90 s. Con retries 0 el CI no podia distinguir roto de inestable"
+      - "HECHO en la rama b/T-000-navegador-diagnosticable: panelDeCobroListo() en e2e/auxiliares.ts falla al
+        instante citando la pantalla; lo usan las 5 llamadas de 07-cobros y la de 07b-cobros-tabla (mismo
+        fallo latente); cifra() con tiempo propio de 15 s; y retries 1 SOLO en CI para que Playwright marque
+        flaky frente a failed en vez de que lo adivinemos"
+      - "PENDIENTE, y por eso la tarea NO se cierra: la prueba de que el rojo se fue. La suite entera no corre
+        en una sesion de nube porque exige Postgres; solo se comprobo playwright test --list (65 pruebas en 10
+        ficheros), typecheck de e2e y lint"
   - phase: 1
     id: T-652
     title: El validador de la cola aisla el fallo al registro que toca

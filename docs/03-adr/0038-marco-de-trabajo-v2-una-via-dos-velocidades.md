@@ -9,8 +9,8 @@
   cerrar las brechas.
 - **Tarea:** T-647. Habilita T-648 a T-659 (ver el
   [plan de cierre de brechas](../08-roadmap/12-plan-de-cierre-de-brechas.md))
-- **Amplía / modifica:** R11 y §9 de `CLAUDE.md`, [ADR-0005](0005-flujo-de-git-y-releases.md),
-  [ADR-0016](0016-ciclo-autonomo.md) §6 y `docs/_contexto/MARCO.md` (que **desaparece**: su contenido
+- **Amplía / modifica:** R11 y §9 de `CLAUDE.md`, [ADR-0005](0005-modelo-de-ramas.md),
+  [ADR-0016](0016-ciclo-autonomo-con-sesiones-de-opencode.md) §6 y `docs/_contexto/MARCO.md` (que **desaparece**: su contenido
   pasa a `CLAUDE.md`). No supersede ningún ADR.
 - **Base verificada:** `origin/main` en `52459b50`, comprobado con `git`, `gh` y la API de GitHub el
   2026-11-23. Lo no comprobado va marcado.
