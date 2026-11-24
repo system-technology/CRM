@@ -65,6 +65,7 @@ import {
   ExternalLink,
   Plus,
 } from 'lucide-react';
+import { useFijarTituloDeDetalle } from '../../../../lib/titulo-de-detalle';
 
 // Carga diferida de modales y paneles secundarios (T-130)
 const ModalEditarContacto = dynamic(
@@ -253,6 +254,14 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
       'CONTACTOS_LISTA',
     );
   }, [error, ficha]);
+
+  /*
+   * La pestaña dice de quién es la ficha, no «Contactos» (T-633, ADR-0032 §4).
+   * ARRIBA DE LOS RETORNOS TEMPRANOS a propósito: puesto después, React cuenta un hook distinto
+   * en el render que carga y en el que pinta, y rompe con «Rendered more hooks than during the
+   * previous render». Lo cazaron las pruebas de esta pantalla.
+   */
+  useFijarTituloDeDetalle(ficha?.contacto.nombre || ficha?.contacto.telefono);
 
   if (cargando) {
     return (

@@ -79,6 +79,7 @@ import {
 import { listarArchivos } from '../../../../lib/archivos-api';
 import { CampoFecha } from '../../../../components/comun/campo-fecha';
 import { TablaDeLineas } from '../../../../components/cotizador/tabla-de-lineas';
+import { useFijarTituloDeDetalle } from '../../../../lib/titulo-de-detalle';
 
 // Carga diferida de modales pesados (T-130)
 const ModalEnviarWhatsAppCotizacion = dynamic(
@@ -145,6 +146,8 @@ function ContenidoCotizacionGuardada({ params: paramsPromise }: PageProps) {
   const { puedeVerNetoYMargen, puedeEscribirCotizacion, tienePermiso } = usePermisos();
 
   const [cotizacion, setCotizacion] = useState<CotizacionGuardada | null>(null);
+  // La pestaña dice qué cotización es, no «Cotizaciones» (T-633, ADR-0032 §4).
+  useFijarTituloDeDetalle(cotizacion?.titulo);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState<{
     codigo: string;

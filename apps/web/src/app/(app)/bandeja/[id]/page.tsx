@@ -88,6 +88,8 @@ import {
 import { formatearFecha } from '../../../../lib/formato';
 import { EtiquetasDelChat } from '../../../../components/etiquetas/etiquetas-del-chat';
 import { hrefConFiltro, soloFiltroDeEtiquetas } from '../../../../lib/etiquetas-logica';
+import { useFijarTituloDeDetalle } from '../../../../lib/titulo-de-detalle';
+import { entradaDe } from '../../../../lib/navegacion';
 
 // Carga diferida de modales secundarios de la bandeja (T-130)
 const ModalReasignar = dynamic(
@@ -136,6 +138,8 @@ export default function BandejaConversacionPage() {
   const id = typeof params?.id === 'string' ? params.id : '';
 
   const [detalle, setDetalle] = useState<ConversacionDetalle | null>(null);
+  // La pestaña dice con quién se está hablando, no «Conversaciones» (T-633, ADR-0032 §4).
+  useFijarTituloDeDetalle(detalle?.contactoNombre ?? detalle?.contactoTelefono);
   const [fichaContacto, setFichaContacto] = useState<FichaDeContacto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [errorHistorial, setErrorHistorial] = useState<string | null>(null);
@@ -1003,7 +1007,7 @@ export default function BandejaConversacionPage() {
           <MigasDePan
             elementos={[
               { etiqueta: 'Hoy', href: '/' },
-              { etiqueta: 'Bandeja', href: hrefLista },
+              { etiqueta: entradaDe('conversaciones').etiqueta, href: hrefLista },
               { etiqueta: detalle.contactoNombre || detalle.contactoTelefono || 'Conversación' },
             ]}
           />

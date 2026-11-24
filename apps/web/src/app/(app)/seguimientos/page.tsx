@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Link from 'next/link';
 import {
   AlertTriangle,
   Calendar,
@@ -35,6 +34,8 @@ import { AvisoSoloLoPropio } from '../../../components/comun/aviso-de-alcance';
 import { alcanceDeVista, TEXTO_SOLO_LO_PROPIO } from '../../../lib/alcance-de-vista';
 import { usePermisos } from '../../../lib/permisos';
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
+import { MigasDePan } from '../../../components/comun/migas-de-pan';
+import { entradaDe } from '../../../lib/navegacion';
 export default function SeguimientosPage() {
   const { sesion } = usePermisos();
   const soloLoPropio = alcanceDeVista(sesion) === 'PROPIO';
@@ -129,19 +130,18 @@ export default function SeguimientosPage() {
       {/* Cabecera / Hero */}
       <header className="flex flex-col gap-4 border-b border-neutral-200 pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800">
         <div>
-          <nav className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-            <Link href="/" className="hover:text-acento-600 hover:underline">
-              Hoy
-            </Link>
-            <span>/</span>
-            <Link href="/contactos" className="hover:text-acento-600 hover:underline">
-              CRM
-            </Link>
-            <span>/</span>
-            <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-              Seguimientos
-            </span>
-          </nav>
+          {/*
+            Migas con el componente del proyecto y las etiquetas de la tabla de navegación (T-633).
+            Antes era un `<nav>` a mano con un nivel «CRM» que ENLAZABA A `/contactos` pero se
+            llamaba de otra forma: ni es una pantalla ni es el nombre de ninguna. Y escritas a mano
+            se desincronizan del menú en cuanto alguien renombra algo, que es lo que pasó.
+          */}
+          <MigasDePan
+            elementos={[
+              { etiqueta: entradaDe('hoy').etiqueta, href: '/' },
+              { etiqueta: entradaDe('seguimientos').etiqueta },
+            ]}
+          />
           <div className="mt-1 flex items-center gap-2.5">
             <TituloDePantalla
               modulo="seguimientos"

@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation';
 import { BarraModulos } from '../bandeja/barra-modulos';
 import { CabeceraMovil } from './cabecera-movil';
 import { PieDePaginaPrivacidad } from '../privacidad/pie-de-pagina-privacidad';
-import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/navegacion';
+import { esDetalleMovilDeBandeja, moduloActivo, tituloDeDocumento } from '../../lib/navegacion';
 import { useTituloDeDocumento } from '../../lib/use-titulo-de-documento';
+import { ProveedorDeTituloDeDetalle } from '../../lib/titulo-de-detalle';
 
 /**
  * Marco de las pantallas privadas (ADR-0032): barra lateral en escritorio, barra inferior en móvil
@@ -21,7 +22,10 @@ import { useTituloDeDocumento } from '../../lib/use-titulo-de-documento';
  */
 export function MarcoDeTrabajo({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const titulo = useTituloDeDocumento();
+  const tituloDelModulo = useTituloDeDocumento();
+  // Lo que una pantalla de detalle quiera poner en la pestaña (T-633, ADR-0032 §4).
+  const [detalle, setDetalle] = React.useState<string | null>(null);
+  const titulo = detalle ? tituloDeDocumento(detalle) : tituloDelModulo;
   // En la conversación a pantalla completa no hay barra inferior que reservar.
   const reservaBarraInferior = !esDetalleMovilDeBandeja(pathname);
   const conPie = moduloActivo(pathname)?.id !== 'conversaciones';
@@ -43,14 +47,17 @@ export function MarcoDeTrabajo({ children }: { children: React.ReactNode }) {
             reservaBarraInferior ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0' : ''
           }`}
         >
-          {conPie ? (
-            <>
-              <div className="flex shrink-0 grow basis-full flex-col">{children}</div>
-              <PieDePaginaPrivacidad />
-            </>
-          ) : (
-            children
-          )}
+          {/* El detalle avisa del nombre de lo que se ve; el marco sigue pintando el `<title>`. */}
+          <ProveedorDeTituloDeDetalle fijar={setDetalle}>
+            {conPie ? (
+              <>
+                <div className="flex shrink-0 grow basis-full flex-col">{children}</div>
+                <PieDePaginaPrivacidad />
+              </>
+            ) : (
+              children
+            )}
+          </ProveedorDeTituloDeDetalle>
         </main>
       </div>
     </div>
