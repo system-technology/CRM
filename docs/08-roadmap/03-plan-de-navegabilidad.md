@@ -22,7 +22,7 @@ diagnóstico cuantificó toques, contrastes y píxeles; las correcciones se veri
 | # | Tarea | Qué arregla | Esf. | Estado |
 |---|---|---|---|---|
 | 1·2·4 | **T-623** | Enlaces rotos, cadena hacia delante, Configuración, colores que mienten | S | **en revisión** |
-| 3 | **T-626** | Contactos en el teléfono: hoy **0 de 8 enlaces alcanzables** | M | lista |
+| 3 | **T-626** | Contactos en el teléfono: de **0 de 8** a **8 de 8** enlaces alcanzables | M | **en revisión** |
 | 5 | **T-627** | Modo oscuro de «Hoy»: **contraste 1,1:1 sobre un importe** | S | lista |
 | 6 | **T-628** | El aviso de cookies **tapa el ingreso** en móvil | S | lista |
 | 7 | **T-629** | Pasada de lenguaje: que las once pantallas hablen igual | M | lista |
@@ -65,3 +65,37 @@ El diagnóstico se midió **en local**, con la demostración. Queda sin verifica
 —los estados de envío no son observables porque la demo no tiene ni un mensaje saliente—, los
 **lectores de pantalla** (se comprobó la semántica del DOM, no el resultado audible), el arrastre del
 Kanban, las pantallas de impresión y **cualquier cosa desplegada en staging**.
+
+---
+
+## T-626, cerrada con medición (2026-11-24)
+
+Medido con el navegador en modo demostración, antes y después, a 390 px:
+
+| | Tabla / caja | Enlaces de ficha alcanzables |
+|---|---|---|
+| **Antes** (`origin/main`) | 877 px dentro de 340, `overflow: hidden` | **0 de 8** — en x=850..886, fuera del viewport |
+| **Después** | 356 px dentro de 356, `overflow-x: auto` | **8 de 8** — en x=65 |
+| A 1440 px | sin cambio | 8 de 8 antes y después |
+
+El `x=850..886` coincide con lo que el diagnóstico (T-618) había medido por su cuenta, así que las
+dos mediciones se confirman.
+
+**Lo que de verdad pasaba:** no era que la tabla se viera apretada. Con `overflow: hidden` no hay
+barra ni gesto, así que para un dedo la columna de acciones **no existe**. Se comprobó además que
+medirlo mal invierte el resultado: `scrollIntoViewIfNeeded()` desplaza por script un contenedor
+`overflow: hidden` y devuelve «8 de 8 alcanzables» sobre la pantalla rota.
+
+**Dos correcciones a los criterios que traía la tarea:**
+
+1. Decía «el arreglo ya existe en el producto: tabla con `@container`, como hace Cobros». **Cobros no
+   usa `@container`:** duplica el marcado con puntos de ruptura de viewport (`md:hidden` y
+   `hidden md:table`), y no había **ninguna** consulta de contenedor en el repositorio. Se siguió la
+   guía (`responsive-table`): una sola tabla semántica con `@container`, en `.tabla-apilable` de
+   `globals.css`, reutilizable por las tablas de T-630 y T-631.
+2. Desviación deliberada de la guía, anotada como pide `diseno-web`: las etiquetas se inyectan con
+   `attr(data-etiqueta)` y no con `--label-N` + `td:nth-child(N)`, porque `nth-child` ata el CSS al
+   orden de las columnas y al reordenarlas pondría una etiqueta equivocada sobre un dato.
+
+**Fuera de alcance, y queda dicho:** los dos iconos de acción siguen sin nombre visible (T-632) y el
+aviso de cookies tapa el pie en móvil (T-628, PR #549).

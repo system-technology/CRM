@@ -13400,7 +13400,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: review
     acceptance:
       - "Fila 3 del diagnostico. MEDIDO: tabla de 877 px dentro de una caja de 340 con overflow hidden, y los
         8 enlaces de ficha viven en x entre 850 y 886"
@@ -13409,6 +13409,25 @@ tasks:
         Copiar ese patron"
       - La guia web moderna lo cubre en responsive-table, que el diagnostico ya verifico que aplica
       - Medir a 390 px con la aplicacion levantada y demostrar que los 8 enlaces son alcanzables
+      - "MEDIDO el 2026-11-24 con el navegador en modo demostracion, antes y despues, a 390 px: ANTES tabla
+        de 877 px dentro de una caja de 340 con overflow hidden y los 8 enlaces de ficha en x=850..886,
+        ALCANZABLES 0 de 8. DESPUES tabla de 356 dentro de 356 con overflow-x auto y los enlaces en x=65,
+        ALCANZABLES 8 de 8. A 1440 px no cambia: 8 de 8 antes y despues"
+      - "El x=850..886 coincide con lo que midio T-618 por su cuenta: las dos mediciones se confirman"
+      - "CORREGIDO el criterio de «como hace Cobros»: Cobros NO usa @container, duplica el marcado con
+        puntos de ruptura de viewport (md:hidden y hidden md:table), y no habia NINGUNA consulta de
+        contenedor en el repositorio. Se siguio la guia responsive-table: una sola tabla semantica con
+        @container en .tabla-apilable de globals.css, reutilizable por T-630 y T-631"
+      - "DESVIACION anotada de la guia (lo pide diseno-web): etiquetas con attr(data-etiqueta) y no con
+        --label-N mas td:nth-child(N), porque nth-child ata el CSS al orden de las columnas y al
+        reordenarlas pondria una etiqueta equivocada sobre un dato"
+      - "TRAMPA de medicion que invierte el resultado: scrollIntoViewIfNeeded() desplaza POR SCRIPT un
+        contenedor overflow hidden, cosa que un dedo no puede, y devuelve «8 de 8» sobre la pantalla rota"
+      - "Guardas: tres pruebas en contactos/page.spec.tsx sobre el contrato del que depende el CSS (clase,
+        role region, nombre accesible, tabIndex y las seis data-etiqueta en orden). 2136 pruebas de la web
+        en verde"
+      - "FUERA DE ALCANCE, dicho: los iconos de accion siguen sin nombre visible (T-632) y el aviso de
+        cookies tapa el pie en movil (T-628, PR #549)"
     source: plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)
     owner: frontend
   - id: T-627
