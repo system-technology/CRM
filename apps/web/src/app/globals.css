@@ -605,3 +605,75 @@ body {
       rgba(var(--velo), 0.36) 100%
     );
 }
+
+/**
+ * TIRA DE PESTAÑAS QUE NO CABEN (T-631)
+ *
+ * Medido el 2026-11-24 a 390 px: en `/configuracion` hay **nueve** pestañas que ocupan 1414 px en un
+ * hueco de 342 —**siete quedan fuera**— y en `/catálogo`, una de tres. Se podía desplazar, pero **nada
+ * en pantalla decía que hubiera más**: el usuario no sabe que existen.
+ *
+ * El desvanecido se pinta con una máscara sobre el propio desplazador (`modern-web-guidance`, `tabs`):
+ * una capa opaca menos una banda de degradado en cada extremo. Enmascarar solo las bandas deja ver
+ * todo lo demás, incluido el anillo de foco, que un degradado recortado al borde taparía.
+ *
+ * Cada banda crece desde 0 según el desplazamiento real, con una animación de línea de tiempo de
+ * scroll. Eso da dos cosas gratis: **cuando todo cabe no hay desvanecido** (la línea de tiempo está
+ * inactiva) y el extremo al que ya llegaste deja de desvanecerse.
+ *
+ * Degradación: donde no haya animaciones de scroll (hoy, Safari), `--desvanecido-inicio` y `--fin` se
+ * quedan en su valor inicial de 0px, así que no hay máscara y la tira se comporta como hasta ahora.
+ * Se pierde la pista visual, no el acceso: el desplazamiento sigue siendo nativo.
+ */
+@property --desvanecido-inicio {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --desvanecido-fin {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.tira-desplazable {
+  overflow-x: auto;
+  --desvanecido-tamano: 2.5rem;
+  /* Que una pestaña enfocada nunca se detenga dentro del desvanecido. */
+  scroll-padding-inline: var(--desvanecido-tamano);
+  mask:
+    linear-gradient(black, black) no-clip subtract,
+    linear-gradient(to right, black, transparent) 0 0 / var(--desvanecido-inicio) 100% no-repeat
+      no-clip,
+    linear-gradient(to right, transparent, black) 100% 0 / var(--desvanecido-fin) 100% no-repeat
+      no-clip;
+  animation:
+    revelar-desvanecido-inicio linear both,
+    ocultar-desvanecido-fin linear both;
+  animation-timeline: scroll(self inline);
+  animation-range:
+    0 var(--desvanecido-tamano),
+    calc(100% - var(--desvanecido-tamano)) 100%;
+}
+
+/* La barra de desplazamiento sobra: el desvanecido ya dice que hay más, y en el teléfono se arrastra. */
+.tira-desplazable {
+  scrollbar-width: none;
+}
+
+.tira-desplazable::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes revelar-desvanecido-inicio {
+  to {
+    --desvanecido-inicio: var(--desvanecido-tamano);
+  }
+}
+
+@keyframes ocultar-desvanecido-fin {
+  from {
+    --desvanecido-fin: var(--desvanecido-tamano);
+  }
+}

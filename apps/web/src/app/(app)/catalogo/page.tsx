@@ -3,7 +3,7 @@
 import { useModoDemo } from '../../../lib/modo-demo';
 import { useMontado } from '../../../lib/use-montado';
 
-import React, { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -115,6 +115,7 @@ import { herramientasDevActivas } from '../../../lib/herramientas-dev';
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 import { FiltrosPlegables } from '../../../components/comun/filtros-plegables';
 import { formatearFecha } from '../../../lib/formato';
+import { usarPestanaALaVista } from '../../../lib/usar-pestana-a-la-vista';
 /** Ficha mínima de un paquete que solo se conoce por su salida publicada (modo real). */
 function paqueteDesdeSalida(sal: SalidaPublicada): PaqueteConDetalle {
   return {
@@ -170,6 +171,8 @@ function CatalogoContenido() {
   const [pestañaActiva, setPestañaActiva] = useState<'EXPLORAR' | 'PLANTILLAS' | 'GESTION'>(
     'EXPLORAR',
   );
+  const tiraDePestanas = useRef<HTMLDivElement | null>(null);
+  usarPestanaALaVista(tiraDePestanas, pestañaActiva);
   const [asistenteImportacionAbierto, setAsistenteImportacionAbierto] = useState(false);
   const [formatoParaImportar, setFormatoParaImportar] = useState('excursion-un-dia');
 
@@ -355,7 +358,8 @@ function CatalogoContenido() {
           <div
             role="tablist"
             aria-label="Vistas del catálogo"
-            className="mt-4 flex overflow-x-auto border-b border-neutral-200 dark:border-neutral-800"
+            ref={tiraDePestanas}
+            className="tira-desplazable mt-4 flex border-b border-neutral-200 dark:border-neutral-800"
           >
             <button
               type="button"

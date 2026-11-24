@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -111,6 +111,7 @@ const BloqueRnt = dynamic(
 );
 
 import { hrefDePestana, leerPestanaDeUrl } from '../../../lib/parametros-url';
+import { usarPestanaALaVista } from '../../../lib/usar-pestana-a-la-vista';
 
 type TabConfig =
   | 'equipo'
@@ -151,6 +152,8 @@ function ConfiguracionContenido() {
     (pestanaUrl === 'etiquetas' && !puedeAdministrarEtiquetas)
       ? 'equipo'
       : pestanaUrl;
+  const tiraDePestanas = useRef<HTMLElement | null>(null);
+  usarPestanaALaVista(tiraDePestanas, tabActiva);
   // `replace`: las pestañas son vistas de una misma pantalla; Atrás sale de Configuración, no
   // recorre las pestañas que se visitaron.
   const setTabActiva = (tab: TabConfig) =>
@@ -218,7 +221,7 @@ function ConfiguracionContenido() {
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
               >
                 <Sparkles className="h-4 w-4 text-amber-500" />
-                <span>Asistente de Inicio</span>
+                <span>Asistente de inicio</span>
               </Link>
               <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
@@ -240,9 +243,17 @@ function ConfiguracionContenido() {
           )}
 
           {/* Pestañas de Navegación */}
-          <nav className="mt-4 flex space-x-1 overflow-x-auto border-b border-neutral-200 dark:border-neutral-800 [&>button]:shrink-0">
+          {/* `tira-desplazable` (globals.css, T-631): desvanece el extremo que esconde pestañas. Son
+              nueve y a 390 px ocupan 1414 px en un hueco de 342: siete quedan fuera. */}
+          <nav
+            ref={tiraDePestanas}
+            aria-label="Secciones de la configuración"
+            className="tira-desplazable mt-4 flex space-x-1 border-b border-neutral-200 dark:border-neutral-800 [&>button]:shrink-0"
+          >
             <button
               onClick={() => setTabActiva('equipo')}
+              type="button"
+              aria-current={tabActiva === 'equipo'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'equipo'
                   ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-white'
@@ -250,13 +261,15 @@ function ConfiguracionContenido() {
               }`}
             >
               <Users className="h-4 w-4" />
-              <span>Miembros y Roles</span>
+              <span>Miembros y roles</span>
             </button>
 
             <button
               id="tab-btn-whatsapp"
               data-testid="tab-btn-whatsapp"
               onClick={() => setTabActiva('whatsapp')}
+              type="button"
+              aria-current={tabActiva === 'whatsapp'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'whatsapp'
                   ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-white'
@@ -264,11 +277,13 @@ function ConfiguracionContenido() {
               }`}
             >
               <MessageSquare className="h-4 w-4" />
-              <span>Canal WhatsApp (WABA)</span>
+              <span>Canal de WhatsApp</span>
             </button>
 
             <button
               onClick={() => setTabActiva('sla')}
+              type="button"
+              aria-current={tabActiva === 'sla'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'sla'
                   ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-white'
@@ -281,6 +296,8 @@ function ConfiguracionContenido() {
 
             <button
               onClick={() => setTabActiva('pipeline')}
+              type="button"
+              aria-current={tabActiva === 'pipeline'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'pipeline'
                   ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-white'
@@ -288,11 +305,13 @@ function ConfiguracionContenido() {
               }`}
             >
               <Kanban className="h-4 w-4" />
-              <span>Etapas del Pipeline</span>
+              <span>Etapas de las oportunidades</span>
             </button>
 
             <button
               onClick={() => setTabActiva('agencia')}
+              type="button"
+              aria-current={tabActiva === 'agencia'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'agencia'
                   ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-white'
@@ -307,6 +326,8 @@ function ConfiguracionContenido() {
               <button
                 id="tab-btn-formacion-precio"
                 onClick={() => setTabActiva('precios')}
+                type="button"
+                aria-current={tabActiva === 'precios'}
                 className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                   tabActiva === 'precios'
                     ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300'
@@ -314,7 +335,7 @@ function ConfiguracionContenido() {
                 }`}
               >
                 <Calculator className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Formación del Precio</span>
+                <span>Formación del precio</span>
                 <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                   ADR-0009
                 </span>
@@ -325,6 +346,8 @@ function ConfiguracionContenido() {
               id="tab-btn-catalogo"
               data-testid="tab-btn-catalogo"
               onClick={() => setTabActiva('catalogo')}
+              type="button"
+              aria-current={tabActiva === 'catalogo'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'catalogo'
                   ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
@@ -339,6 +362,8 @@ function ConfiguracionContenido() {
               id="tab-btn-campos"
               data-testid="tab-btn-campos"
               onClick={() => setTabActiva('campos')}
+              type="button"
+              aria-current={tabActiva === 'campos'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'campos'
                   ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
@@ -346,7 +371,7 @@ function ConfiguracionContenido() {
               }`}
             >
               <FormInput className="text-acento-600 dark:text-acento-400 h-4 w-4" />
-              <span>Campos Personalizados</span>
+              <span>Campos personalizados</span>
             </button>
 
             {puedeAdministrarEtiquetas && (
@@ -354,6 +379,8 @@ function ConfiguracionContenido() {
                 id="tab-btn-etiquetas"
                 data-testid="tab-btn-etiquetas"
                 onClick={() => setTabActiva('etiquetas')}
+                type="button"
+                aria-current={tabActiva === 'etiquetas'}
                 className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                   tabActiva === 'etiquetas'
                     ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
@@ -369,6 +396,8 @@ function ConfiguracionContenido() {
               id="tab-btn-respuestas"
               data-testid="tab-btn-respuestas"
               onClick={() => setTabActiva('respuestas')}
+              type="button"
+              aria-current={tabActiva === 'respuestas'}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'respuestas'
                   ? 'border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-300'
@@ -376,7 +405,7 @@ function ConfiguracionContenido() {
               }`}
             >
               <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <span>Respuestas Rápidas</span>
+              <span>Respuestas rápidas</span>
             </button>
           </nav>
         </header>
@@ -498,7 +527,7 @@ function ConfiguracionContenido() {
                     className="flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
                   >
                     <Save className="h-4 w-4" />
-                    <span>Guardar Parámetros de SLA</span>
+                    <span>Guardar los plazos</span>
                   </button>
                 </div>
               </form>
@@ -665,7 +694,7 @@ function ConfiguracionContenido() {
                     className="flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
                   >
                     <Save className="h-4 w-4" />
-                    <span>Guardar Datos de Agencia</span>
+                    <span>Guardar los datos de la agencia</span>
                   </button>
                 </div>
               </form>

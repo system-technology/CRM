@@ -81,7 +81,8 @@ describe('Configuración: pestañas en ?pestana= (T-318)', () => {
     expect(replace).toHaveBeenLastCalledWith('/configuracion?pestana=catalogo', {
       scroll: false,
     });
-    fireEvent.click(screen.getByRole('button', { name: /Miembros y Roles/ }));
+    // T-631: fuera el Title Case de las etiquetas de pestaña.
+    fireEvent.click(screen.getByRole('button', { name: /Miembros y roles/ }));
     expect(replace).toHaveBeenLastCalledWith('/configuracion', { scroll: false });
   });
 
