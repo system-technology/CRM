@@ -101,7 +101,9 @@ export function BannerConsentimientoCookies() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               {/* Información y explicación */}
               <div className="flex items-start gap-3 text-left">
-                <div className="bg-acento-50 text-acento-700 ring-acento-200 dark:bg-acento-950 dark:text-acento-300 dark:ring-acento-800 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1">
+                {/* Decorativo: en el móvil se oculta para devolverle 52 px de ancho al texto,
+                    que es lo que lo hacía envolver en más líneas (T-628). */}
+                <div className="bg-acento-50 text-acento-700 ring-acento-200 dark:bg-acento-950 dark:text-acento-300 dark:ring-acento-800 hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 sm:flex">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div>
@@ -113,16 +115,23 @@ export function BannerConsentimientoCookies() {
                       Ley 1581 / SIC
                     </span>
                   </div>
-                  <p className="mt-1 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
+                  {/* En el móvil el texto va al grano: con el párrafo completo el aviso medía ~380 px
+                      de los 844 del viewport y partía por la mitad el botón «Ingresar a ViajaPro»
+                      (T-628, comprobado a 390 px contra staging). El detalle vive en la política,
+                      que está a un toque, y las cookies técnicas no necesitan consentimiento. */}
+                  <p className="mt-1 text-xs leading-relaxed text-neutral-600 sm:hidden dark:text-neutral-400">
+                    Solo cookies técnicas para iniciar sesión. Las opcionales las decides tú.
+                  </p>
+                  <p className="mt-1 hidden text-xs leading-relaxed text-neutral-600 sm:block dark:text-neutral-400">
                     Utilizamos cookies técnicas estrictamente necesarias para autenticar tu cuenta
                     de asesor y garantizar la seguridad CSRF. Puedes autorizar o rechazar cookies
                     opcionales de personalización y telemetría de rendimiento.
                   </p>
-                  <div className="mt-1.5 flex items-center gap-3">
+                  <div className="flex items-center gap-3 sm:mt-1.5">
                     <Link
                       href="/politica-cookies"
                       data-testid="enlace-politica-cookies"
-                      className="text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold hover:underline"
+                      className="text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold hover:underline sm:text-sm"
                     >
                       <span>Ver inventario y política de cookies</span>
                       <ExternalLink className="h-2.5 w-2.5" />
@@ -131,32 +140,37 @@ export function BannerConsentimientoCookies() {
                 </div>
               </div>
 
-              {/* Botones de acción accesibles (touch target >= 44px) */}
-              <div className="flex flex-wrap items-center justify-end gap-2 sm:shrink-0">
+              {/* Botones de acción accesibles (touch target >= 44px).
+                  En el móvil van en tres columnas y no con `flex-wrap`: envolviendo, «Aceptar todas»
+                  caía a una segunda fila y sumaba otros ~56 px de alto al aviso (T-628). */}
+              <div className="grid grid-cols-3 items-center gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setModalAbierto(true)}
                   data-testid="btn-cookies-configurar"
-                  className="focus-visible:ring-acento-600 flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  className="focus-visible:ring-acento-600 flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-2 py-2 text-[11px] font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none sm:px-3.5 sm:text-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
-                  <Sliders className="h-3.5 w-3.5" />
+                  <Sliders className="hidden h-3.5 w-3.5 sm:block" />
                   <span>Configurar</span>
                 </button>
                 <button
                   type="button"
                   onClick={manejarSoloNecesarias}
                   data-testid="btn-cookies-solo-necesarias"
-                  className="focus-visible:ring-acento-600 flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-800 transition hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  className="focus-visible:ring-acento-600 flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-2 py-2 text-[11px] font-bold text-neutral-800 transition hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none sm:px-4 sm:text-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
-                  Solo necesarias
+                  {/* En 390 px «Solo necesarias» parte en dos líneas dentro de su columna. */}
+                  <span className="sm:hidden">Necesarias</span>
+                  <span className="hidden sm:inline">Solo necesarias</span>
                 </button>
                 <button
                   type="button"
                   onClick={manejarAceptarTodas}
                   data-testid="btn-cookies-aceptar-todas"
-                  className="boton-primario flex min-h-[44px] items-center justify-center rounded-xl px-5 py-2 text-xs font-bold shadow-xs transition"
+                  className="boton-primario flex min-h-[44px] items-center justify-center rounded-xl px-2 py-2 text-[11px] font-bold shadow-xs transition sm:px-5 sm:text-xs"
                 >
-                  Aceptar todas
+                  <span className="sm:hidden">Aceptar</span>
+                  <span className="hidden sm:inline">Aceptar todas</span>
                 </button>
               </div>
             </div>
