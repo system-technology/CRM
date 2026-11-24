@@ -13991,11 +13991,16 @@ tasks:
     type: docs
     priority: P0
     effort: M
-    status: review
+    status: done
     acceptance:
       - ADR-0038 escrito y en estado Propuesto, con los hechos H1-H8 verificados con git, gh y la API de GitHub
       - Plan de cierre de brechas en docs/08-roadmap/12, con criterio de aceptacion ejecutable por tarea
       - Lo acepta el propietario. Hasta entonces NADA de T-648 a T-659 se implementa (R7)
+    started_at: 2026-11-24T00:51:36.009Z
+    done_at: 2026-11-24T00:51:36.009Z
+    evidence: "Mergeado en main por el PR #539 (rama i/T-647-adr-marco-v2) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 8c3921335da232beadc99e51490399a2660bf610
   - phase: 1
     id: T-648
     title: Paridad entre los checks requeridos declarados y los del servidor
