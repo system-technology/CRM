@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures';
 import type { Page } from '@playwright/test';
-import { URL_API } from './auxiliares';
+import { URL_API, panelDeCobroListo } from './auxiliares';
 
 /**
  * «Cobros»: quién pagó y quién debe (T-332, T-335), contra la API REAL.
@@ -86,7 +86,7 @@ test('registrar un pago cambia el saldo y cambia el filtro', async ({ page }) =>
 
   // Se paga TODO lo que falta, desde el archivo de viaje, con el diálogo de siempre.
   await page.goto(`/viajes?id=${archivoId}`);
-  await expect(page.getByTestId('panel-de-cobro')).toBeVisible({ timeout: 30_000 });
+  await panelDeCobroListo(page);
   await page.getByTestId('abrir-registrar-pago').click();
   const dialogo = page.getByRole('dialog');
   await dialogo.getByLabel('Cuánto pagó *').fill(saldoAntes.toLocaleString('es-CO'));

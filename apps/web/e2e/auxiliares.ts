@@ -227,3 +227,37 @@ export async function ingresarPorPantalla(
     );
   }
 }
+
+/**
+ * Espera a que el panel de cobro llegue al estado `listo`, y si llega a `error` **falla diciendo lo
+ * que dice la pantalla** en vez de agotar el tiempo de la prueba.
+ *
+ * Por que existe (T-651): `panel-de-cobro` pinta el MISMO `data-testid` en sus tres estados
+ * —«cargando», «error» y «listo»— y la lista de cifras solo existe en «listo». Comprobar que el
+ * panel es visible pasa en los tres, asi que al quedar en «error» la prueba se quedaba esperando un
+ * `dt` que no iba a aparecer hasta consumir los 90 s del test, y reportaba «Test timeout exceeded»:
+ * un fallo que no dice nada. Y mientras tanto el panel tenia en pantalla, en un `role="alert"`, la
+ * causa exacta.
+ *
+ * Es la misma disciplina que `registrarPago` ya aplicaba mas abajo: leer el motivo y nombrarlo.
+ */
+export async function panelDeCobroListo(page: Page): Promise<void> {
+  const panel = page.getByTestId('panel-de-cobro');
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+
+  const cifras = panel.locator('dl');
+  const fallo = panel.getByRole('alert');
+
+  try {
+    await expect(cifras.or(fallo).first()).toBeVisible({ timeout: 30_000 });
+  } catch {
+    throw new Error('El panel de cobro no salio de «cargando» en 30 s: ni cifras ni error.');
+  }
+
+  if ((await fallo.count()) > 0) {
+    const motivo = await fallo.innerText().catch(() => '(sin mensaje en el alert)');
+    throw new Error(
+      `El panel de cobro quedo en error, asi que no hay cifras que leer. La pantalla dijo: ${motivo.replace(/\s+/g, ' ').trim()}`,
+    );
+  }
+}

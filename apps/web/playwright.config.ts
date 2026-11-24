@@ -28,7 +28,17 @@ export default defineConfig({
   // Un flujo de negocio en serie sobre una sola base: en paralelo se pisarian los datos.
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  /**
+   * Un reintento SOLO en CI (T-651). No es para esconder un fallo: es para **clasificarlo**.
+   *
+   * Con `retries: 0` un rojo no distingue «roto» de «inestable», y por eso `navegador` llevaba dos
+   * dias concentrando el 100 % de los fallos del CI sin que nadie pudiera decir cual de las dos
+   * cosas era. Con un reintento, Playwright marca `flaky` lo que falla y luego pasa, y sigue
+   * marcando `failed` lo que falla las dos veces: el informe responde la pregunta solo.
+   *
+   * En local se queda en 0, que es donde se quiere que un fallo duela a la primera.
+   */
+  retries: process.env['CI'] ? 1 : 0,
   forbidOnly: !!process.env['CI'],
   timeout: 90_000,
   expect: { timeout: 10_000 },

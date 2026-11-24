@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures';
 import type { Page } from '@playwright/test';
-import { URL_API } from './auxiliares';
+import { panelDeCobroListo, URL_API } from './auxiliares';
 
 /**
  * Cobro al viajero en el archivo de viaje (T-331, ADR-0034), contra la API REAL.
@@ -67,13 +67,19 @@ async function archivoDeViajeAbierto(page: Page): Promise<string> {
   return id;
 }
 
-/** Cifra visible de un dato del panel, sin simbolo de moneda ni espacios. */
+/**
+ * Cifra visible de un dato del panel, sin simbolo de moneda ni espacios.
+ *
+ * Con tiempo propio (T-651): sin el heredaba el de la prueba entera, asi que el primer dato que
+ * faltara se comia los 90 s y el fallo no nombraba el dato.
+ */
 async function cifra(page: Page, etiqueta: string): Promise<string> {
-  const texto = await page
+  const valor = page
     .getByTestId('panel-de-cobro')
     .locator('dt', { hasText: new RegExp(`^${etiqueta}$`) })
-    .locator('xpath=following-sibling::dd[1]')
-    .innerText();
+    .locator('xpath=following-sibling::dd[1]');
+  await expect(valor, `el panel de cobro no pinto «${etiqueta}»`).toBeVisible({ timeout: 15_000 });
+  const texto = await valor.innerText();
   return texto.replace(/[^\d.,]/g, '');
 }
 
@@ -137,8 +143,8 @@ test('el archivo de viaje muestra total, pagado, saldo e historial vacio', async
   archivoId = await archivoDeViajeAbierto(page);
   await page.goto(`/viajes?id=${archivoId}`);
 
+  await panelDeCobroListo(page);
   const panel = page.getByTestId('panel-de-cobro');
-  await expect(panel).toBeVisible({ timeout: 30_000 });
   await expect(panel.getByRole('heading', { name: 'Cobro al viajero' })).toBeVisible();
 
   totalPintado = await cifra(page, 'Total del viaje');
@@ -153,7 +159,7 @@ test('el archivo de viaje muestra total, pagado, saldo e historial vacio', async
 
 test('registrar un pago baja el saldo y lo deja en el historial', async ({ page }) => {
   await page.goto(`/viajes?id=${archivoId}`);
-  await expect(page.getByTestId('panel-de-cobro')).toBeVisible({ timeout: 30_000 });
+  await panelDeCobroListo(page);
 
   // Un cuarto de lo que falta por cobrar: un pago parcial de verdad, nunca un sobrepago.
   const pago = await parteDelSaldo(page, 4);
@@ -189,8 +195,8 @@ test('a 390 px se ve el saldo y se registra un pago sin desplazamiento lateral',
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/viajes?id=${archivoId}`);
 
+  await panelDeCobroListo(page);
   const panel = page.getByTestId('panel-de-cobro');
-  await expect(panel).toBeVisible({ timeout: 30_000 });
 
   const sinDesborde = async (donde: string): Promise<void> => {
     const ancho = await page.evaluate(
@@ -227,7 +233,7 @@ test('a 390 px se ve el saldo y se registra un pago sin desplazamiento lateral',
 
 test('el dialogo rechaza un monto mal escrito antes de llamar a la API', async ({ page }) => {
   await page.goto(`/viajes?id=${archivoId}`);
-  await expect(page.getByTestId('panel-de-cobro')).toBeVisible({ timeout: 30_000 });
+  await panelDeCobroListo(page);
 
   await page.getByTestId('abrir-registrar-pago').click();
   const dialogo = page.getByRole('dialog');
