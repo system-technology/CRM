@@ -703,7 +703,7 @@ export default function CotizacionesPage() {
                     type="button"
                     onClick={() => void cargarMas()}
                     disabled={cargandoMas}
-                    className="dark:hover:bg-neutral-750 flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-300 bg-white px-6 py-2.5 text-xs font-bold text-neutral-800 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                    className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-300 bg-white px-6 py-2.5 text-xs font-bold text-neutral-800 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
                   >
                     {cargandoMas ? (
                       <>
