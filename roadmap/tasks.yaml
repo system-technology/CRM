@@ -13523,10 +13523,29 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: review
     acceptance:
       - Fila 8. Cuatro pantallas ponen «Exportar CSV» e «Importar archivo» antes del contenido
       - Bajarlos a un menu y dejar el dato arriba
+      - "MEDIDO el 2026-11-24 a 390 px: la premisa senalaba el sitio equivocado. Son CINCO pantallas y no
+        cuatro, y en TRES de las cinco «Exportar CSV» COMPARTE FILA con otra cosa, asi que bajarlo a un
+        menu recupera CERO pixeles. El boton no era la muralla"
+      - "LA MURALLA SON LOS FILTROS: cada select ocupa su propia fila de 44 px. /catalogo 429 px (156 de
+        filtros, 96 de botones en fila propia, 45 de pestanas), /contactos 358 (198 de filtros),
+        /cotizaciones 348 (123 de filtros), /pipeline 308, /cobros 253"
+      - "HECHO en b/T-000-cabeceras-en-movil: componente FiltrosPlegables (los filtros se pliegan en el
+        telefono y en sm: siguen en linea), aplicado a las dos peores. El buscador NO se pliega: en el
+        telefono buscar es la accion principal. Y EL BOTON DICE CUANTOS FILTROS HAY PUESTOS, porque plegar
+        un filtro esconde el estado y una lista filtrada que no se anuncia es peor que la muralla"
+      - "RESULTADO medido: /contactos 358 a 217 px (-39 por ciento) y el primer dato de y=481 a y=340;
+        /catalogo 429 a 321 px (-25 por ciento) y de y=690 a y=582. En /contactos son dos filas de contacto
+        visibles sobre el pliegue donde antes no cabia ninguna"
+      - "Cuatro guardas del componente, probadas; typecheck, lint y 2140 pruebas en 217 ficheros en verde"
+      - "FALTA, ya medido y mecanico: /cotizaciones, /pipeline y /cobros con el mismo patron. Por eso la
+        tarea NO se cierra y la rama va como T-000"
+      - "NO SE TOCO, y es de producto: los dos chips de /contactos («Aceptan promociones», «Segmentos»)
+        ocupan 30 px y no llevan a ninguna accion, que es lo que diseno-web desaconseja. Quitarlos recorta
+        otros 30 px pero es alcance de dueno-de-producto"
     source: plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)
     owner: frontend
   - id: T-631

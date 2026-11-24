@@ -26,7 +26,7 @@ diagnóstico cuantificó toques, contrastes y píxeles; las correcciones se veri
 | 5 | **T-627** | Modo oscuro de «Hoy»: **contraste 1,1:1 sobre un importe** | S | lista |
 | 6 | **T-628** | El aviso de cookies tapaba el ingreso: de **44 px tapados** a **59 de holgura** | S | **en revisión** (PR #549) |
 | 7 | **T-629** | Pasada de lenguaje: la lista de contactos tenía **cuatro nombres** | M | **en revisión** |
-| 8 | T-630 | Murallas de cabecera en móvil | M | cola |
+| 8 | **T-630** | Murallas de cabecera: la muralla eran **los filtros**, no los botones | M | **en revisión** (2 de 5) |
 | 9 | T-631 | Pestañas que no caben | M | cola |
 | 10 | T-632 | Botones de solo icono sin nombre | S | cola |
 | 11 | T-633 | Títulos de documento y migas (ADR-0032) | S | cola |
@@ -182,3 +182,48 @@ revierte en una línea.
 formato del fichero, y decir «Excel» sería mentir. Quitarlo de la prosa y conservarlo en los botones
 es una decisión de lenguaje de producto, no de implementación: la toma `dueno-de-producto`. Por eso
 **T-629 no se cierra** con este lote y su rama va como `T-000`.
+
+---
+
+## T-630: la premisa señalaba el sitio equivocado (2026-11-24)
+
+T-630 decía que **cuatro** pantallas ponen «Exportar CSV» e «Importar archivo» antes del contenido, y
+que la cura es bajarlos a un menú. Medido a 390 px, son **cinco** — y, sobre todo, **en tres de las
+cinco ese botón comparte fila con otra cosa, así que bajarlo recupera cero píxeles.**
+
+Al descomponer la cabecera aparece de qué está hecha: **de filtros**, porque cada `select` ocupa su
+propia fila de 44 px.
+
+| Pantalla | Cabecera | De qué está hecha |
+|---|---|---|
+| `/catalogo` | 429 px | 156 de filtros + **96 de botones en fila propia** + 45 de pestañas |
+| `/contactos` | 358 px | **198 de filtros** + 111 de título y chips |
+| `/cotizaciones` | 348 px | 136 de título y bajada + **123 de filtros** |
+| `/pipeline` | 308 px | filtros + «Exportar CSV» en fila propia (44) |
+| `/cobros` | 253 px | «Exportar CSV» **comparte fila**: 0 px que ganar ahí |
+
+### Lo hecho, en las dos peores
+
+`FiltrosPlegables`: en el teléfono los filtros se pliegan tras un botón; de `sm:` en adelante siguen
+en línea y no cambia nada. **El buscador no se pliega** —en el teléfono buscar es la acción principal
+de estas pantallas— y **el botón dice cuántos filtros hay puestos**, porque plegar un filtro esconde
+el estado y una lista filtrada que no se anuncia es peor que la muralla.
+
+| Pantalla | Cabecera | Primer dato |
+|---|---|---|
+| `/contactos` | 358 → **217 px** (−39 %) | y=481 → **y=340** |
+| `/catalogo` | 429 → **321 px** (−25 %) | y=690 → **y=582** |
+
+En `/contactos` eso son **dos filas de contacto visibles sobre el pliegue** donde antes no cabía
+ninguna.
+
+### Lo que falta, ya medido
+
+`/cotizaciones` (348), `/pipeline` (308) y `/cobros` (253) siguen el mismo patrón: aplicar
+`FiltrosPlegables` a su fila de filtros. Es mecánico; lo que costaba era saber dónde mirar.
+
+### Lo que no se tocó, y es decisión de producto
+
+Los dos chips de `/contactos` —«Aceptan promociones: 5» y «Segmentos: 12»— ocupan 30 px y **no llevan
+a ninguna acción**, que es justo lo que `diseno-web` §2 desaconseja («las KPIs solo si llevan a una
+acción»). Quitarlos recorta otros 30 px, pero es alcance de `dueno-de-producto`.
