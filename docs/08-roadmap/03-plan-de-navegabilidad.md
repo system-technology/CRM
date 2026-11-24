@@ -28,7 +28,7 @@ diagnóstico cuantificó toques, contrastes y píxeles; las correcciones se veri
 | 7 | **T-629** | Pasada de lenguaje: la lista de contactos tenía **cuatro nombres** | M | **en revisión** |
 | 8 | **T-630** | Murallas de cabecera: la muralla eran **los filtros**, no los botones | M | **en revisión** (2 de 5) |
 | 9 | **T-631** | Pestañas que no caben: 7 de 9 fuera, y la activa **sin anunciar** | M | **en revisión** |
-| 10 | T-632 | Botones de solo icono sin nombre | S | cola |
+| 10 | **T-632** | Iconos sin nombre: 16 de 68, **todos en Contactos** | S | **en revisión** |
 | 11 | T-633 | Títulos de documento y migas (ADR-0032) | S | cola |
 | — | T-634 | La paleta no encuentra la mitad de lo que hay | S | cola |
 | — | T-638 | El ADR-0032 y el código **se contradicen** en la barra móvil | S | lista |
@@ -281,3 +281,36 @@ de las oportunidades», y los dos botones «Guardar … de **SLA** / de Agencia�
 La **semántica completa de pestañas** en `/configuracion` (`role="tablist"`, `role="tab"`, flechas),
 que exige atar los paneles con sus ids. **Media semántica es peor que ninguna:** anunciar «pestaña 1
 de 9» sin que las flechas funcionen engaña. Por eso T-631 queda abierta.
+
+---
+
+## T-632: los dieciséis eran los mismos dieciséis (2026-11-24)
+
+Medido en el navegador **calculando el nombre accesible**, no por `grep`: de los **68 controles de
+solo icono** de las once pantallas, **52 están bien**. Los **16 que fallaban estaban todos en
+`/contactos`** —los dos enlaces de cada una de las ocho filas— y fallaban **por partida doble**:
+
+1. Su nombre salía **solo de `title`**. En un teléfono no hay `hover`, así que en el aparato
+   principal de la asesora esos iconos **no tenían nombre en la práctica**.
+2. El nombre **se repetía ocho veces**: «Abrir chat en bandeja» ×8 y «Abrir Ficha 360» ×8. Un lector
+   de pantalla no podía distinguir el chat de Juan del de Ana.
+
+**Los dos puntos de la tarea resultaron ser el mismo defecto**, en los mismos dieciséis controles.
+
+### La cura
+
+La etiqueta lleva **a quién pertenece la fila**, no un texto genérico: «Abrir el chat con Juan Pérez»,
+«Ver la ficha de Juan Pérez». Arregla las dos cosas a la vez. Si el contacto no tiene nombre se usa su
+teléfono, que es lo que la fila enseña. `aria-label` y `title` salen del mismo texto, para que el ratón
+y el lector no discrepen.
+
+**Verificado a 1440 y a 390 px:** de 16 controles dependientes de `title` a **cero**, y **ningún nombre
+se repite** ya dentro de una pantalla.
+
+### Lo que queda
+
+«**Ficha 360**» sigue en tres sitios (`tarjeta-seguimiento`, `ficha-detalle-contacto`): **no está en el
+lenguaje ubicuo** y es material de T-629, no de esta fila.
+
+Y la guarda **no vigila los otros 52 controles**: hacerlo pediría una lista que se desactualiza sola.
+Lo que los caza es la medición del navegador, que queda escrita aquí para repetirla.

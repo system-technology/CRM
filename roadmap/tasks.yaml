@@ -13593,10 +13593,28 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: review
     acceptance:
       - Fila 10. Mas de 6 controles sin nombre
       - "No solo afecta a lectores de pantalla: dos iconos iguales tampoco se distinguen mirandolos"
+      - "MEDIDO el 2026-11-24 en el navegador CALCULANDO el nombre accesible, no por grep: de los 68
+        controles de solo icono de las once pantallas, 52 estan bien. Los 16 que fallaban estaban TODOS en
+        /contactos: los dos enlaces de cada una de las ocho filas"
+      - "FALLABAN POR PARTIDA DOBLE, y los dos puntos de la tarea resultaron ser el MISMO defecto en los
+        MISMOS 16 controles: (1) su nombre salia solo de title, y en un telefono no hay hover, asi que en
+        el aparato principal de la asesora no tenian nombre en la practica; (2) el nombre se repetia ocho
+        veces, «Abrir chat en bandeja» x8 y «Abrir Ficha 360» x8, asi que un lector de pantalla no podia
+        distinguir el chat de Juan del de Ana"
+      - "CURA: la etiqueta lleva a quien pertenece la fila y no un texto generico («Abrir el chat con Juan
+        Perez», «Ver la ficha de Juan Perez»), lo que arregla las dos cosas a la vez. Si el contacto no
+        tiene nombre se usa su telefono, que es lo que la fila ensena. aria-label y title salen del mismo
+        texto para que el raton y el lector no discrepen"
+      - "VERIFICADO a 1440 y a 390 px: de 16 controles dependientes de title a CERO, y ningun nombre se
+        repite ya dentro de una pantalla. Dos guardas; 2146 pruebas en 219 ficheros en verde"
+      - "QUEDA, y es de T-629 y no de esta fila: «Ficha 360» sigue en tres sitios (tarjeta-seguimiento,
+        ficha-detalle-contacto) y NO esta en el lenguaje ubicuo"
+      - "LA GUARDA NO VIGILA los otros 52 controles: pediria una lista que se desactualiza sola. Lo que los
+        caza es la medicion del navegador, escrita en el plan para repetirla"
     source: plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)
     owner: frontend
   - id: T-633
