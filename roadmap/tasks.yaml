@@ -13554,11 +13554,37 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: review
     acceptance:
       - Fila 9, en Configuracion y Catalogo
       - Scroll horizontal con desvanecido y scrollIntoView sobre la activa
       - La guia lo cubre en tabs, que el diagnostico verifico que aplica
+      - "MEDIDO el 2026-11-24 a 390 px: /configuracion tiene 9 pestanas que ocupan 1414 px en un hueco de
+        342, con SIETE fuera de vista; /catalogo, una de tres. Las dos se podian desplazar pero NADA EN
+        PANTALLA DECIA QUE HUBIERA MAS"
+      - "LO QUE LA TAREA NO DECIA: las dos pantallas no estaban igual de mal. /catalogo YA tenia semantica
+        completa (role=tab, aria-selected, aria-controls, type=button). /configuracion era un nav de
+        botones planos donde la activa SOLO SE DISTINGUIA POR EL COLOR: sin aria-selected, sin
+        aria-current, sin type. Con lector de pantalla no se podia saber en que seccion se estaba, y eso
+        es mas grave que el desplazamiento"
+      - "HECHO en b/T-000-pestanas, siguiendo la guia tabs: utilidad .tira-desplazable que desvanece cada
+        extremo con una mascara sobre el propio desplazador, animada por la posicion real de scroll (si
+        todo cabe NO hay desvanecido, y el extremo alcanzado deja de difuminarse); gancho
+        usarPestanaALaVista con block nearest para que el ajuste horizontal no haga saltar la pagina; y en
+        /configuracion nombre accesible mas type y aria-current en sus diez botones, con el estilo saliendo
+        del mismo booleano para que lo visual y lo accesible no discrepen"
+      - "DEGRADACION dicha: sin animaciones de linea de tiempo de scroll (hoy Safari) los desvanecidos se
+        quedan en 0 px y la tira se comporta como antes. Se pierde la pista visual, no el acceso"
+      - "VERIFICADO en navegador a 390 px: las dos tiras con mascara, barra oculta, una activa marcada y a
+        la vista, todos los botones con type, y al elegir la novena pestana la tira la trae a la vista.
+        Cuatro guardas del contrato; 2144 pruebas en 218 ficheros en verde"
+      - "DE PASO, nueve etiquetas que la pasada de T-629 no alcanzo porque su heuristica buscaba tres
+        palabras capitalizadas y estas tienen dos (Miembros y Roles, Respuestas Rapidas, Campos
+        Personalizados, Formacion del Precio, Asistente de Inicio), mas tres de jerga: Canal WhatsApp
+        (WABA), Etapas del Pipeline y los dos botones Guardar de SLA / de Agencia"
+      - "FALTA, y por eso NO se cierra: la semantica completa de pestanas en /configuracion (role=tablist,
+        role=tab y flechas), que exige atar los paneles con sus ids. MEDIA SEMANTICA ES PEOR QUE NINGUNA:
+        anunciar «pestana 1 de 9» sin que las flechas funcionen engana"
     source: plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)
     owner: frontend
   - id: T-632

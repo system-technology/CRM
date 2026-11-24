@@ -27,7 +27,7 @@ diagnóstico cuantificó toques, contrastes y píxeles; las correcciones se veri
 | 6 | **T-628** | El aviso de cookies tapaba el ingreso: de **44 px tapados** a **59 de holgura** | S | **en revisión** (PR #549) |
 | 7 | **T-629** | Pasada de lenguaje: la lista de contactos tenía **cuatro nombres** | M | **en revisión** |
 | 8 | **T-630** | Murallas de cabecera: la muralla eran **los filtros**, no los botones | M | **en revisión** (2 de 5) |
-| 9 | T-631 | Pestañas que no caben | M | cola |
+| 9 | **T-631** | Pestañas que no caben: 7 de 9 fuera, y la activa **sin anunciar** | M | **en revisión** |
 | 10 | T-632 | Botones de solo icono sin nombre | S | cola |
 | 11 | T-633 | Títulos de documento y migas (ADR-0032) | S | cola |
 | — | T-634 | La paleta no encuentra la mitad de lo que hay | S | cola |
@@ -227,3 +227,57 @@ ninguna.
 Los dos chips de `/contactos` —«Aceptan promociones: 5» y «Segmentos: 12»— ocupan 30 px y **no llevan
 a ninguna acción**, que es justo lo que `diseno-web` §2 desaconseja («las KPIs solo si llevan a una
 acción»). Quitarlos recorta otros 30 px, pero es alcance de `dueno-de-producto`.
+
+---
+
+## T-631: el desplazamiento no era lo peor (2026-11-24)
+
+Medido a 390 px:
+
+| Pantalla | Pestañas | Ancho visible / real | Fuera de vista |
+|---|---|---|---|
+| `/configuracion` | 9 | 342 / **1414 px** | **7** |
+| `/catalogo` | 3 | 362 / 521 px | 1 |
+
+Las dos se podían desplazar, pero **nada en pantalla decía que hubiera más**.
+
+### Lo que la tarea no decía: las dos no estaban igual de mal
+
+`/catalogo` **ya tenía semántica de pestañas completa** (`role="tab"`, `aria-selected`,
+`aria-controls`, `type="button"`). `/configuracion` era un `<nav>` de botones planos donde **la activa
+solo se distinguía por el color**: sin `aria-selected`, sin `aria-current`, sin `type`. Quien usara un
+lector de pantalla **no podía saber en qué sección estaba** — y eso es más grave que el
+desplazamiento, que al menos funcionaba.
+
+### Lo hecho
+
+- `.tira-desplazable` (`globals.css`): desvanece cada extremo con una **máscara sobre el propio
+  desplazador**, animada por la posición real de scroll. Cuando todo cabe **no hay desvanecido** (la
+  línea de tiempo está inactiva) y el extremo al que ya se llegó deja de difuminarse. Se enmascaran
+  solo las bandas, para no tapar el anillo de foco.
+- `usarPestanaALaVista`: lleva la activa a la vista al entrar y al cambiar, con `block: 'nearest'`
+  para que corregir el horizontal no haga saltar la página.
+- `/configuracion`: nombre accesible en la tira, y `type="button"` + `aria-current` en sus diez
+  botones, **con el estilo saliendo del mismo booleano** para que lo visual y lo accesible no puedan
+  discrepar.
+
+**Degradación dicha:** donde no haya animaciones de línea de tiempo de scroll (hoy, Safari), los
+desvanecidos se quedan en 0 px y la tira se comporta como antes. Se pierde la pista visual, no el
+acceso.
+
+**Verificado en el navegador a 390 px:** las dos tiras con máscara, barra oculta, una activa marcada y
+a la vista, todos los botones con `type`, y al elegir la novena pestaña de Configuración la tira la
+trae a la vista.
+
+### Nueve etiquetas que la pasada de T-629 no alcanzó
+
+Su heurística buscaba tres palabras capitalizadas y estas tienen dos: «Miembros y Roles»,
+«Respuestas Rápidas», «Campos Personalizados», «Formación del Precio», «Asistente de Inicio». Más
+tres de jerga: «Canal WhatsApp (**WABA**)» → «Canal de WhatsApp», «Etapas del **Pipeline**» → «Etapas
+de las oportunidades», y los dos botones «Guardar … de **SLA** / de Agencia».
+
+### Lo que falta
+
+La **semántica completa de pestañas** en `/configuracion` (`role="tablist"`, `role="tab"`, flechas),
+que exige atar los paneles con sus ids. **Media semántica es peor que ninguna:** anunciar «pestaña 1
+de 9» sin que las flechas funcionen engaña. Por eso T-631 queda abierta.
