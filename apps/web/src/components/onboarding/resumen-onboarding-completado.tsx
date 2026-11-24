@@ -58,7 +58,7 @@ export function ResumenOnboardingCompletado({
               className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-xs font-extrabold text-neutral-900 shadow-lg transition-all hover:bg-neutral-100 active:scale-98"
             >
               <Send className="h-4 w-4 text-emerald-600" />
-              <span>Crear y Enviar Mi Primera Cotización</span>
+              <span>Crear y enviar mi primera cotización</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
 
@@ -171,7 +171,7 @@ export function ResumenOnboardingCompletado({
             className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
           >
             <Kanban className="h-4 w-4" />
-            <span>Ver Pipeline Kanban</span>
+            <span>Ver oportunidades</span>
           </Link>
 
           <Link

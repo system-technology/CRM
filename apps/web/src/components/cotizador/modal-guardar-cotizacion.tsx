@@ -312,7 +312,7 @@ export function ModalGuardarCotizacion({
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>Confirmar y Guardar Cotización</span>
+                  <span>Confirmar y guardar la cotización</span>
                 </>
               )}
             </button>

@@ -141,7 +141,7 @@ export default function ContactosPage() {
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                Directorio comercial, preferencias de viaje y consentimientos (Ley 1581 / Meta)
+                Preferencias de viaje y permisos de contacto, conforme a la Ley 1581
               </p>
             </div>
 
@@ -150,7 +150,7 @@ export default function ContactosPage() {
               <div className="flex items-center space-x-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 dark:border-neutral-800 dark:bg-neutral-800/60">
                 <ShieldCheck className="text-ok-600 dark:text-ok-400 h-4 w-4" />
                 <span className="text-neutral-600 dark:text-neutral-300">
-                  Opt-In Marketing: <strong>{totalPromocionales}</strong>
+                  Aceptan promociones: <strong>{totalPromocionales}</strong>
                 </span>
               </div>
               <div className="flex items-center space-x-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 dark:border-neutral-800 dark:bg-neutral-800/60">

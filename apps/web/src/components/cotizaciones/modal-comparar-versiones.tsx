@@ -610,7 +610,7 @@ export function ModalCompararVersiones({
                     <>
                       {diff.totales.netoA && diff.totales.netoB && diff.totales.deltaNeto && (
                         <tr className="text-neutral-600 dark:text-neutral-400">
-                          <td className="p-2.5">Tarifa Neta Proveedor</td>
+                          <td className="p-2.5">Tarifa neta del proveedor</td>
                           <td className="p-2.5">{formatearDinero(diff.totales.netoA)}</td>
                           <td className="p-2.5">{formatearDinero(diff.totales.netoB)}</td>
                           <td className="p-2.5">{formatearDeltaDinero(diff.totales.deltaNeto)}</td>
@@ -619,7 +619,7 @@ export function ModalCompararVersiones({
                       )}
                       {diff.totales.margenA && diff.totales.margenB && diff.totales.deltaMargen && (
                         <tr className="text-neutral-600 dark:text-neutral-400">
-                          <td className="p-2.5">Margen Comercial Agencia</td>
+                          <td className="p-2.5">Margen comercial de la agencia</td>
                           <td className="p-2.5">{formatearDinero(diff.totales.margenA)}</td>
                           <td className="p-2.5">{formatearDinero(diff.totales.margenB)}</td>
                           <td className="p-2.5">

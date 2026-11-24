@@ -247,7 +247,7 @@ export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContact
                   Consentimiento Promocional (Marketing)
                 </p>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                  Campañas segmentadas y ofertas comerciales (Ley 1581 / Meta Opt-In).
+                  Promociones y ofertas comerciales. Requiere permiso expreso (Ley 1581).
                 </p>
               </div>
               <span

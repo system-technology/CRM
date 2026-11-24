@@ -176,7 +176,7 @@ describe('Cotizador con contexto del chat y un solo total (T-321)', () => {
     const dialogo = await screen.findByRole('dialog', { name: 'Guardar Cotización Oficial' });
     act(() => {
       fireEvent.click(
-        within(dialogo).getByRole('button', { name: /Confirmar y Guardar Cotización/ }),
+        within(dialogo).getByRole('button', { name: /Confirmar y guardar la cotización/ }),
       );
     });
 

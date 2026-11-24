@@ -56,7 +56,7 @@ const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
   { id: 'MIAS', etiqueta: 'Mías' },
   { id: 'SIN_ASIGNAR', etiqueta: 'Sin asignar' },
   { id: 'SIN_LEER', etiqueta: 'Sin leer' },
-  { id: 'SLA_VENCIDO', etiqueta: 'SLA Vencido' },
+  { id: 'SLA_VENCIDO', etiqueta: 'Fuera de plazo' },
 ];
 
 export function ListaConversaciones() {
@@ -538,7 +538,7 @@ export function ListaConversaciones() {
 
                         {conv.slaVenceEn && (
                           <span className="bg-alerta-50 py-0.2 text-alerta-700 dark:bg-alerta-950/40 dark:text-alerta-400 rounded px-1.5 font-semibold">
-                            SLA Vencido
+                            Fuera de plazo
                           </span>
                         )}
 

@@ -43,7 +43,7 @@ describe('ModalGuardarCotizacion: guarda lo que la asesora escribió (T-196)', (
     fireEvent.change(selector, { target: { value: CONTACTOS[1]!.id } });
 
     expect(titulo.value).toBe('Cotización para Viajero Nuevo');
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar y Guardar Cotización/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar y guardar la cotización/ }));
     await vi.waitFor(() => expect(alConfirmar).toHaveBeenCalled());
     expect(alConfirmar.mock.calls[0]![0]).toMatchObject({
       titulo: 'Cotización para Viajero Nuevo',

@@ -113,6 +113,7 @@ import { fechaDeHoy } from '../../../lib/cotizador-logica';
 import { herramientasDevActivas } from '../../../lib/herramientas-dev';
 
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
+import { formatearFecha } from '../../../lib/formato';
 /** Ficha mínima de un paquete que solo se conoce por su salida publicada (modo real). */
 function paqueteDesdeSalida(sal: SalidaPublicada): PaqueteConDetalle {
   return {
@@ -125,7 +126,7 @@ function paqueteDesdeSalida(sal: SalidaPublicada): PaqueteConDetalle {
     planAlimentacion: 'SIN_ALIMENTACION',
     inclusiones: [],
     exclusiones: [],
-    descripcion: `Salida programada para ${sal.fecha} con destino a ${sal.destino}.`,
+    descripcion: `Salida programada para ${formatearFecha(sal.fecha)} con destino a ${sal.destino}.`,
     activo: true,
     mayoristaId: null,
     mayorista: null,
@@ -690,7 +691,7 @@ function CatalogoContenido() {
                               <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
                                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">
-                                  Vigente hasta {vigencia.proximoVencimiento}
+                                  Vigente hasta {formatearFecha(vigencia.proximoVencimiento)}
                                 </span>
                               </div>
                             ) : (

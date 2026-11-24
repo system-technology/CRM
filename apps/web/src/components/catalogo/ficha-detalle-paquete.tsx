@@ -24,6 +24,7 @@ import {
   verificarVigenciaTarifario,
 } from '../../lib/catalogo-logica';
 import { ChipTipoProducto } from '../comun/chip-tipo-producto';
+import { formatearFecha } from '../../lib/formato';
 
 interface FichaDetallePaqueteProps {
   paquete: PaqueteConDetalle | null;
@@ -110,7 +111,7 @@ export function FichaDetallePaquete({
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span>
                 <strong>Tarifario vigente.</strong> Próximo corte de vigencia:{' '}
-                {vigencia.proximoVencimiento} (UTC). Precios validados para cotización.
+                {formatearFecha(vigencia.proximoVencimiento)}. Precios validados para cotización.
               </span>
             </div>
           ) : (
@@ -171,7 +172,8 @@ export function FichaDetallePaquete({
               {vigenciaActiva && (
                 <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                   <Calendar className="h-3.5 w-3.5" />
-                  Vigencia: {vigenciaActiva.desde} a {vigenciaActiva.hasta}
+                  Vigencia: {formatearFecha(vigenciaActiva.desde)} a{' '}
+                  {formatearFecha(vigenciaActiva.hasta)}
                 </span>
               )}
             </div>
@@ -189,7 +191,9 @@ export function FichaDetallePaquete({
                         : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
                     }`}
                   >
-                    {v.desde === v.hasta ? v.desde : `${v.desde} a ${v.hasta}`}
+                    {v.desde === v.hasta
+                      ? formatearFecha(v.desde)
+                      : `${formatearFecha(v.desde)} a ${formatearFecha(v.hasta)}`}
                   </button>
                 ))}
               </div>
@@ -199,7 +203,8 @@ export function FichaDetallePaquete({
               <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="border-b border-neutral-200 bg-neutral-50/70 px-4 py-2.5 dark:border-neutral-800 dark:bg-neutral-800/50">
                   <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                    Tarifas de la vigencia — {vigenciaActiva.desde} a {vigenciaActiva.hasta}
+                    Tarifas de la vigencia — {formatearFecha(vigenciaActiva.desde)} a{' '}
+                    {formatearFecha(vigenciaActiva.hasta)}
                   </span>
                   <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
                     {vigenciaActiva.publicada ? 'Salida publicada. ' : ''}

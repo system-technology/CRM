@@ -929,7 +929,7 @@ export function AsistenteImportacion({
                 data-testid="boton-cerrar-finalizado"
                 className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-neutral-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900"
               >
-                <span>Cerrar y Ver Catálogo</span>
+                <span>Cerrar y ver el catálogo</span>
               </button>
             )}
           </div>

@@ -76,8 +76,8 @@ export const CONFIGURACION_MODULOS: Record<ModuloViajaPro, ConfiguracionModulo> 
   },
   contactos: {
     id: 'contactos',
-    nombre: 'Directorio de Clientes',
-    descripcion: 'Viajeros, historial comercial y protección PII',
+    nombre: 'Contactos',
+    descripcion: 'Personas con las que habla la agencia, con sus preferencias de viaje',
     icono: Users,
     colorHex: '#4F46E5',
     claseBgSuave: 'bg-indigo-50 dark:bg-indigo-950/50',

@@ -97,7 +97,7 @@ export function BloquePoliticaPrecio({
                 className="flex items-center gap-2 text-xs font-bold text-neutral-900 dark:text-white"
               >
                 <Percent className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Margen Comercial General</span>
+                <span>Margen comercial general</span>
               </label>
               <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-extrabold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
                 {politica.porcentaje} %

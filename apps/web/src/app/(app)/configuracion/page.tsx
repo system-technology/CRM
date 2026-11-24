@@ -206,7 +206,8 @@ function ConfiguracionContenido() {
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                Administra miembros, roles, SLA, canal de WhatsApp y datos fiscales de la agencia
+                Administra miembros, roles, plazos de respuesta, canal de WhatsApp y datos de la
+                agencia
               </p>
             </div>
 
@@ -275,7 +276,7 @@ function ConfiguracionContenido() {
               }`}
             >
               <Clock className="h-4 w-4" />
-              <span>SLA y Tiempos</span>
+              <span>Plazos de respuesta</span>
             </button>
 
             <button
@@ -299,7 +300,7 @@ function ConfiguracionContenido() {
               }`}
             >
               <Building2 className="h-4 w-4" />
-              <span>Marca y Datos Fiscales</span>
+              <span>Marca y datos fiscales</span>
             </button>
 
             {puedeVerNetoYMargen && (

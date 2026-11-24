@@ -125,7 +125,8 @@ describe('Componente PanelNotificaciones (T-110)', () => {
 
     expect(screen.getByTestId('seccion-preferencias-notificaciones')).toBeDefined();
     expect(screen.getByText('Preferencias de Aviso por Asesor')).toBeDefined();
-    expect(screen.getByText(/Cero PII en Títulos/i)).toBeDefined();
+    // T-629: en pantalla no se dice «PII» ni se cita el número de una regla interna.
+    expect(screen.getByText(/Sin datos personales en los títulos/i)).toBeDefined();
   });
 
   it('activa y desactiva el sonido y prueba la campana sintetizada', () => {

@@ -233,6 +233,7 @@ describe('Contacto360Page (T-100) — Pantalla Ficha 360 del Contacto', () => {
       expect(screen.getByRole('button', { name: /Reintentar/i })).toBeDefined();
     });
 
-    expect(screen.getByText(/Volver al Directorio de Contactos/i)).toBeDefined();
+    // T-629: la lista se llama «Contactos» en todas partes, no «Directorio de …».
+    expect(screen.getByText(/Volver a Contactos/i)).toBeDefined();
   });
 });

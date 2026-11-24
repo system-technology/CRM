@@ -230,7 +230,7 @@ export function PanelNotificaciones({
               </span>
               <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                <span>Cero PII en Títulos (R10)</span>
+                <span>Sin datos personales en los títulos</span>
               </span>
             </div>
 

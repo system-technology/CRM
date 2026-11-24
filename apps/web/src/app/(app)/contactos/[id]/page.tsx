@@ -284,7 +284,7 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-neutral-200 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Volver al Directorio de Contactos</span>
+                <span>Volver a Contactos</span>
               </Link>
             </div>
           </div>
@@ -319,7 +319,7 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
             className="flex min-h-[44px] items-center gap-2 text-xs font-bold text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Directorio de Contactos</span>
+            <span>Contactos</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link

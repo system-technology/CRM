@@ -217,8 +217,8 @@ describe('ModalCompararVersiones (T-128)', () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByText('Tarifa Neta Proveedor')).toBeNull();
-    expect(screen.queryByText('Margen Comercial Agencia')).toBeNull();
+    expect(screen.queryByText('Tarifa neta del proveedor')).toBeNull();
+    expect(screen.queryByText('Margen comercial de la agencia')).toBeNull();
     expect(screen.getByText(/Costos netos y márgenes comerciales restringidos/i).textContent).toBe(
       'Costos netos y márgenes comerciales restringidos (requiere permiso cotizacion.ver_neto_y_margen).',
     );
@@ -235,12 +235,12 @@ describe('ModalCompararVersiones (T-128)', () => {
       />,
     );
 
-    expect((await screen.findByText('Tarifa Neta Proveedor')).closest('tr')?.textContent).toMatch(
-      /^Tarifa Neta Proveedor\$ /,
-    );
     expect(
-      (await screen.findByText('Margen Comercial Agencia')).closest('tr')?.textContent,
-    ).toMatch(/^Margen Comercial Agencia\$ /);
+      (await screen.findByText('Tarifa neta del proveedor')).closest('tr')?.textContent,
+    ).toMatch(/^Tarifa neta del proveedor\$ /);
+    expect(
+      (await screen.findByText('Margen comercial de la agencia')).closest('tr')?.textContent,
+    ).toMatch(/^Margen comercial de la agencia\$ /);
     expect(screen.queryByText(/Costos netos y márgenes comerciales restringidos/i)).toBeNull();
   });
 
