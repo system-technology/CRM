@@ -47,6 +47,7 @@ import {
 } from '../../../lib/filtros-guardados-logica';
 
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
+import { FiltrosPlegables } from '../../../components/comun/filtros-plegables';
 export default function ContactosPage() {
   const { esDemo } = useModoDemo();
   const { sesion } = usePermisos();
@@ -93,6 +94,14 @@ export default function ContactosPage() {
   const setBusqueda = (v: string) => actualizarFiltro('busqueda', v);
   const setEtiquetaFiltro = (v: string) => actualizarFiltro('etiquetaFiltro', v);
   const setConsentimientoFiltro = (v: string) => actualizarFiltro('consentimientoFiltro', v);
+
+  /**
+   * Cuántos filtros hay puestos ahora mismo (T-630). Lo enseña el botón que los pliega en el
+   * teléfono: una lista filtrada que no se anuncia es peor que una muralla de controles. La
+   * búsqueda no cuenta, porque no se pliega: se ve siempre.
+   */
+  const numeroDeFiltrosActivos =
+    (etiquetaFiltro !== 'todas' ? 1 : 0) + (consentimientoFiltro !== 'todos' ? 1 : 0);
 
   // Contacto seleccionado para la ficha lateral
   const [contactoSeleccionado, setContactoSeleccionado] = useState<ContactoDeLista | null>(null);
@@ -166,7 +175,9 @@ export default function ContactosPage() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-3 dark:border-neutral-800/70">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               {/* Input de Búsqueda */}
-              <div className="relative max-w-sm min-w-[240px] flex-1">
+              {/* A 390 px el `min-w-[240px]` ocupaba la fila entera y empujaba «Filtros» a una
+                  segunda fila de 44 px más (T-630). En `sm:` recupera su ancho mínimo. */}
+              <div className="relative max-w-sm min-w-0 flex-1 sm:min-w-[240px]">
                 <Search className="absolute top-3 left-3 h-3.5 w-3.5 text-neutral-400" />
                 <input
                   type="text"
@@ -178,64 +189,66 @@ export default function ContactosPage() {
                 />
               </div>
 
-              {/* Selector de Etiqueta */}
-              <div className="flex items-center space-x-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-                <Tag className="h-3.5 w-3.5" />
-                <select
-                  value={etiquetaFiltro}
-                  onChange={(e) => setEtiquetaFiltro(e.target.value)}
-                  aria-label="Filtrar por etiqueta"
-                  className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
-                >
-                  <option value="todas">Todas las etiquetas</option>
-                  {etiquetasDisponibles.map((et) => (
-                    <option key={et} value={et}>
-                      {et}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <FiltrosPlegables activos={numeroDeFiltrosActivos} id="filtros-de-contactos">
+                {/* Selector de Etiqueta */}
+                <div className="flex items-center space-x-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  <Tag className="h-3.5 w-3.5" />
+                  <select
+                    value={etiquetaFiltro}
+                    onChange={(e) => setEtiquetaFiltro(e.target.value)}
+                    aria-label="Filtrar por etiqueta"
+                    className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+                  >
+                    <option value="todas">Todas las etiquetas</option>
+                    {etiquetasDisponibles.map((et) => (
+                      <option key={et} value={et}>
+                        {et}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Selector de Consentimiento */}
-              <div className="flex items-center space-x-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-                <Filter className="h-3.5 w-3.5" />
-                <select
-                  value={consentimientoFiltro}
-                  onChange={(e) => setConsentimientoFiltro(e.target.value)}
-                  aria-label="Filtrar por consentimiento"
-                  className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
-                >
-                  <option value="todos">Todos los consentimientos</option>
-                  <option value="PROMOCIONAL">Con permiso de Marketing</option>
-                  <option value="TRANSACCIONAL">Solo transaccional</option>
-                </select>
-              </div>
+                {/* Selector de Consentimiento */}
+                <div className="flex items-center space-x-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  <Filter className="h-3.5 w-3.5" />
+                  <select
+                    value={consentimientoFiltro}
+                    onChange={(e) => setConsentimientoFiltro(e.target.value)}
+                    aria-label="Filtrar por consentimiento"
+                    className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+                  >
+                    <option value="todos">Todos los consentimientos</option>
+                    <option value="PROMOCIONAL">Con permiso de Marketing</option>
+                    <option value="TRANSACCIONAL">Solo transaccional</option>
+                  </select>
+                </div>
 
-              {/* Botón Limpiar Filtros */}
-              {tieneFiltrosActivos && (
+                {/* Botón Limpiar Filtros */}
+                {tieneFiltrosActivos && (
+                  <button
+                    type="button"
+                    onClick={limpiarFiltros}
+                    title="Limpiar filtros guardados"
+                    aria-label="Limpiar filtros de contactos"
+                    className="flex min-h-[44px] items-center rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+
+                {/* Botón Exportar CSV (T-119) */}
                 <button
                   type="button"
-                  onClick={limpiarFiltros}
-                  title="Limpiar filtros guardados"
-                  aria-label="Limpiar filtros de contactos"
-                  className="flex min-h-[44px] items-center rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+                  onClick={manejarExportarCSV}
+                  data-testid="boton-exportar-contactos-csv"
+                  title="Exportar listado a CSV en formato es-CO (separador punto y coma, UTF-8 con BOM)"
+                  aria-label="Exportar contactos a CSV"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
-                  Limpiar filtros
+                  <Download className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
+                  <span>Exportar CSV</span>
                 </button>
-              )}
-
-              {/* Botón Exportar CSV (T-119) */}
-              <button
-                type="button"
-                onClick={manejarExportarCSV}
-                data-testid="boton-exportar-contactos-csv"
-                title="Exportar listado a CSV en formato es-CO (separador punto y coma, UTF-8 con BOM)"
-                aria-label="Exportar contactos a CSV"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-              >
-                <Download className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
-                <span>Exportar CSV</span>
-              </button>
+              </FiltrosPlegables>
             </div>
 
             <div className="text-[11px] text-neutral-400">

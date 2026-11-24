@@ -113,6 +113,7 @@ import { fechaDeHoy } from '../../../lib/cotizador-logica';
 import { herramientasDevActivas } from '../../../lib/herramientas-dev';
 
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
+import { FiltrosPlegables } from '../../../components/comun/filtros-plegables';
 import { formatearFecha } from '../../../lib/formato';
 /** Ficha mínima de un paquete que solo se conoce por su salida publicada (modo real). */
 function paqueteDesdeSalida(sal: SalidaPublicada): PaqueteConDetalle {
@@ -160,6 +161,10 @@ function CatalogoContenido() {
   const [busqueda, setBusqueda] = useState('');
   const [planFiltro, setPlanFiltro] = useState<PlanAlimentacion | 'TODOS'>('TODOS');
   const [destinoFiltro, setDestinoFiltro] = useState<string>('TODOS');
+
+  /** Cuántos filtros hay puestos (T-630): el botón que los pliega lo enseña sin desplegar. */
+  const numeroDeFiltrosActivos =
+    (destinoFiltro !== 'TODOS' ? 1 : 0) + (planFiltro !== 'TODOS' ? 1 : 0);
   const [soloVigentes, setSoloVigentes] = useState<boolean>(true);
   const [salidasListas, setSalidasListas] = useState(false);
   const [pestañaActiva, setPestañaActiva] = useState<'EXPLORAR' | 'PLANTILLAS' | 'GESTION'>(
@@ -319,13 +324,18 @@ function CatalogoContenido() {
               </p>
             </div>
 
-            {/* Acciones principales */}
-            <div className="flex flex-col flex-wrap items-stretch gap-2 sm:flex-row sm:items-center">
+            {/*
+              Acciones principales. En el teléfono van EN UNA FILA (T-630): con `flex-col` cada botón
+              ocupaba una fila de 44 px y los dos sumaban 96 px de los 429 de cabecera, antes del
+              primer dato. Siguen siendo los dos alcanzables, que es mejor que esconder «Importar»
+              detrás de un menú justo cuando la agencia estrena el catálogo.
+            */}
+            <div className="flex flex-row flex-wrap items-stretch gap-2 sm:items-center">
               <button
                 type="button"
                 onClick={() => setAsistenteImportacionAbierto(true)}
                 data-testid="btn-abrir-asistente-importacion"
-                className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-neutral-800 shadow-2xs hover:bg-neutral-50 sm:w-auto dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-xs font-semibold text-neutral-800 shadow-2xs hover:bg-neutral-50 sm:flex-none sm:px-3.5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
               >
                 <Upload className="text-acento-600 dark:text-acento-400 h-4 w-4" />
                 <span>Importar archivo (CSV)</span>
@@ -333,7 +343,7 @@ function CatalogoContenido() {
 
               <Link
                 href="/cotizador"
-                className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold shadow-xs transition-colors sm:w-auto"
+                className="boton-primario flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold shadow-xs transition-colors sm:flex-none sm:px-4"
               >
                 <Compass className="h-4 w-4" />
                 Ir al Cotizador
@@ -419,43 +429,45 @@ function CatalogoContenido() {
                 />
               </div>
 
-              {/* Selector de Destino */}
-              <div>
-                <select
-                  id="selector-destino-catalogo"
-                  aria-label="Filtrar por destino"
-                  value={destinoFiltro}
-                  onChange={(e) => setDestinoFiltro(e.target.value)}
-                  className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
-                >
-                  <option value="TODOS">Todos los destinos ({destinosDisponibles.length})</option>
-                  {destinosDisponibles.map((dest) => (
-                    <option key={dest} value={dest}>
-                      {dest}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtro de Plan / Tipo */}
-              {!usarReal && (
+              <FiltrosPlegables activos={numeroDeFiltrosActivos} id="filtros-del-catalogo">
+                {/* Selector de Destino */}
                 <div>
                   <select
-                    id="selector-plan-catalogo"
-                    aria-label="Filtrar por plan de alimentación"
-                    value={planFiltro}
-                    onChange={(e) => setPlanFiltro(e.target.value as PlanAlimentacion | 'TODOS')}
+                    id="selector-destino-catalogo"
+                    aria-label="Filtrar por destino"
+                    value={destinoFiltro}
+                    onChange={(e) => setDestinoFiltro(e.target.value)}
                     className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                   >
-                    <option value="TODOS">Todo tipo de plan</option>
-                    <option value="SOLO_DESAYUNO">Solo Desayuno</option>
-                    <option value="MEDIA_PENSION">Media Pensión</option>
-                    <option value="PENSION_COMPLETA">Pensión Completa</option>
-                    <option value="TODO_INCLUIDO">Todo Incluido</option>
-                    <option value="SIN_ALIMENTACION">Sin Alimentación</option>
+                    <option value="TODOS">Todos los destinos ({destinosDisponibles.length})</option>
+                    {destinosDisponibles.map((dest) => (
+                      <option key={dest} value={dest}>
+                        {dest}
+                      </option>
+                    ))}
                   </select>
                 </div>
-              )}
+
+                {/* Filtro de Plan / Tipo */}
+                {!usarReal && (
+                  <div>
+                    <select
+                      id="selector-plan-catalogo"
+                      aria-label="Filtrar por plan de alimentación"
+                      value={planFiltro}
+                      onChange={(e) => setPlanFiltro(e.target.value as PlanAlimentacion | 'TODOS')}
+                      className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                    >
+                      <option value="TODOS">Todo tipo de plan</option>
+                      <option value="SOLO_DESAYUNO">Solo Desayuno</option>
+                      <option value="MEDIA_PENSION">Media Pensión</option>
+                      <option value="PENSION_COMPLETA">Pensión Completa</option>
+                      <option value="TODO_INCLUIDO">Todo Incluido</option>
+                      <option value="SIN_ALIMENTACION">Sin Alimentación</option>
+                    </select>
+                  </div>
+                )}
+              </FiltrosPlegables>
 
               {/* Interruptor modo Real / Demo para depuración o contingencia */}
               {herramientasDevActivas() && (
