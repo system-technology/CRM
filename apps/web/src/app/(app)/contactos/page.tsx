@@ -307,6 +307,13 @@ export default function ContactosPage() {
                     contactosFiltrados.map((c, idx) => {
                       const avatarColores = generarColorAvatar(c.id);
                       const iniciales = obtenerIniciales(c.nombre, c.telefono);
+                      /**
+                       * A quién pertenece la fila, para nombrar sus dos acciones (T-632). Sin esto,
+                       * los dieciséis enlaces de la tabla se anunciaban «Abrir chat en bandeja» y
+                       * «Abrir Ficha 360», ocho veces cada uno: un lector de pantalla no podía
+                       * distinguir el chat de Juan del de Ana.
+                       */
+                      const aQuien = c.nombre || formatearTelefonoVisual(c.telefono, rolActivo);
                       const tienePromocional = c.consentimientos.includes('PROMOCIONAL');
 
                       return (
@@ -395,7 +402,8 @@ export default function ContactosPage() {
                                 contactoId={c.id}
                                 termino={terminoDeBusquedaDelContacto(c)}
                                 onClick={(e) => e.stopPropagation()}
-                                title="Abrir chat en bandeja"
+                                aria-label={`Abrir el chat con ${aQuien}`}
+                                title={`Abrir el chat con ${aQuien}`}
                                 className="hover:text-acento-600 dark:hover:text-acento-400 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                               >
                                 <MessageSquare className="h-4 w-4" />
@@ -403,7 +411,8 @@ export default function ContactosPage() {
                               <Link
                                 href={`/contactos/${c.id}`}
                                 onClick={(e) => e.stopPropagation()}
-                                title="Abrir Ficha 360"
+                                aria-label={`Ver la ficha de ${aQuien}`}
+                                title={`Ver la ficha de ${aQuien}`}
                                 className="hover:text-acento-600 dark:hover:text-acento-400 flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                               >
                                 <ChevronRight className="h-4 w-4" />
