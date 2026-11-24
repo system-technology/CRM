@@ -65,3 +65,8 @@ apps/web/public/_local/
 
 # Cerebro persistente: el checkpoint es local y nunca va al repositorio
 docs/_contexto/CHECKPOINT.local.md
+
+# Rescate local de ramas sin permiso workflow (T-668). NO se versiona: un bundle con commits
+# que tocan .github/workflows no debe entrar por la puerta de atras. Solo vive en el disco hasta
+# que el propietario conceda el permiso y las 8 ramas suban a rescate/*.
+.rescate/
