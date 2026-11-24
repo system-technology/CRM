@@ -67,7 +67,7 @@ En las **100 corridas más recientes** (2026-11-22 a 2026-11-23): 68 `success`, 
 —por `cancel-in-progress`, no son fallos— y 7 `failure`. **Un solo relanzamiento** (`run_attempt > 1`)
 en las 100.
 
-### Las dos pruebas de que es inestable, no un fallo real
+### Las dos «pruebas» de que es inestable — y por qué no prueban eso (corregido el 2026-11-24)
 
 1. **Falló en una rama que solo toca `roadmap/tasks.yaml`** (`i/T-000-confirmar-sin-leer`,
    run `45186672007`). **Un fichero de cola no puede romper una prueba de navegador.**
@@ -76,6 +76,59 @@ en las 100.
 
 A eso se suma lo ya anotado en el diario el 2026-11-21: falló en dos PR sin nada en común y **pasó al
 relanzarlo sin cambiar una línea**.
+
+**Corrección del 2026-11-24.** Los puntos 1 y 2 **no prueban no determinismo**. Prueban que el fallo
+es **independiente del cambio**, y eso lo cumple igual un fallo **determinista** que falla en todas
+las corridas. El único dato de esta lista que sí prueba variabilidad es el tercero —el relanzamiento
+que pasó sin tocar nada—, y ese venía del diario, no de esta medición.
+
+Lo anoto porque el vicio es el que persigue este mismo documento: **de «falla siempre» se concluyó
+«falla al azar», que no se sigue.**
+
+### La causa, hallada el 2026-11-24 (T-651, intento acotado)
+
+**Dónde falla.** Corrida `45284335410` (`main`, `4e05ef8f`), job `navegador`:
+
+```
+1) [flujo] › 07-cobros.e2e-spec.ts:136 › el archivo de viaje muestra total, pagado, saldo e historial vacio
+   Test timeout of 90000ms exceeded.
+   waiting for getByTestId('panel-de-cobro').locator('dt').filter({ hasText: /^Total del viaje$/ })
+1 failed, 3 did not run, 61 passed (2.7m)
+```
+
+**Por qué nadie pudo clasificarlo en dos días.** No es la infraestructura: **es que la prueba
+descarta el diagnóstico que la pantalla ya muestra.**
+
+`panel-de-cobro` (`apps/web/src/components/reservas/panel-de-cobro.tsx`) pinta el **mismo**
+`data-testid` en sus **tres** estados —`cargando`, `error` y `listo`— y el `<dl>` de las cifras solo
+existe en `listo`. Así que `expect(panel).toBeVisible()` **pasa en los tres**, y al quedar en `error`
+la prueba se queda esperando un `dt` que no va a aparecer **hasta agotar los 90 s** del test. El
+fallo que se reporta es «Test timeout exceeded»: no dice nada.
+
+Y mientras tanto el panel tiene en pantalla, en un `role="alert"`, la causa exacta: «No se pudo
+cargar el cobro de este archivo» y su mensaje. El `api.log` de esa corrida apunta a la sesión
+(`[Better Auth] User not found` y `CREDENCIALES_INVALIDAS`, segundos antes del fallo).
+
+**Hay más de un modo de fallo.** La corrida `45280673804` (rama solo de documentación) falló el paso
+en **71 s**, por debajo del timeout de 90 s: no es el mismo fallo. Con `retries: 0` el CI **no podía
+distinguir roto de inestable**, que es precisamente la pregunta abierta.
+
+**Lo hecho** (rama `b/T-000-navegador-diagnosticable`, carril `b`):
+
+| Cambio | Para qué |
+|---|---|
+| `panelDeCobroListo()` en `e2e/auxiliares.ts` | Espera cifras **o** error; si es error **falla al instante citando la pantalla**. Es la disciplina que `registrarPago` ya aplicaba en ese mismo fichero |
+| Lo usan las 5 llamadas de `07-cobros` y la de `07b-cobros-tabla` | `07b` tenía el mismo fallo latente: comprobaba visibilidad y luego pulsaba `abrir-registrar-pago`, botón que solo existe en `listo` |
+| `cifra()` con tiempo propio (15 s) | Sin él heredaba el del test entero: el primer dato que faltara se comía los 90 s sin nombrarse |
+| `retries: 1` **solo en CI** | No esconde el rojo: lo **clasifica**. Playwright marca `flaky` lo que falla y luego pasa, y `failed` lo que falla dos veces. En local sigue en 0 |
+
+**Lo que esto NO hace, y conviene decirlo:** no arregla la causa de fondo de que el cobro falle a
+veces. La hace **nombrarse**. La siguiente corrida roja dirá si es sesión, carrera o datos.
+
+**Lo que no se pudo verificar:** la suite entera no corre en una sesión de nube —exige Postgres—, así
+que lo comprobado es `playwright test --list` (65 pruebas en 10 ficheros, las mismas que el CI),
+typecheck del proyecto `e2e` y lint. **La prueba de que el rojo se fue está por ejecutar**, y por eso
+T-651 **sigue abierta** y la rama va como `T-000`.
 
 ### Por qué esto es peor de lo que parecía, y corrige la tarea
 
