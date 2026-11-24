@@ -24,7 +24,7 @@ diagnóstico cuantificó toques, contrastes y píxeles; las correcciones se veri
 | 1·2·4 | **T-623** | Enlaces rotos, cadena hacia delante, Configuración, colores que mienten | S | **en revisión** |
 | 3 | **T-626** | Contactos en el teléfono: de **0 de 8** a **8 de 8** enlaces alcanzables | M | **en revisión** |
 | 5 | **T-627** | Modo oscuro de «Hoy»: **contraste 1,1:1 sobre un importe** | S | lista |
-| 6 | **T-628** | El aviso de cookies **tapa el ingreso** en móvil | S | lista |
+| 6 | **T-628** | El aviso de cookies tapaba el ingreso: de **44 px tapados** a **59 de holgura** | S | **en revisión** (PR #549) |
 | 7 | **T-629** | Pasada de lenguaje: que las once pantallas hablen igual | M | lista |
 | 8 | T-630 | Murallas de cabecera en móvil | M | cola |
 | 9 | T-631 | Pestañas que no caben | M | cola |
@@ -99,3 +99,33 @@ medirlo mal invierte el resultado: `scrollIntoViewIfNeeded()` desplaza por scrip
 
 **Fuera de alcance, y queda dicho:** los dos iconos de acción siguen sin nombre visible (T-632) y el
 aviso de cookies tapa el pie en móvil (T-628, PR #549).
+
+---
+
+## T-628, verificada de forma independiente (2026-11-24)
+
+El arreglo ya existía en el **PR #549**. Lo que faltaba no era código: la rama estaba `behind` y
+**nadie había comprobado sus cifras**. Medido aquí con el navegador a 390 px sobre la pantalla de
+ingreso real (modo demostración con `NEXT_PUBLIC_AUTH_MAQUETA`), antes y después:
+
+| Medida | Antes | Después |
+|---|---|---|
+| Alto del aviso | **355 px** (42,1 % de 844) | **221 px** (26,2 %) |
+| Arranca en | y=489 | **y=623** |
+| Solape con «Ingresar a ViajaPro» | **44 px** | **0 px** |
+| Holgura | **−75 px** | **+59 px** |
+| Botón alcanzable (`elementFromPoint`) | **NO**, lo recibe el aviso | **SÍ** |
+| Objetivo táctil de los tres botones | 44 px | 44 px |
+
+**Una corrección al cuerpo del PR:** decía que el aviso «parte por la mitad» el botón, 25 px. En local
+es **peor**: lo tapa **entero**, 44 de 44 px. No era incómodo de pulsar — **no se podía pulsar**. La
+diferencia viene de que el PR midió contra staging y esto es el build local; el defecto es el mismo y
+la cifra de aquí es la mala.
+
+**Lo que el PR no traía, y se añadió:** ninguna prueba vigilaba el arreglo. Sus «7/7 en verde» eran
+las siete que ya existían, **ninguna tocada**. Se añadieron cuatro guardas (texto corto en móvil,
+`grid-cols-3`, etiquetas corta y larga, objetivo táctil) y **se probaron rechazando**, como pide
+ADR-0038: sobre `main` sin el arreglo, **3 de las 4 se ponen rojas**; con él, 11/11.
+
+**Matiz que no bloquea:** los tres enlaces legales siguen tapados en la vista en reposo, pero la
+página scrollea (1123 px de 844) y al desplazarse los tres son alcanzables.

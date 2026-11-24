@@ -13452,12 +13452,27 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: review
     acceptance:
       - "Fila 6. MEDIDO: el aviso empieza en y=501 y el boton ocupa de 470 a 514, asi que el enlace «Ingresar
         con codigo de 6 digitos» queda INALCANZABLE"
       - Es la primera pantalla, y viene de la semana en que un cliente real no conseguia entrar (T-594, T-600)
       - Comprobar a 390 px que los dos caminos de ingreso son alcanzables con el aviso visible
+      - "VERIFICADO de forma independiente el 2026-11-24 a 390 px sobre la pantalla de ingreso real: ANTES el
+        aviso media 355 px (42,1 por ciento de 844) y arrancaba en y=489, solapando 44 px con «Ingresar a
+        ViajaPro» (top 520, bottom 564) y elementFromPoint devolvia el aviso: el boton NO se podia pulsar.
+        DESPUES mide 221 px (26,2 por ciento), arranca en y=623, solape 0 y holgura 59 px, y el boton es
+        alcanzable"
+      - "CORRECCION al cuerpo del PR #549: decia que el aviso partia el boton por la mitad, 25 px. En local
+        lo tapa ENTERO, 44 de 44 px. No era incomodo de pulsar, no se podia pulsar. El PR midio contra
+        staging; la cifra mala es la de aqui"
+      - "EL PR NO TRAIA GUARDAS: sus «7/7 en verde» eran las siete pruebas que ya existian, ninguna tocada,
+        y ninguna miraba el alto del aviso. Se anadieron cuatro (texto corto en movil, grid-cols-3,
+        etiquetas corta y larga, objetivo tactil de 44 px) y SE PROBARON RECHAZANDO como pide ADR-0038:
+        sobre main sin el arreglo 3 de 4 se ponen rojas; con el, 11/11"
+      - "La rama se puso al dia con main (8c392133), que es lo que tenia el PR detenido en behind"
+      - "MATIZ que no bloquea: los tres enlaces legales siguen tapados en la vista en reposo, pero la pagina
+        scrollea (1123 de 844) y al desplazarse los tres son alcanzables"
     source: plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)
     owner: frontend
   - id: T-629
