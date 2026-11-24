@@ -183,7 +183,7 @@ export function PanelConsentimientosContacto({
                 </p>
 
                 {/* Metadatos de Trazabilidad */}
-                <div className="dark:bg-neutral-850/60 mt-3 space-y-1.5 rounded-lg border border-neutral-200/60 bg-white/70 p-2.5 text-[11px] text-neutral-600 dark:border-neutral-700/60 dark:text-neutral-400">
+                <div className="mt-3 space-y-1.5 rounded-lg border border-neutral-200/60 bg-white/70 p-2.5 text-[11px] text-neutral-600 dark:border-neutral-700/60 dark:bg-neutral-900/60 dark:text-neutral-400">
                   <div className="flex items-center justify-between">
                     <span className="text-neutral-500">Canal:</span>
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">

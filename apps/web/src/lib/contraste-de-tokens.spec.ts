@@ -249,9 +249,28 @@ describe('tonos declarados: una clase que no genera CSS es un token roto', () =>
 describe('familias existentes: una familia que no es de nadie no emite CSS (T-569)', () => {
   /** Las que trae Tailwind v4 de fábrica; las propias están en FAMILIAS_PROPIAS. */
   const FAMILIAS_DE_TAILWIND = new Set([
-    'slate', 'gray', 'zinc', 'neutral', 'stone', 'red', 'orange', 'amber', 'yellow', 'lime',
-    'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia',
-    'pink', 'rose',
+    'slate',
+    'gray',
+    'zinc',
+    'neutral',
+    'stone',
+    'red',
+    'orange',
+    'amber',
+    'yellow',
+    'lime',
+    'green',
+    'emerald',
+    'teal',
+    'cyan',
+    'sky',
+    'blue',
+    'indigo',
+    'violet',
+    'purple',
+    'fuchsia',
+    'pink',
+    'rose',
   ]);
 
   it('toda familia de color usada en las clases es de Tailwind o está en @theme', () => {
@@ -278,6 +297,63 @@ describe('familias existentes: una familia que no es de nadie no emite CSS (T-56
     expect(
       [...desconocidas.entries()].map(([f, a]) => `  ${f} — p. ej. ${a}`),
       'Estas familias no existen ni en @theme ni en Tailwind: sus clases no emiten CSS.',
+    ).toEqual([]);
+  });
+
+  /**
+   * El hueco entre las dos guardas anteriores, encontrado el 2026-11-23 (T-627).
+   *
+   * La primera comprueba los TONOS de las familias propias. La segunda, que la FAMILIA exista.
+   * Ninguna comprobaba el tono de una familia de Tailwind, y por ahí se coló `neutral-850`: la
+   * familia existe, el tono no. Tailwind no emitía la clase, en oscuro sobrevivía `bg-white` y la
+   * tarjeta de seguimientos de «Hoy» quedaba en **1,1:1 sobre un importe en pesos** — dinero
+   * ilegible. Es el MISMO fallo de T-561 en otra puerta: una clase que no genera CSS no avisa.
+   *
+   * Tailwind v4 solo trae estos once tonos por familia. No hay 850, ni 150, ni 250.
+   */
+  const TONOS_DE_TAILWIND = new Set([
+    '50',
+    '100',
+    '200',
+    '300',
+    '400',
+    '500',
+    '600',
+    '700',
+    '800',
+    '900',
+    '950',
+  ]);
+
+  it('todo tono de una familia de Tailwind que el código usa existe de verdad', () => {
+    const raiz = path.resolve(RAIZ_WEB, '../../..');
+    const salida = execFileSync('git', ['ls-files', '-z', 'apps/web/src', 'packages/ui'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    const patron = new RegExp(
+      `\\b(?:[a-z-]+:)*(?:${UTILIDADES})-([a-z]+)-(\\d{2,3})(?:\\/\\d+)?\\b`,
+      'g',
+    );
+    const inexistentes = new Map<string, string>();
+    let vistos = 0;
+    for (const archivo of salida.split('\0')) {
+      if (!/\.(ts|tsx)$/.test(archivo) || archivo.includes('.spec.')) continue;
+      for (const m of readFileSync(path.join(raiz, archivo), 'utf8').matchAll(patron)) {
+        const [, familia, tono] = m as unknown as [string, string, string];
+        // Las propias las cubre `tonos declarados`, que lee @theme.
+        if ((FAMILIAS_PROPIAS as readonly string[]).includes(familia)) continue;
+        if (!FAMILIAS_DE_TAILWIND.has(familia)) continue;
+        vistos++;
+        if (!TONOS_DE_TAILWIND.has(tono)) inexistentes.set(`${familia}-${tono}`, archivo);
+      }
+    }
+    expect(vistos, 'el escaneo no encontró ninguna clase: el patrón está roto').toBeGreaterThan(10);
+    expect(
+      [...inexistentes.entries()].map(([t, a]) => `  ${t} — p. ej. ${a}`).sort(),
+      'Estos tonos no existen en Tailwind, así que la clase no emite CSS y el estilo se pierde en\n' +
+        'silencio (en oscuro sobrevive el color de claro). Usa un tono real de la familia.',
     ).toEqual([]);
   });
 });

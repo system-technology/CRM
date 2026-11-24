@@ -24,6 +24,47 @@ const casos = [
   ['main', 'git push origin --delete main', 'exigir-autorizacion', 'borrar main en el remoto'],
   ['feat/x', 'git push origin main', 'exigir-autorizacion', 'push a main desde otra rama'],
 
+  // --- Lo que debe exigir la app del carril ---------------------------------
+  // Nació de un defecto real: seis PR abiertos con la cuenta del propietario quedaron
+  // inaprobables, porque GitHub no deja aprobar el PR propio y `rutas-protegidas` lo exige.
+  ['i/T-1-x', 'gh pr create --title x --body y', 'exigir-app', 'abrir PR con gh a secas'],
+  ['i/T-1-x', 'gh pr merge 123 --squash --auto', 'exigir-app', 'mergear con gh a secas'],
+  ['main', 'gh pr create -t x', 'exigir-app', 'abrir PR desde main con gh a secas'],
+  ['i/T-1-x', 'cd /d/Projects/CRM && gh pr create -t x', 'exigir-app', 'tras un cd'],
+  ['i/T-1-x', 'gh pr list && gh pr create -t x', 'exigir-app', 'encadenado tras una lectura'],
+
+  // El camino correcto NO se toca: la cabeza del segmento es `node`, no `gh`.
+  [
+    'i/T-1-x',
+    'node scripts/gh-app.mjs integradora gh pr create --title x',
+    'permitir',
+    'abrir PR con la app',
+  ],
+  [
+    'i/T-1-x',
+    'node scripts/gh-app.mjs integradora gh pr merge 1 --squash',
+    'permitir',
+    'mergear con la app',
+  ],
+
+  // Lecturas y metadatos siguen permitidos con la cuenta del propietario.
+  ['i/T-1-x', 'gh pr view 123 --json title', 'permitir', 'leer un PR'],
+  ['i/T-1-x', 'gh pr list --state open', 'permitir', 'listar PR'],
+  ['i/T-1-x', 'gh pr checks 123', 'permitir', 'ver los checks'],
+  ['i/T-1-x', 'gh pr update-branch 123', 'permitir', 'poner la rama al día'],
+  ['i/T-1-x', 'gh pr close 123', 'permitir', 'cerrar un PR'],
+  ['i/T-1-x', 'gh run list --limit 5', 'permitir', 'listar corridas'],
+  ['i/T-1-x', 'gh issue create -t x', 'permitir', 'crear un issue no es un PR'],
+
+  // Falsos positivos de la misma familia que ya mordieron con `git`: prosa, no comandos.
+  [
+    'i/T-1-x',
+    'git commit -m "usar gh pr create con la app, no a secas"',
+    'permitir',
+    'la regla citada dentro de un mensaje de commit',
+  ],
+  ['i/T-1-x', 'grep -r "gh pr create" docs/', 'permitir', 'buscar el texto de la regla'],
+
   // --- Lo que debe bloquearse siempre --------------------------------------
   ['main', 'git push --force origin main', 'bloquear-destructivo', 'force push a main'],
   ['main', 'git push -f', 'bloquear-destructivo', 'force push corto desde main'],

@@ -87,10 +87,13 @@ export function tokenizar(linea) {
 }
 
 /**
- * Parte la línea en invocaciones de git, devolviendo los argumentos de cada una.
+ * Parte la línea en invocaciones de un programa, devolviendo los argumentos de cada una.
  * Un token entrecomillado nunca puede ser el nombre de un comando.
+ *
+ * `reProgama` reconoce la cabeza del segmento (`git`, `gh`…) admitiendo ruta y `.exe`.
+ * `normalizar` deja al llamador quitar las opciones globales propias de ese programa.
  */
-export function invocacionesGit(linea, crudo = false) {
+export function invocacionesDe(linea, reProgama, normalizar = (a) => a) {
   const tokens = tokenizar(linea);
   const invocaciones = [];
   let segmento = [];
@@ -107,8 +110,8 @@ export function invocacionesGit(linea, crudo = false) {
       i++;
     }
     const cabeza = segmento[i];
-    if (cabeza && !cabeza.entrecomillado && /(^|[\\/])git(\.exe)?$/.test(cabeza.valor)) {
-      invocaciones.push(crudo ? segmento.slice(i + 1) : sinOpcionesGlobales(segmento.slice(i + 1)));
+    if (cabeza && !cabeza.entrecomillado && reProgama.test(cabeza.valor)) {
+      invocaciones.push(normalizar(segmento.slice(i + 1)));
     }
     segmento = [];
   };
@@ -123,6 +126,11 @@ export function invocacionesGit(linea, crudo = false) {
   cerrar();
 
   return invocaciones;
+}
+
+/** Invocaciones de git. `crudo` conserva las opciones globales (`-C`, `-c`…). */
+export function invocacionesGit(linea, crudo = false) {
+  return invocacionesDe(linea, /(^|[\\/])git(\.exe)?$/, crudo ? (a) => a : sinOpcionesGlobales);
 }
 
 /**
@@ -198,10 +206,43 @@ export function pushTocaMain(args, ramaActual) {
 }
 
 /**
+ * ¿Abre o integra un PR con `gh` a secas, en vez de con la app del carril?
+ *
+ * **Por qué existe esta regla — es el defecto que la motivó, no una precaución teórica.**
+ * El 2026-11-23 había seis PR detenidos y ninguno podía avanzar. Todos los había abierto la
+ * cuenta del propietario (`gh pr create` directo), y la compuerta `rutas-protegidas` rechaza
+ * **siempre** un PR del propietario que toque una ruta protegida: GitHub no deja aprobar el PR
+ * propio, así que no era «falta aprobación», era **imposible de aprobar**. El mecanismo correcto
+ * —`scripts/gh-app.mjs`, tres apps por carril— ya existía desde octubre y `MARCO.md` §5 ya lo
+ * exigía. Estaba escrito y no se cumplía: por eso ahora lo impide una barandilla, no un párrafo.
+ *
+ * La app se invoca como `node scripts/gh-app.mjs <carril> gh pr create …`: ahí la cabeza del
+ * segmento es `node`, no `gh`, así que el camino correcto no se reconoce aquí y pasa sin tocar.
+ *
+ * Solo mira `pr create` y `pr merge` — lo que crea identidad o escribe en `main`. Leer
+ * (`gh pr view`, `list`, `checks`, `diff`) y editar metadatos (`edit`, `update-branch`, `close`)
+ * se permite con la cuenta del propietario: no falsean el autor ni integran nada.
+ *
+ * @returns {'create'|'merge'|null}
+ */
+export function ghSaltaLaApp(linea) {
+  for (const args of invocacionesDe(linea, /(^|[\\/])gh(\.exe)?$/)) {
+    const posicionales = args.filter((a) => !a.valor.startsWith('-') && !a.entrecomillado);
+    if (posicionales[0]?.valor !== 'pr') continue;
+    const accion = posicionales[1]?.valor;
+    if (accion === 'create' || accion === 'merge') return accion;
+  }
+  return null;
+}
+
+/**
  * Decide qué hacer con un comando.
- * @returns {{accion: 'permitir'|'bloquear-destructivo'|'exigir-autorizacion', esCommit: boolean}}
+ * @returns {{accion: 'permitir'|'bloquear-destructivo'|'exigir-autorizacion'|'exigir-app', esCommit: boolean, gh?: 'create'|'merge'}}
  */
 export function evaluar(linea, ramaActual) {
+  const gh = ghSaltaLaApp(linea);
+  if (gh) return { accion: 'exigir-app', esCommit: false, gh };
+
   const invocaciones = invocacionesGit(linea);
   if (invocaciones.length === 0) return { accion: 'permitir', esCommit: false };
 
