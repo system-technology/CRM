@@ -133,3 +133,80 @@ describe('BannerConsentimientoCookies (T-095) - Consentimiento de cookies y priv
     );
   });
 });
+
+/**
+ * Guardas de T-628: el aviso NO debe volver a tapar el ingreso en el teléfono.
+ *
+ * Por qué existen: el arreglo de T-628 es de clases (`sm:`), y en este proyecto una clase que
+ * cambia o desaparece **no avisa de nada** (T-561, T-569, T-627, T-626). El PR que lo arregló
+ * dejó las siete pruebas de arriba en verde **sin tocar ninguna**: eso significa que ninguna
+ * vigilaba el alto del aviso. Si alguien devuelve el párrafo largo al móvil o quita el `grid`,
+ * el aviso vuelve a medir 355 px de 844 y parte por la mitad «Ingresar a ViajaPro», y la suite
+ * seguiría verde.
+ *
+ * Lo que NO prueban, y hay que decirlo: cómo se ve. jsdom no evalúa `sm:`. El alto real se midió
+ * con el navegador a 390 px (355 px -> 221 px, botón de 25 px tapados a 109 px de holgura).
+ */
+describe('BannerConsentimientoCookies — no tapa el ingreso en el teléfono (T-628)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('el móvil recibe el texto corto y el párrafo largo queda para pantallas anchas', () => {
+    render(<BannerConsentimientoCookies />);
+    const banner = screen.getByTestId('banner-consentimiento-cookies');
+
+    const parrafos = Array.from(banner.querySelectorAll('p'));
+    const corto = parrafos.find((p) => /Solo cookies técnicas/i.test(p.textContent ?? ''));
+    const largo = parrafos.find((p) => /estrictamente necesarias/i.test(p.textContent ?? ''));
+
+    expect(corto, 'el texto corto del móvil existe').toBeDefined();
+    expect(largo, 'el párrafo completo sigue existiendo para pantallas anchas').toBeDefined();
+    // El corto desaparece a partir de `sm`; el largo solo aparece a partir de `sm`.
+    expect(corto!.className).toContain('sm:hidden');
+    expect(largo!.className).toContain('hidden');
+    expect(largo!.className).toContain('sm:block');
+  });
+
+  it('los tres botones van en tres columnas en el móvil, no envolviendo', () => {
+    render(<BannerConsentimientoCookies />);
+    const contenedor = screen.getByTestId('btn-cookies-aceptar-todas').parentElement!;
+
+    // Con `flex-wrap` en móvil, «Aceptar todas» caía a una segunda fila: +56 px de alto.
+    expect(contenedor.className).toContain('grid-cols-3');
+    expect(contenedor.className).not.toMatch(/(^|\s)flex-wrap(\s|$)/);
+    expect(contenedor.querySelectorAll('button').length).toBe(3);
+  });
+
+  it('las etiquetas que no caben a 390 px tienen versión corta y larga', () => {
+    render(<BannerConsentimientoCookies />);
+
+    for (const [testid, corta, larga] of [
+      ['btn-cookies-solo-necesarias', 'Necesarias', 'Solo necesarias'],
+      ['btn-cookies-aceptar-todas', 'Aceptar', 'Aceptar todas'],
+    ] as const) {
+      const boton = screen.getByTestId(testid);
+      const spans = Array.from(boton.querySelectorAll('span'));
+      const spanCorto = spans.find((e) => e.textContent === corta);
+      const spanLargo = spans.find((e) => e.textContent === larga);
+      expect(spanCorto, `${testid} conserva la etiqueta corta del móvil`).toBeDefined();
+      expect(spanLargo, `${testid} conserva la etiqueta completa`).toBeDefined();
+      expect(spanCorto!.className).toContain('sm:hidden');
+      expect(spanLargo!.className).toContain('hidden');
+    }
+  });
+
+  it('los tres botones conservan el objetivo táctil de 44 px', () => {
+    render(<BannerConsentimientoCookies />);
+    for (const testid of [
+      'btn-cookies-configurar',
+      'btn-cookies-solo-necesarias',
+      'btn-cookies-aceptar-todas',
+    ]) {
+      expect(screen.getByTestId(testid).className, `${testid} mantiene 44 px`).toContain(
+        'min-h-[44px]',
+      );
+    }
+  });
+});
