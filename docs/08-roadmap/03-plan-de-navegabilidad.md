@@ -29,7 +29,7 @@ diagnóstico cuantificó toques, contrastes y píxeles; las correcciones se veri
 | 8 | **T-630** | Murallas de cabecera: la muralla eran **los filtros**, no los botones | M | **en revisión** (2 de 5) |
 | 9 | **T-631** | Pestañas que no caben: 7 de 9 fuera, y la activa **sin anunciar** | M | **en revisión** |
 | 10 | **T-632** | Iconos sin nombre: 16 de 68, **todos en Contactos** | S | **en revisión** |
-| 11 | T-633 | Títulos de documento y migas (ADR-0032) | S | cola |
+| 11 | **T-633** | Títulos y migas: el ADR lo exigía y **nadie lo hacía** | S | **en revisión** |
 | — | T-634 | La paleta no encuentra la mitad de lo que hay | S | cola |
 | — | T-638 | El ADR-0032 y el código **se contradicen** en la barra móvil | S | lista |
 | 12 | T-635 | Reportes con menos texto; acciones en Cobros | M | cola · **producto** |
@@ -139,7 +139,12 @@ el H1, el título del documento, las migas y la bajada:
 
 1. «La misma pantalla se llama *Conversaciones* en el menú y *Bandeja* en las migas». Hoy `/bandeja`
    dice **«Conversaciones»** en el menú, el H1 y el título. Y **no hay migas en ninguna de las once
-   pantallas**. Ese desajuste ya estaba arreglado.
+   pantallas**. ~~Ese desajuste ya estaba arreglado.~~
+
+   **CORRECCIÓN del 2026-11-24 (T-633): esa última frase era FALSA.** Las migas viven en las pantallas
+   de **detalle**, que no se midieron, y `/bandeja/<id>` **seguía diciendo «Bandeja»**. La premisa de
+   T-629 era correcta y la corrección, no. Se arregló en T-633; queda aquí a la vista porque dar por
+   resuelto lo que no se midió es el vicio que este plan persigue.
 2. Las once ya tenían el H1 igual que su etiqueta de menú, salvo «Hoy», que saluda a propósito.
 
 **Lo que sí estaba roto, y era peor de lo escrito: la lista de contactos tenía CUATRO nombres.**
@@ -314,3 +319,41 @@ lenguaje ubicuo** y es material de T-629, no de esta fila.
 
 Y la guarda **no vigila los otros 52 controles**: hacerlo pediría una lista que se desactualiza sola.
 Lo que los caza es la medición del navegador, que queda escrita aquí para repetirla.
+
+---
+
+## T-633: el ADR lo exigía desde el principio (2026-11-24)
+
+ADR-0032 §4 dice literalmente que **«los detalles lo sobrescriben con `tituloDeDocumento(nombre)`»**.
+Medido: **ninguna de las tres pantallas de detalle lo hacía.** Seis conversaciones abiertas en seis
+pestañas decían las seis «Conversaciones · ViajaPro».
+
+**Por qué hacía falta un canal** y no bastaba con que el detalle pintara su propio `<title>`: React 19
+eleva al `<head>` **todos** los que encuentra y el navegador se queda con **el primero del documento**,
+que es el del marco. Dos `<title>` no se pisan. Así que el detalle **avisa** y el marco sigue siendo el
+único que pinta la etiqueta — y se repone al salir.
+
+| Ruta | Pestaña, verificada en el navegador |
+|---|---|
+| `/contactos/<id>` | «Juan Pérez · ViajaPro» |
+| `/cotizaciones/<id>` | «Cotización San Andrés — Plan Familiar · ViajaPro» |
+| `/bandeja/<id>` | «+573000009999 · ViajaPro» |
+
+### Las migas contaban otra historia que el menú
+
+- `/bandeja/<id>` decía **«Bandeja»** donde el menú, el H1 y el título dicen «Conversaciones». Ahora
+  sale de `entradaDe('conversaciones').etiqueta` — **la tabla única que pide la propia tarea**.
+- `/seguimientos` tenía un `<nav>` **escrito a mano** con un nivel **«CRM»** que enlazaba a
+  `/contactos` pero se llamaba de otra forma. Ahora usa `MigasDePan`, que ya existía: «Hoy ›
+  Seguimientos».
+
+### Un bug propio que cazaron las pruebas
+
+El gancho quedó **después de dos retornos tempranos** en la ficha de contacto, así que React contaba un
+hook distinto en el render que carga y en el que pinta: «Rendered more hooks than during the previous
+render». Movido arriba del todo, y **una de las cuatro guardas vigila que siga ahí**.
+
+### Lo que queda
+
+`/viajes/<id>` y `/cobros` no tienen hoy pantalla de detalle propia que titular, pero la tendrán. Y las
+migas siguen sin existir en las once pantallas de lista: eso es una decisión de diseño, no un defecto.

@@ -13623,7 +13623,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: review
     acceptance:
       - "Fila 11. MEDIDO: NINGUN detalle sobrescribe su document.title, asi que seis pestanas dicen
         «Conversaciones»"
@@ -13631,6 +13631,28 @@ tasks:
         cotizacion
       - Las migas de /seguimientos se escriben a mano y meten un nivel «CRM» que no es una pantalla
       - "El mecanismo ya existe en la tabla unica de navegacion: usarlo, no inventar otro"
+      - "CONFIRMADO el 2026-11-24: ADR-0032 seccion 4 ya exigia que los detalles sobrescriban el titulo y
+        NINGUNA de las tres pantallas lo hacia. Seis conversaciones en seis pestanas decian las seis
+        «Conversaciones · ViajaPro»"
+      - "POR QUE HACIA FALTA UN CANAL: React 19 eleva al head TODOS los title que encuentra y el navegador
+        toma el PRIMERO del documento, que es el del marco. Dos title no se pisan. Asi que el detalle avisa
+        y el marco sigue siendo el unico que pinta la etiqueta; se repone al salir"
+      - "VERIFICADO en navegador: /contactos/<id> dice «Juan Perez», /cotizaciones/<id> «Cotizacion San
+        Andres — Plan Familiar» y /bandeja/<id> el telefono del interlocutor"
+      - "MIGAS: /bandeja/<id> decia «Bandeja» donde el menu, el H1 y el titulo dicen «Conversaciones»; ahora
+        sale de entradaDe('conversaciones').etiqueta. Y /seguimientos tenia un nav A MANO con un nivel «CRM»
+        que enlazaba a /contactos pero se llamaba de otra forma: ahora usa MigasDePan con las etiquetas de
+        la tabla"
+      - "CORRIGE UNA AFIRMACION DE T-629: alli se dijo que el desajuste «Conversaciones vs Bandeja» ya
+        estaba arreglado porque no habia migas en las once pantallas. ERA FALSO: las migas viven en las
+        pantallas de DETALLE, que no se midieron. La premisa de T-629 era correcta y la correccion no"
+      - "BUG PROPIO que cazaron las pruebas: el gancho quedo despues de dos retornos tempranos en la ficha
+        de contacto y React rompia con «Rendered more hooks than during the previous render». Movido
+        arriba; una de las cuatro guardas vigila que siga ahi"
+      - "2137 pruebas en 216 ficheros en verde. Rama b/T-000-titulos-y-migas, que sale de main y NO de la
+        pila T-629..T-632: toca ficheros distintos y entra sola"
+      - "QUEDA: /viajes/<id> y /cobros no tienen hoy detalle propio que titular, pero lo tendran. Y las
+        migas siguen sin existir en las once listas, que es decision de diseno y no defecto"
     source: plan de navegabilidad, fila del diagnostico T-618 (2026-11-22)
     owner: frontend
   - id: T-634
